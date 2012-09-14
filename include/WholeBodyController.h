@@ -1,3 +1,9 @@
+/*!
+ * \author Janno Lunenburg
+ * \date September, 2012
+ * \version 0.1
+ */
+
 #ifndef WHOLEBODYCONTROLLER_H_
 #define WHOLEBODYCONTROLLER_H_
 
@@ -10,6 +16,7 @@
 
 // WholeBodyController
 #include "CartesianImpedance.h"
+#include "ComputeJacobian.h"
 
 class WholeBodyController {
 
@@ -25,7 +32,18 @@ public:
      */
     ~WholeBodyController();
 
+    /*
+     * Updatehook
+     */
+    bool update();
+
 protected:
+
+    CartesianImpedance CIleft_;
+    ComputeJacobian ComputeJacobian_;
+
+    KDL::JntArray q_current_;
+    KDL::Jacobian Jacobian_;
 
     /**
      * Initialize function
