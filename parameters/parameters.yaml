@@ -1,11 +1,24 @@
 whole_body_controller:
-    chain_array:
-        - tip_name: grippoint_left
-            - grippoint_left
-            - shoulder_mount_left
-            - base
+    chain_description_array:
+        - - grippoint_left
+          - shoulder_mount_left
+          - base
       
-        - tip_name: grippoint_right
-            - grippoint_right
-            - shoulder_mount_right
-            - base 
+         - - grippoint_right
+           - shoulder_mount_right
+           - base
+           
+           
+- name: base, children:
+    - name: shoulder_mount_left, children:
+          - name: grippoint_left
+    - name: shoulder_mount_right, children:
+          - name: grippoint_right 
+          
+          
+- base:
+    - shoulder_mount_left:
+        - grippoint_left
+    - shoulder_mount_right
+        - grippoint_right
+        
