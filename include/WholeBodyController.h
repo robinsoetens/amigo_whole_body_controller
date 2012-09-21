@@ -48,7 +48,8 @@ protected:
     std::map<std::string, component_description> component_description_map_;
 
     KDL::JntArray q_current_;
-    KDL::Jacobian Jacobian_;
+    ///KDL::Jacobian Jacobian_;
+    Eigen::MatrixXd Jacobian_;
 
     /**
      * Initialize function

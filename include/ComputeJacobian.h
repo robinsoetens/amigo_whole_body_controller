@@ -41,7 +41,7 @@ public:
     bool Initialize(std::map<std::string, component_description> *component_description_map);
 
     //void Update(std::map<std::string, std::vector<double> >);
-    void Update(std::map<std::string, component_description>, KDL::JntArray);
+    void Update(std::map<std::string, component_description>, KDL::JntArray, Eigen::MatrixXd&);
 
     //! Map contains a string to describe which component this concerns and a vector with eventually two integers to describe the start and end-index of this component
     std::map<std::string, std::vector<int> > index_map;
@@ -66,7 +66,8 @@ private:
 
     //! Vector containing the ChainJntToJacSolvers
     //std::vector<boost::scoped_ptr<KDL::ChainJntToJacSolver> > jnt_to_jac_solver_array;
-    boost::scoped_ptr<KDL::ChainJntToJacSolver> jnt_to_jac_solver_array[2];
+    //boost::scoped_ptr<KDL::ChainJntToJacSolver> jnt_to_jac_solver_array[2];
+    std::vector<KDL::ChainJntToJacSolver*> jnt_to_jac_solver_array;
 
     //! Joint limits
     KDL::JntArray joint_min, joint_max;

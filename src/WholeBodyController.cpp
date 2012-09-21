@@ -56,6 +56,8 @@ bool WholeBodyController::initialize() {
     ///ROS_INFO("Number of left arm joints equals %i", component_description_map_["left_arm"].number_of_joints);
     ///ROS_INFO("Number of right arm joints equals %i", component_description_map_["right_arm"].number_of_joints);
     q_current_.resize(ComputeJacobian_.num_joints);
+    // ToDo: Make number of columns variable
+    Jacobian_.resize(12,ComputeJacobian_.num_joints);
 
     // Initialize subscribers etc.
     setTopics();
@@ -72,7 +74,8 @@ bool WholeBodyController::initialize() {
 bool WholeBodyController::update() {
 
     ///ROS_INFO("Updating wholebodycontroller");
-    ComputeJacobian_.Update(component_description_map_, q_current_);
+    ComputeJacobian_.Update(component_description_map_, q_current_, Jacobian_);
+    ROS_INFO("Eighth column of returned Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",Jacobian_(0,7),Jacobian_(1,7),Jacobian_(2,7),Jacobian_(3,7),Jacobian_(4,7),Jacobian_(5,7));
     ///ROS_INFO("Updated wholebodycontroller");
 
     return true;
@@ -155,8 +158,12 @@ void WholeBodyController::callbackMeasuredLeftArmPosition(const amigo_msgs::arm_
     }
      */
     std::string component_name = "left_arm";
-    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+    uint num_comp_joints = component_description_map_[component_name].number_of_joints;
+    for (uint i = 0; i<num_comp_joints; i++) {
         component_description_map_[component_name].q[i] = msg->pos[i].data;
+
+        // I guess we need to reverse this vector --> probably not
+        ///component_description_map_[component_name].q[i] = msg->pos[num_comp_joints-1-i].data;
         //ROS_INFO("%s joint %i = %f",component_name.c_str(),i+1,component_description_map_[component_name].q[i]);
     }
 }
@@ -178,8 +185,12 @@ void WholeBodyController::callbackMeasuredRightArmPosition(const amigo_msgs::arm
     }
      */
     std::string component_name = "right_arm";
-    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+    uint num_comp_joints = component_description_map_[component_name].number_of_joints;
+    for (uint i = 0; i<num_comp_joints; i++) {
         component_description_map_[component_name].q[i] = msg->pos[i].data;
+
+        // I guess we need to reverse this vector --> probably not
+        ///component_description_map_[component_name].q[i] = msg->pos[num_comp_joints-1-i].data;
         //ROS_INFO("%s joint %i = %f",component_name.c_str(),i+1,component_description_map_[component_name].q[i]);
     }
 }
