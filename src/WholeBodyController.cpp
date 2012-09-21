@@ -56,8 +56,13 @@ bool WholeBodyController::initialize() {
     ///ROS_INFO("Number of left arm joints equals %i", component_description_map_["left_arm"].number_of_joints);
     ///ROS_INFO("Number of right arm joints equals %i", component_description_map_["right_arm"].number_of_joints);
     q_current_.resize(ComputeJacobian_.num_joints);
-    // ToDo: Make number of columns variable
+    // ToDo: Make number of columns variable, get rid of for loops
     Jacobian_.resize(12,ComputeJacobian_.num_joints);
+    for (uint i = 0; i<12; i++) {
+        for (uint ii = 0; ii<ComputeJacobian_.num_joints; ii++) {
+            Jacobian_(i,ii) = 0;
+        }
+    }
 
     // Initialize subscribers etc.
     setTopics();
@@ -75,7 +80,9 @@ bool WholeBodyController::update() {
 
     ///ROS_INFO("Updating wholebodycontroller");
     ComputeJacobian_.Update(component_description_map_, q_current_, Jacobian_);
-    ROS_INFO("Eighth column of returned Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",Jacobian_(0,7),Jacobian_(1,7),Jacobian_(2,7),Jacobian_(3,7),Jacobian_(4,7),Jacobian_(5,7));
+    uint show_column = 11;
+    uint show_row = 1;
+    ROS_INFO("Row %i, column %i of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",show_row+1,show_column+1,Jacobian_(6*show_row+0,show_column),Jacobian_(6*show_row+1,show_column),Jacobian_(6*show_row+2,show_column),Jacobian_(6*show_row+3,show_column),Jacobian_(6*show_row+4,show_column),Jacobian_(6*show_row+5,show_column));
     ///ROS_INFO("Updated wholebodycontroller");
 
     return true;

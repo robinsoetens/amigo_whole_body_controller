@@ -188,15 +188,18 @@ void ComputeJacobian::Update(std::map<std::string, component_description> compon
         // Solve Jacobian of chain
         jnt_to_jac_solver_array[i]->JntToJac(chain_joint_array,chain_jacobian);
 
-        uint show_column = 0;
-        ROS_INFO("%i column of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",show_column+1,chain_jacobian.data(0,show_column),chain_jacobian.data(1,show_column),chain_jacobian.data(2,show_column),chain_jacobian.data(3,show_column),chain_jacobian.data(4,show_column),chain_jacobian.data(5,show_column));
+        ///uint show_column = 0;
+        ///ROS_INFO("%i column of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",show_column+1,chain_jacobian.data(0,show_column),chain_jacobian.data(1,show_column),chain_jacobian.data(2,show_column),chain_jacobian.data(3,show_column),chain_jacobian.data(4,show_column),chain_jacobian.data(5,show_column));
 
         // Put resulting Jacobian in correct blocks into large Jacobian
         ///Block of size (p,q), starting at (i,j)   matrix.block(i,j,p,q);
         // For every component in the chain
-        uint current_index = 0;
+        ///uint current_index = 0;
+        uint current_index = chain_array[i].getNrOfJoints();
         for (uint iiii = 0; iiii < chain_description_array[i].size(); iiii++) {
             std::string component_name = chain_description_array[i][iiii];
+            current_index -= component_description_map[component_name].number_of_joints;
+
             ///ROS_INFO("Component %s inserted in chain array", component_name.c_str());
 
             ///ROS_INFO("Indexes of large Jacobian are %i, %i, %i, %i",6*i,component_description_map[component_name].start_index,6,component_description_map[component_name].number_of_joints);
@@ -220,10 +223,10 @@ void ComputeJacobian::Update(std::map<std::string, component_description> compon
 
             Jacobian.block(6*i,component_description_map[component_name].start_index,6,component_description_map[component_name].number_of_joints) =
                     chain_jacobian.data.block(0,current_index,6,component_description_map[component_name].number_of_joints);
-            current_index += component_description_map[component_name].number_of_joints;
+            ///current_index += component_description_map[component_name].number_of_joints;
 
             ///ROS_INFO("Size of Jacobian is %i x %i",Jacobian.data.rows(),Jacobian.data.cols());
         }
     }
-    ROS_INFO("Eighth column of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",Jacobian(0,7),Jacobian(1,7),Jacobian(2,7),Jacobian(3,7),Jacobian(4,7),Jacobian(5,7));
+    ///ROS_INFO("Eighth column of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",Jacobian(0,7),Jacobian(1,7),Jacobian(2,7),Jacobian(3,7),Jacobian(4,7),Jacobian(5,7));
 }
