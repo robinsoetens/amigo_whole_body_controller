@@ -19,6 +19,9 @@ WholeBodyController::~WholeBodyController() {
 
 bool WholeBodyController::initialize() {
 
+    // ToDo: Parameterize
+    Ts = 0.1;
+
     // Get node handle
     ros::NodeHandle n("~");
     //ROS_INFO("Nodehandle %s",n.getNamespace().c_str());
@@ -56,19 +59,25 @@ bool WholeBodyController::initialize() {
     ///ROS_INFO("Number of left arm joints equals %i", component_description_map_["left_arm"].number_of_joints);
     ///ROS_INFO("Number of right arm joints equals %i", component_description_map_["right_arm"].number_of_joints);
     q_current_.resize(ComputeJacobian_.num_joints);
+    qdot_reference_.resize(ComputeJacobian_.num_joints);
     // ToDo: Make number of columns variable, get rid of for loops
     Jacobian_.resize(12,ComputeJacobian_.num_joints);
     for (uint i = 0; i<12; i++) {
         for (uint ii = 0; ii<ComputeJacobian_.num_joints; ii++) {
+            qdot_reference_(ii) = 0;
             Jacobian_(i,ii) = 0;
         }
     }
+    tau_.resize(ComputeJacobian_.num_joints);
 
     // Initialize subscribers etc.
     setTopics();
 
     // Implement left Cartesian Impedance
     CIleft_.initialize();
+
+    // Initialize addmittance controller
+    AdmitCont_.initialize();
 
     ROS_INFO("Whole Body Controller Initialized");
 
@@ -78,12 +87,30 @@ bool WholeBodyController::initialize() {
 
 bool WholeBodyController::update() {
 
+    // Compute new Jacobian matrix
     ///ROS_INFO("Updating wholebodycontroller");
     ComputeJacobian_.Update(component_description_map_, q_current_, Jacobian_);
-    uint show_column = 11;
-    uint show_row = 1;
-    ROS_INFO("Row %i, column %i of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",show_row+1,show_column+1,Jacobian_(6*show_row+0,show_column),Jacobian_(6*show_row+1,show_column),Jacobian_(6*show_row+2,show_column),Jacobian_(6*show_row+3,show_column),Jacobian_(6*show_row+4,show_column),Jacobian_(6*show_row+5,show_column));
-    ///ROS_INFO("Updated wholebodycontroller");
+    ///uint show_column = 11;
+    ///uint show_row = 1;
+    ///ROS_INFO("Row %i, column %i of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",show_row+1,show_column+1,Jacobian_(6*show_row+0,show_column),Jacobian_(6*show_row+1,show_column),Jacobian_(6*show_row+2,show_column),Jacobian_(6*show_row+3,show_column),Jacobian_(6*show_row+4,show_column),Jacobian_(6*show_row+5,show_column));
+
+    // Update the torque output
+    // Currently only one torque 'source', when multiple ones a smarter solution has to be found
+    // Plan of attack: set tau to zero --> add in every update loop.
+    // Note that nullspace solution should be included in various subproblems
+    // Not sure if this is the right approach: summing the taus up and then doing nullspace projection may result in smoother transitions
+    for (int i = 0; i<tau_.size(); i++) tau_(i) = 0;
+    CIleft_.update(Jacobian_, tau_);
+
+    ///ROS_INFO("tau %f %f %f %f", tau_(0),  tau_(1),  tau_(2),  tau_(3));
+    ROS_INFO("FSpindle %f", tau_(7));
+
+    AdmitCont_.update(tau_,qdot_reference_);
+
+    ///ROS_INFO("qdr = %f %f %f %f", qdot_reference_(0), qdot_reference_(1), qdot_reference_(2), qdot_reference_(3));
+    ROS_INFO("qdrspindle = %f", qdot_reference_(7));
+
+    publishReferences();
 
     return true;
 
@@ -97,7 +124,7 @@ void WholeBodyController::setTopics() {
     std::vector<double> temp_vector;
     // ToDo: standardize data types joint positions
     // ToDo: make temp_vector.resize and map arguments variable
-    // ToDo: fill in odom topic
+    // ToDo: fill in odom topic and make base publisher
     //odom_sub_ = ;
     measured_torso_position_sub_ = n.subscribe<std_msgs::Float64>("/spindle_position", 1, &WholeBodyController::callbackMeasuredTorsoPosition, this);
     temp_vector.resize(1);
@@ -119,7 +146,11 @@ void WholeBodyController::setTopics() {
     temp_vector.resize(1);
     q_current_map_["tilt_joint"] = temp_vector; //NOT CORRECT
 
-
+    //ros::Publisher torso_pub_, left_arm_pub_, right_arm_pub_, head_pub_;
+    torso_pub_ = n.advertise<amigo_msgs::spindle_setpoint>("/spindle_controller/spindle_coordinates", 10);
+    left_arm_pub_ = n.advertise<amigo_msgs::arm_joints>("/arm_left_controller/joint_references", 10);
+    right_arm_pub_ = n.advertise<amigo_msgs::arm_joints>("/arm_right_controller/joint_references", 10);
+    head_pub_ = n.advertise<amigo_msgs::head_ref>("/head_controller/set_Head", 10);
 
 }
 
@@ -207,6 +238,42 @@ void WholeBodyController::callbackMeasuredHeadPan(const std_msgs::Float64::Const
 }
 
 void WholeBodyController::callbackMeasuredHeadTilt(const std_msgs::Float64::ConstPtr& msg) {
+
+}
+
+void WholeBodyController::publishReferences() {
+
+    amigo_msgs::spindle_setpoint torso_msg;
+    amigo_msgs::arm_joints arm_msg;
+    // Base
+
+    // Torso
+    torso_msg.stop = 0;
+    std::string component_name("torso");
+    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+        torso_msg.pos = component_description_map_[component_name].q[i] +
+                qdot_reference_(component_description_map_[component_name].start_index+i)*Ts;
+    }
+    torso_pub_.publish(torso_msg);
+    ROS_INFO("Torso position = %f, reference = %f",component_description_map_[component_name].q[0],torso_msg.pos);
+
+    // Left Arm
+    component_name = "left_arm";
+    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+        arm_msg.pos[i].data = component_description_map_[component_name].q[i] +
+                qdot_reference_(component_description_map_[component_name].start_index+i)*Ts;
+    }
+    left_arm_pub_.publish(arm_msg);
+
+    // Right Arm
+    component_name = "right_arm";
+    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+        arm_msg.pos[i].data = component_description_map_[component_name].q[i] +
+                qdot_reference_(component_description_map_[component_name].start_index+i)*Ts;
+    }
+    right_arm_pub_.publish(arm_msg);
+
+    // Head
 
 }
 

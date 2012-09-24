@@ -13,10 +13,13 @@
 // Messages
 #include <std_msgs/Float64.h>
 #include <amigo_msgs/arm_joints.h>
+#include <amigo_msgs/spindle_setpoint.h>
+#include <amigo_msgs/head_ref.h>
 
 // WholeBodyController
 #include "CartesianImpedance.h"
 #include "ComputeJacobian.h"
+#include "AdmittanceController.h"
 //#include "TreeDescription.h"
 
 class WholeBodyController {
@@ -42,6 +45,7 @@ protected:
 
     CartesianImpedance CIleft_;
     ComputeJacobian ComputeJacobian_;
+    AdmittanceController AdmitCont_;
 
     //! Map contains a string to describe the (root joint of the component) this concerns and a vector (is sufficient) with the current joint values
     std::map<std::string, std::vector<double> > q_current_map_;
@@ -51,15 +55,27 @@ protected:
     ///KDL::Jacobian Jacobian_;
     Eigen::MatrixXd Jacobian_;
 
+    Eigen::VectorXd tau_;
+
+    Eigen::VectorXd qdot_reference_;
+
+    double Ts;
+
     /**
      * Initialize function
      */
     bool initialize();
 
     /**
+     * Publish reference positions
+     */
+    void publishReferences();
+
+    /**
      * Subscribers to odometry and various joint positions
      */
     ros::Subscriber odom_sub_, measured_torso_position_sub_, measured_left_arm_position_sub_, measured_right_arm_position_sub_, measured_head_pan_sub_, measured_head_tilt_sub_;
+    ros::Publisher torso_pub_, left_arm_pub_, right_arm_pub_, head_pub_;
 
     void setTopics();
 
@@ -69,8 +85,6 @@ protected:
     void callbackMeasuredRightArmPosition(const amigo_msgs::arm_joints::ConstPtr& msg);
     void callbackMeasuredHeadPan(const std_msgs::Float64::ConstPtr& msg);
     void callbackMeasuredHeadTilt(const std_msgs::Float64::ConstPtr& msg);
-
-
 
 };
 

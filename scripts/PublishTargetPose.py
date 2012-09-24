@@ -63,25 +63,32 @@ if __name__ == '__main__':
     
     targetPub = rospy.Publisher('/arm_left_target_pose', PoseStamped)
     
-    targetx = 0
-    targety = 0
-    targetz = 0
+    targetx = 0.45
+    targety = -0.24
+    targetz = 1.0
     targetRoll = 0
     targetPitch = 0
-    targetYaw = 0 
+    targetYaw = 0
+    # Not really correct, should be roll-pitch-yaw instead of Euler
+    [rx,ry,rz,rw] = tf.transformations.quaternion_from_euler(targetRoll,targetPitch,targetYaw) 
     
     goalPose = PoseStamped();
     goalPose.header.frame_id = "/map"
     goalPose.pose.position.x = targetx
     goalPose.pose.position.y = targety
     goalPose.pose.position.z = targetz
-    goalPose.pose.orientation = tf.transformations.quaternion_from_euler(targetRoll,targetPitch,targetYaw)
+    goalPose.pose.orientation.x = rx;
+    goalPose.pose.orientation.y = ry;
+    goalPose.pose.orientation.z = rz;
+    goalPose.pose.orientation.w = rw; 
     
     rospy.loginfo(goalPose)
     
     while not rospy.is_shutdown():
+        rospy.loginfo("Publishing target pose")
         targetPub.publish(goalPose)
-        rospy.sleep(1.0)
+        rospy.loginfo("Published target pose")
+        rospy.sleep(0.1)
         
     rospy.loginfo("Finished")
     

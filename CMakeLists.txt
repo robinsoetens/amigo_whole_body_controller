@@ -21,12 +21,17 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
+find_package(Eigen REQUIRED)
+include_directories(${EIGEN_INCLUDE_DIRS})
+add_definitions(${EIGEN_DEFINITIONS})
+
 #common commands for building c++ executables and libraries
+# OBSOLETE???: src/TreeDescription.cpp
 rosbuild_add_library(wholebodycontroller 
 					src/WholeBodyController.cpp
 					src/CartesianImpedance.cpp
 					src/ComputeJacobian.cpp
-					src/TreeDescription.cpp)
+					src/AdmittanceController.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)

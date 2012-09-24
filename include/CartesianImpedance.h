@@ -16,6 +16,9 @@
 // tf
 #include <tf/transform_listener.h>
 
+// Eigen
+#include <Eigen/Core>
+
 class CartesianImpedance {
 
 public:
@@ -35,6 +38,11 @@ public:
      */
     bool initialize();
 
+    /**
+     * Update
+     */
+    void update(Eigen::MatrixXd, Eigen::VectorXd&);
+
 protected:
 
     /**
@@ -49,6 +57,10 @@ protected:
     geometry_msgs::PoseStamped transformPose(const tf::TransformListener& listener, geometry_msgs::PoseStamped poseMsg);
 
     geometry_msgs::PoseStamped errorPose;
+    Eigen::VectorXd error_vector_;
+
+    // Cartesian Impedance matrix
+    Eigen::MatrixXd K_;
 
 };
 
