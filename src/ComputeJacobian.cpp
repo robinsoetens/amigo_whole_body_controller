@@ -145,23 +145,24 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
     return true;
 }
 
-void ComputeJacobian::Update(std::map<std::string, component_description> component_description_map, KDL::JntArray q_current, Eigen::MatrixXd& Jacobian) {
+void ComputeJacobian::Update(std::map<std::string, component_description> component_description_map, Eigen::MatrixXd& Jacobian) {
 
     //ROS_INFO("Updating Jacobian matrices");
 
     KDL::JntArray chain_joint_array;
     KDL::Jacobian chain_jacobian;
-    uint index;
+    ///uint index;
 
     // Compute Jacobian for every chain
     for (uint i = 0; i < chain_description_array.size(); i++) {
 
-        index = 0;
+        ///index = 0;
         // Fill in correct joint array
         // ToDo: RESIZING SHOULDN'T BE DONE IN REALTIME
         chain_joint_array.resize(chain_array[i].getNrOfJoints());
         chain_jacobian.resize(chain_array[i].getNrOfJoints());
         ///ROS_INFO("Number of joints of this chain = %i", chain_array[i].getNrOfJoints());
+        uint current_index = chain_array[i].getNrOfJoints();
 
         // Fill in joints for every component in this chain
         for (uint ii = 0; ii < chain_description_array[i].size(); ii++) {
@@ -175,10 +176,15 @@ void ComputeJacobian::Update(std::map<std::string, component_description> compon
 
             ///ROS_INFO("First value is %f", component_description_map[component_name].q[0]);
 
-            for (int iii = 0; iii<component_description_map[component_name].number_of_joints; iii++) {
+            /*for (int iii = 0; iii<component_description_map[component_name].number_of_joints; iii++) {
                 ///ROS_INFO("Joint %i = %f", iii, component_description_map[chain_description_array[i][ii]].q[iii]);
                 chain_joint_array(index) = component_description_map[component_name].q[iii];
                 index++;
+            }*/
+
+            current_index -= component_description_map[component_name].number_of_joints;
+            for (int iii = 0; iii<component_description_map[component_name].number_of_joints; iii++) {
+                chain_joint_array(current_index+iii) = component_description_map[component_name].q[iii];
             }
 
         }
@@ -195,7 +201,7 @@ void ComputeJacobian::Update(std::map<std::string, component_description> compon
         ///Block of size (p,q), starting at (i,j)   matrix.block(i,j,p,q);
         // For every component in the chain
         ///uint current_index = 0;
-        uint current_index = chain_array[i].getNrOfJoints();
+        current_index = chain_array[i].getNrOfJoints();
         for (uint iiii = 0; iiii < chain_description_array[i].size(); iiii++) {
             std::string component_name = chain_description_array[i][iiii];
             current_index -= component_description_map[component_name].number_of_joints;
@@ -229,4 +235,5 @@ void ComputeJacobian::Update(std::map<std::string, component_description> compon
         }
     }
     ///ROS_INFO("Eighth column of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",Jacobian(0,7),Jacobian(1,7),Jacobian(2,7),Jacobian(3,7),Jacobian(4,7),Jacobian(5,7));
+
 }

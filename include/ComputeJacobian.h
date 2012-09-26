@@ -41,7 +41,7 @@ public:
     bool Initialize(std::map<std::string, component_description> *component_description_map);
 
     //void Update(std::map<std::string, std::vector<double> >);
-    void Update(std::map<std::string, component_description>, KDL::JntArray, Eigen::MatrixXd&);
+    void Update(std::map<std::string, component_description>, Eigen::MatrixXd&);
 
     //! Map contains a string to describe which component this concerns and a vector with eventually two integers to describe the start and end-index of this component
     std::map<std::string, std::vector<int> > index_map;

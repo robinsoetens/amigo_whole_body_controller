@@ -89,10 +89,11 @@ bool WholeBodyController::update() {
 
     // Compute new Jacobian matrix
     ///ROS_INFO("Updating wholebodycontroller");
-    ComputeJacobian_.Update(component_description_map_, q_current_, Jacobian_);
-    ///uint show_column = 11;
-    ///uint show_row = 1;
-    ///ROS_INFO("Row %i, column %i of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",show_row+1,show_column+1,Jacobian_(6*show_row+0,show_column),Jacobian_(6*show_row+1,show_column),Jacobian_(6*show_row+2,show_column),Jacobian_(6*show_row+3,show_column),Jacobian_(6*show_row+4,show_column),Jacobian_(6*show_row+5,show_column));
+    ComputeJacobian_.Update(component_description_map_, Jacobian_);
+    uint show_column = 6;
+    uint show_row = 0;
+    ROS_INFO("Row %i, column %i of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",show_row+1,show_column+1,Jacobian_(6*show_row+0,show_column),Jacobian_(6*show_row+1,show_column),Jacobian_(6*show_row+2,show_column),Jacobian_(6*show_row+3,show_column),Jacobian_(6*show_row+4,show_column),Jacobian_(6*show_row+5,show_column));
+    ROS_INFO("Jacobian (x,q4) = %f, (y,q4) = %f, (z,q4) = %f, (z,torso) = %f", Jacobian_(0,3), Jacobian_(1,3), Jacobian_(2,3), Jacobian_(2,7));
 
     // Update the torque output
     // Currently only one torque 'source', when multiple ones a smarter solution has to be found
@@ -103,7 +104,7 @@ bool WholeBodyController::update() {
     CIleft_.update(Jacobian_, tau_);
 
     ///ROS_INFO("tau %f %f %f %f", tau_(0),  tau_(1),  tau_(2),  tau_(3));
-    ROS_INFO("FSpindle %f", tau_(7));
+    //ROS_INFO("FSpindle %f", tau_(7));
 
     AdmitCont_.update(tau_,qdot_reference_);
 
@@ -255,7 +256,7 @@ void WholeBodyController::publishReferences() {
                 qdot_reference_(component_description_map_[component_name].start_index+i)*Ts;
     }
     torso_pub_.publish(torso_msg);
-    ROS_INFO("Torso position = %f, reference = %f",component_description_map_[component_name].q[0],torso_msg.pos);
+    ///ROS_INFO("Torso position = %f, reference = %f",component_description_map_[component_name].q[0],torso_msg.pos);
 
     // Left Arm
     component_name = "left_arm";

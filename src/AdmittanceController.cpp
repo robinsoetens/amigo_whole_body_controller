@@ -26,33 +26,38 @@ void AdmittanceController::initialize() {
     tau_previous_.resize(num_joints);
     qdot_reference_previous_.resize(num_joints);
 
-    // Set parameters
+    // Set parameters (hardcoded)
     for (uint i = 0; i<num_joints; i++) {
-            m_(i) = 0.1;
-            d_(i) = 1;
+        m_(i) = 0.1;
+        d_(i) = 1;
+    }
+    m_(7) = 1; // Torso
+    d_(7) = 10;   // Torso
 
-            k_(i) = 1/d_(i);
-            om_(i) = d_(i)/m_(i);
+    for (uint i = 0; i<num_joints; i++) {
 
-            double wp = om_(i) + eps;
-            double alpha = wp/(tan(wp*Ts/2));
+        k_(i) = 1/d_(i);
+        om_(i) = d_(i)/m_(i);
 
-            double x1 = alpha/om_(i)+1;
-            double x2 = -alpha/om_(i)+1;
+        double wp = om_(i) + eps;
+        double alpha = wp/(tan(wp*Ts/2));
 
-            // Numerator and denominator of the filter
-            a_(0,i) = 1;
-            a_(1,i) = x2 / x1;
-            b_(0,i) = 1  / x1;
-            b_(1,i) = 1  / x1;
+        double x1 = alpha/om_(i)+1;
+        double x2 = -alpha/om_(i)+1;
 
-            ///ROS_INFO("a %i = %f, %f, b %i = %f, %f", i, a_(0,i), a_(1,i), i, b_(0,1), b_(1,i));
+        // Numerator and denominator of the filter
+        a_(0,i) = 1;
+        a_(1,i) = x2 / x1;
+        b_(0,i) = 1  / x1;
+        b_(1,i) = 1  / x1;
 
-            // Set previous in- and outputs to zero
-            tau_previous_(i) = 0;
-            qdot_reference_previous_(i) = 0;
+        ///ROS_INFO("a %i = %f, %f, b %i = %f, %f", i, a_(0,i), a_(1,i), i, b_(0,1), b_(1,i));
 
-        }
+        // Set previous in- and outputs to zero
+        tau_previous_(i) = 0;
+        qdot_reference_previous_(i) = 0;
+
+    }
 
     // Set inputs, states, outputs to zero
 

@@ -64,8 +64,8 @@ if __name__ == '__main__':
     targetPub = rospy.Publisher('/arm_left_target_pose', PoseStamped)
     
     targetx = 0.45
-    targety = -0.24
-    targetz = 1.0
+    targety = 0.2
+    targetz = 0.66
     targetRoll = 0
     targetPitch = 0
     targetYaw = 0

@@ -22,7 +22,7 @@ bool CartesianImpedance::initialize() {
     // Fill in impedance matrix
     // ToDo: Parametrize
     K_.resize(6,6);
-    double standard_factor = 1;
+    double standard_factor = 0.1;
     for (uint i = 0; i<6; i++) {
         for (uint ii = 0; ii<6; ii++) {
             if (i != ii) K_(i,ii) = 0;
