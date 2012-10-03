@@ -44,6 +44,7 @@ public:
 protected:
 
     CartesianImpedance CIleft_;
+    CartesianImpedance CIright_;
     ComputeJacobian ComputeJacobian_;
     AdmittanceController AdmitCont_;
 

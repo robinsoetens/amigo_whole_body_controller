@@ -23,6 +23,8 @@ class CartesianImpedance {
 
 public:
 
+    //ToDo: make configure, start- and stophook. Components can be started/stopped in an actionlib kind of fashion
+
     /**
      * Constructor
      */
@@ -36,7 +38,7 @@ public:
     /**
      * Initialize function
      */
-    bool initialize();
+    bool initialize(std::string);
 
     /**
      * Update
@@ -61,6 +63,8 @@ protected:
 
     // Cartesian Impedance matrix
     Eigen::MatrixXd K_;
+
+    std::string end_effector_frame_;
 
 };
 

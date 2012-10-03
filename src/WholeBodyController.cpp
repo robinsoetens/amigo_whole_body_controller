@@ -74,7 +74,10 @@ bool WholeBodyController::initialize() {
     setTopics();
 
     // Implement left Cartesian Impedance
-    CIleft_.initialize();
+    CIleft_.initialize(std::string("/grippoint_left"));
+
+    // Implement right Cartesian Impedance
+    CIright_.initialize(std::string("/grippoint_right"));
 
     // Initialize addmittance controller
     AdmitCont_.initialize();
@@ -102,6 +105,7 @@ bool WholeBodyController::update() {
     // Not sure if this is the right approach: summing the taus up and then doing nullspace projection may result in smoother transitions
     for (int i = 0; i<tau_.size(); i++) tau_(i) = 0;
     CIleft_.update(Jacobian_, tau_);
+    CIright_.update(Jacobian_, tau_);
 
     ///ROS_INFO("tau %f %f %f %f", tau_(0),  tau_(1),  tau_(2),  tau_(3));
     //ROS_INFO("FSpindle %f", tau_(7));

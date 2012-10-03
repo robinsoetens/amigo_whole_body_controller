@@ -1,24 +1,30 @@
 whole_body_controller:
-    chain_description_array:
-        - - grippoint_left
-          - shoulder_mount_left
-          - base
-      
-         - - grippoint_right
-           - shoulder_mount_right
-           - base
-           
-           
-- name: base, children:
-    - name: shoulder_mount_left, children:
-          - name: grippoint_left
-    - name: shoulder_mount_right, children:
-          - name: grippoint_right 
-          
-          
-- base:
-    - shoulder_mount_left:
-        - grippoint_left
-    - shoulder_mount_right
-        - grippoint_right
-        
+    kx: 25
+    ky: 25
+    kz: 25
+    krx: 2.5
+    kry: 2.5
+    krz: 2.5
+#    chain_description_array:
+#        - - grippoint_left
+#          - shoulder_mount_left
+#          - base
+#      
+#         - - grippoint_right
+#           - shoulder_mount_right
+#           - base
+#           
+#           
+#- name: base, children:
+#    - name: shoulder_mount_left, children:
+#          - name: grippoint_left
+#    - name: shoulder_mount_right, children:
+#          - name: grippoint_right 
+#          
+#          
+#- base:
+#    - shoulder_mount_left:
+#        - grippoint_left
+#    - shoulder_mount_right
+#        - grippoint_right
+#        
