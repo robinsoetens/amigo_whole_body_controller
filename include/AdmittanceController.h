@@ -28,7 +28,7 @@ public:
     /**
      * Deconstructor
      */
-    ~AdmittanceController();
+    virtual ~AdmittanceController();
 
     /**
      * Initialize

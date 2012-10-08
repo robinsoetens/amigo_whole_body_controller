@@ -33,7 +33,7 @@ public:
     /*
      * Deconstructor
      */
-    ~ComputeJacobian();
+    virtual ~ComputeJacobian();
 
     /*
      * Initialize

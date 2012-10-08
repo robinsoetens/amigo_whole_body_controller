@@ -34,7 +34,7 @@ public:
     /**
      * Deconstructor
      */
-    ~WholeBodyController();
+    virtual ~WholeBodyController();
 
     /*
      * Updatehook

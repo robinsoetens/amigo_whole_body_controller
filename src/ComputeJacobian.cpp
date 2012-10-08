@@ -5,7 +5,12 @@ ComputeJacobian::ComputeJacobian() {
 }
 
 ComputeJacobian::~ComputeJacobian() {
- //TODO delete pointers in vector
+
+    std::vector<KDL::ChainJntToJacSolver*>::iterator iter = jnt_to_jac_solver_array.begin();
+    while (iter != jnt_to_jac_solver_array.end() ) {
+        delete *iter;
+    }
+
 }
 
 bool ComputeJacobian::Initialize(std::map<std::string, component_description>& component_description_map) {
@@ -205,27 +210,6 @@ void ComputeJacobian::Update(std::map<std::string, component_description>& compo
         for (uint iiii = 0; iiii < chain_description_array[i].size(); iiii++) {
             std::string component_name = chain_description_array[i][iiii];
             current_index -= component_description_map[component_name].number_of_joints;
-
-            ///ROS_INFO("Component %s inserted in chain array", component_name.c_str());
-
-            ///ROS_INFO("Indexes of large Jacobian are %i, %i, %i, %i",6*i,component_description_map[component_name].start_index,6,component_description_map[component_name].number_of_joints);
-            ///ROS_INFO("Indexes of small Jacobian are %i, %i, %i, %i",0,current_index,6,component_description_map[component_name].number_of_joints);
-
-            ///ROS_INFO("Chain Jacobian is of size %i x %i",chain_jacobian.data.rows(),chain_jacobian.data.cols());
-            ///Eigen::MatrixXd test(6,7);
-            ///Jacobian.block(0,0,6,7) = test;
-
-            ///Eigen::MatrixXd test(6,component_description_map[component_name].number_of_joints);
-            ///Jacobian.block(0,0,6,component_description_map[component_name].number_of_joints) = test;
-
-            ///Eigen::MatrixXd test(6,component_description_map[component_name].number_of_joints);
-            ///Jacobian.block(0,current_index,6,component_description_map[component_name].number_of_joints) = test;
-
-            ///Eigen::MatrixXd test(6,component_description_map[component_name].number_of_joints);
-            ///Jacobian.block(6*i,current_index,6,component_description_map[component_name].number_of_joints) = test;
-
-            ///Eigen::MatrixXd test(6,component_description_map[component_name].number_of_joints);
-            ///Jacobian.block(6*i,component_description_map[component_name].start_index,6,component_description_map[component_name].number_of_joints) = test;
 
             Jacobian.block(6*i,component_description_map[component_name].start_index,6,component_description_map[component_name].number_of_joints) =
                     chain_jacobian.data.block(0,current_index,6,component_description_map[component_name].number_of_joints);

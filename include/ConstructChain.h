@@ -36,7 +36,7 @@ public:
     /*
      * Deconstructor
      */
-    ~ConstructChain();
+    virtual ~ConstructChain();
 
     /*
      * Initialize tree and solvers

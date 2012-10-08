@@ -167,22 +167,9 @@ void WholeBodyController::setTopics() {
 }
 
 void WholeBodyController::callbackMeasuredTorsoPosition(const std_msgs::Float64::ConstPtr& msg) {
-    /*
+
     //TODO: Get rid of hardcoded root_joint
-    std::string root_joint = "spindle_joint";
 
-    std::vector<int> index_vector = ComputeJacobian_.index_map[root_joint];
-
-    for (int i = 0; i < (1 + index_vector[1] - index_vector[0]); i++) {
-        q_current_(index_vector[0]+i) = msg->data;
-        //ROS_INFO("Joint %i = %f", index_vector[0]+i, msg->data);
-    }
-
-    for (uint i = 0; i<q_current_map_[root_joint].size(); i++) {
-        q_current_map_[root_joint][i] = msg->data;
-        //ROS_INFO("%s %i = %f", root_joint.c_str(), i+1, q_current_map_[root_joint][i]);
-    }
-     */
     std::string component_name = "torso";
     for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
         component_description_map_[component_name].q[i] = msg->data;
@@ -192,21 +179,9 @@ void WholeBodyController::callbackMeasuredTorsoPosition(const std_msgs::Float64:
 }
 
 void WholeBodyController::callbackMeasuredLeftArmPosition(const amigo_msgs::arm_joints::ConstPtr& msg) {
-    /*
+
     //TODO: Get rid of hardcoded root_joint
-    std::string root_joint = "shoulder_yaw_joint_left";
 
-    std::vector<int> index_vector = ComputeJacobian_.index_map[root_joint];
-
-    for (int i = 0; i < (1 + index_vector[1] - index_vector[0]); i++) {
-        q_current_(index_vector[0]+i) = msg->pos[i].data;
-        //ROS_INFO("Joint %i = %f", index_vector[0]+i, msg->pos[i].data);
-    }
-    for (uint i = 0; i<q_current_map_[root_joint].size(); i++) {
-        q_current_map_[root_joint][i] = msg->pos[i].data;
-        //ROS_INFO("%s %i = %f", root_joint.c_str(), i+1, q_current_map_[root_joint][i]);
-    }
-     */
     std::string component_name = "left_arm";
     uint num_comp_joints = component_description_map_[component_name].number_of_joints;
     for (uint i = 0; i<num_comp_joints; i++) {
@@ -219,21 +194,9 @@ void WholeBodyController::callbackMeasuredLeftArmPosition(const amigo_msgs::arm_
 }
 
 void WholeBodyController::callbackMeasuredRightArmPosition(const amigo_msgs::arm_joints::ConstPtr& msg) {
-    /*
+
     //TODO: Get rid of hardcoded root_joint
-    std::string root_joint = "shoulder_yaw_joint_right";
 
-    std::vector<int> index_vector = ComputeJacobian_.index_map[root_joint];
-
-    for (int i = 0; i < (1 + index_vector[1] - index_vector[0]); i++) {
-        q_current_(index_vector[0]+i) = msg->pos[i].data;
-        //ROS_INFO("Joint %i = %f", index_vector[0]+i, msg->pos[i].data);
-    }
-    for (uint i = 0; i<q_current_map_[root_joint].size(); i++) {
-        q_current_map_[root_joint][i] = msg->pos[i].data;
-        //ROS_INFO("%s %i = %f", root_joint.c_str(), i+1, q_current_map_[root_joint][i]);
-    }
-     */
     std::string component_name = "right_arm";
     uint num_comp_joints = component_description_map_[component_name].number_of_joints;
     for (uint i = 0; i<num_comp_joints; i++) {
@@ -288,25 +251,3 @@ void WholeBodyController::publishReferences() {
     // Head
 
 }
-
-//TEMP
-/*
-void WholeBodyController::callbackTarget(const geometry_msgs::PoseStamped::ConstPtr& msg) {
-
-    ROS_INFO("Received target");
-    //Transform message into tooltip frame. This directly implies e = x_d - x
-    errorPose = WholeBodyController::transformPose(listener, *msg);
-    ROS_DEBUG("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f,\t%f",errorPose.pose.position.x,errorPose.pose.position.y,errorPose.pose.position.z,errorPose.pose.orientation.x,errorPose.pose.orientation.y,errorPose.pose.orientation.z,errorPose.pose.orientation.w);
-
-}
-
-//TEMP
-geometry_msgs::PoseStamped WholeBodyController::transformPose(const tf::TransformListener& listener, geometry_msgs::PoseStamped poseMsg){
-
-    geometry_msgs::PoseStamped poseInGripperFrame;
-
-    listener.transformPose("/grippoint_left",poseMsg,poseInGripperFrame);
-
-    return poseInGripperFrame;
-
-}*/
