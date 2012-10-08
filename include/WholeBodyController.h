@@ -58,6 +58,8 @@ protected:
 
     Eigen::VectorXd tau_;
 
+    Eigen::VectorXd F_task_;
+
     Eigen::VectorXd qdot_reference_;
 
     double Ts;

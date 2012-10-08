@@ -5,10 +5,10 @@ ComputeJacobian::ComputeJacobian() {
 }
 
 ComputeJacobian::~ComputeJacobian() {
-
+ //TODO delete pointers in vector
 }
 
-bool ComputeJacobian::Initialize(std::map<std::string, component_description> *component_description_map) {
+bool ComputeJacobian::Initialize(std::map<std::string, component_description>& component_description_map) {
 
     //Load parameters from parameter server
     // Get node handle
@@ -76,7 +76,7 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description> *c
         KDL::Chain temp_chain;
         std::string chain_name = chain_description_array[i][0];
         ///ROS_INFO("Object chain %i concerns %s", i+1, chain_name.c_str());
-        std::string tip_name = (*component_description_map)[chain_name].tip_names[0];
+        std::string tip_name = component_description_map[chain_name].tip_names[0];
         ///ROS_INFO("Tip name %i = %s", i+1, tip_name.c_str());
         //TODO: Make "base" variable
 
@@ -88,7 +88,7 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description> *c
         chain_array.push_back(temp_chain);
 
         // Read joints and make index map of joints
-        if (!readJoints(robot_model, &(*component_description_map), chain_description_array[i])) {
+        if (!readJoints(robot_model, component_description_map, chain_description_array[i])) {
             ROS_FATAL("Could not read information about the joints");
             return false;
         }
@@ -100,12 +100,12 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description> *c
     return true;
 }
 
-bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string, component_description> *component_description_map, std::vector<std::string> chain_description_vector) {
+bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string, component_description>& component_description_map, const std::vector<std::string>& chain_description_vector) {
 
     // get joint maxs and mins
     ///boost::shared_ptr<const urdf::Link> link = robot_model.getLink(chain_description_vector[0]);
 
-    std::string tip_name = (*component_description_map)[chain_description_vector[0]].tip_names[0];
+    std::string tip_name = component_description_map[chain_description_vector[0]].tip_names[0];
     //ROS_INFO("Tip name is %s", tip_name.c_str());
     boost::shared_ptr<const urdf::Link> link = robot_model.getLink(tip_name);
     boost::shared_ptr<const urdf::Joint> joint;
@@ -116,7 +116,7 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
         // Integer to count the number of joints of this component
         int current_num_joints = 0;
 
-        std::string root_name = (*component_description_map)[chain_description_vector[i]].root_name;
+        std::string root_name = component_description_map[chain_description_vector[i]].root_name;
         //ROS_INFO("Root name = %s", root_name.c_str());
         while (link && link->name != root_name) {
             joint = robot_model.getJoint(link->parent_joint->name);
@@ -131,13 +131,13 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
             link = robot_model.getLink(link->getParent()->name);
         }
 
-        if ((*component_description_map)[chain_description_vector[i]].number_of_joints == 0) {
+        if (component_description_map[chain_description_vector[i]].number_of_joints == 0) {
             num_joints += current_num_joints;
-            (*component_description_map)[chain_description_vector[i]].start_index = num_joints-current_num_joints;
-            (*component_description_map)[chain_description_vector[i]].end_index = num_joints-1;
-            (*component_description_map)[chain_description_vector[i]].number_of_joints = current_num_joints;
-            (*component_description_map)[chain_description_vector[i]].q.resize(current_num_joints);
-            ROS_INFO("Component %s gets startindex %i and endindex %i", chain_description_vector[i].c_str(), (*component_description_map)[chain_description_vector[i]].start_index, (*component_description_map)[chain_description_vector[i]].end_index);
+            component_description_map[chain_description_vector[i]].start_index = num_joints-current_num_joints;
+            component_description_map[chain_description_vector[i]].end_index = num_joints-1;
+            component_description_map[chain_description_vector[i]].number_of_joints = current_num_joints;
+            component_description_map[chain_description_vector[i]].q.resize(current_num_joints);
+            ROS_INFO("Component %s gets startindex %i and endindex %i", chain_description_vector[i].c_str(), component_description_map[chain_description_vector[i]].start_index, component_description_map[chain_description_vector[i]].end_index);
         }
 
     }
@@ -145,7 +145,7 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
     return true;
 }
 
-void ComputeJacobian::Update(std::map<std::string, component_description> component_description_map, Eigen::MatrixXd& Jacobian) {
+void ComputeJacobian::Update(std::map<std::string, component_description>& component_description_map, Eigen::MatrixXd& Jacobian) {
 
     //ROS_INFO("Updating Jacobian matrices");
 

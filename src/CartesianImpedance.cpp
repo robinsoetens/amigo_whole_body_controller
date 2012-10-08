@@ -9,7 +9,7 @@ CartesianImpedance::~CartesianImpedance() {
 
 }
 
-bool CartesianImpedance::initialize(std::string end_effector_frame) {
+bool CartesianImpedance::initialize(const std::string& end_effector_frame, uint F_start_index) {
 
     ROS_INFO("Initializing Cartesian Impedance");
 
@@ -19,6 +19,7 @@ bool CartesianImpedance::initialize(std::string end_effector_frame) {
     //ROS_INFO("Nodehandle %s",n.getNamespace().c_str());
 
     end_effector_frame_ = end_effector_frame;
+    F_start_index_ = F_start_index;
 
     if (end_effector_frame_ == "/grippoint_left") {
         target_sub_ = n.subscribe<geometry_msgs::PoseStamped>("/arm_left_target_pose", 10, &CartesianImpedance::callbackTarget, this);
@@ -94,9 +95,9 @@ geometry_msgs::PoseStamped CartesianImpedance::transformPose(const tf::Transform
 
 }
 
-void CartesianImpedance::update(Eigen::MatrixXd Jacobian, Eigen::VectorXd& tau) {
+void CartesianImpedance::update(Eigen::VectorXd& F_task) {
 
-    ///ROS_INFO("Updating Cartesian Impedance");
+    /*///ROS_INFO("Updating Cartesian Impedance");
 
     // ToDo: Make this variable
     Eigen::MatrixXd sub_jacobian = Jacobian.block(0,0,6,Jacobian.cols());
@@ -105,5 +106,8 @@ void CartesianImpedance::update(Eigen::MatrixXd Jacobian, Eigen::VectorXd& tau) 
 
     ///ROS_INFO("tau %f %f %f %f", tau(0),  tau(1),  tau(2),  tau(3));
     ///ROS_INFO("FSpindle %f", tau(7));
+     *
+     */
+    F_task.segment(F_start_index_,6) = K_ * error_vector_;
 
 }

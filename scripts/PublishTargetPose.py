@@ -66,7 +66,7 @@ if __name__ == '__main__':
     
     ''' Left '''
     targetx = 0.45
-    targety = 0.2
+    targety = 0.3
     targetz = 0.66
     targetRoll = 0
     targetPitch = 0

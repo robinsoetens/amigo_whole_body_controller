@@ -33,17 +33,17 @@ public:
     /**
      * Deconstructor
      */
-    ~CartesianImpedance();
+    virtual ~CartesianImpedance();
 
     /**
      * Initialize function
      */
-    bool initialize(std::string);
+    bool initialize(const std::string&, uint);
 
     /**
      * Update
      */
-    void update(Eigen::MatrixXd, Eigen::VectorXd&);
+    void update(Eigen::VectorXd&);
 
 protected:
 
@@ -65,6 +65,8 @@ protected:
     Eigen::MatrixXd K_;
 
     std::string end_effector_frame_;
+
+    uint F_start_index_;
 
 };
 

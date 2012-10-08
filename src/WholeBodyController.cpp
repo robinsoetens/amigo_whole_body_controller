@@ -54,7 +54,7 @@ bool WholeBodyController::initialize() {
     // Implement Jacobian matrix
     // Needs to be done before defining the subscribers, since the callback functions depend on
     // the mapping that results from this initialization
-    ComputeJacobian_.Initialize(&component_description_map_);
+    ComputeJacobian_.Initialize(component_description_map_);
     ///ROS_INFO("Number of torso joints equals %i", component_description_map_["torso"].number_of_joints);
     ///ROS_INFO("Number of left arm joints equals %i", component_description_map_["left_arm"].number_of_joints);
     ///ROS_INFO("Number of right arm joints equals %i", component_description_map_["right_arm"].number_of_joints);
@@ -69,15 +69,18 @@ bool WholeBodyController::initialize() {
         }
     }
     tau_.resize(ComputeJacobian_.num_joints);
+    // Resize F_ such that it accomodates the correct number of DoFs
+    // ToDo: Make this variable
+    F_task_.resize(12);
 
     // Initialize subscribers etc.
     setTopics();
 
     // Implement left Cartesian Impedance
-    CIleft_.initialize(std::string("/grippoint_left"));
+    CIleft_.initialize(std::string("/grippoint_left"), 0);
 
     // Implement right Cartesian Impedance
-    CIright_.initialize(std::string("/grippoint_right"));
+    CIright_.initialize(std::string("/grippoint_right"), 6);
 
     // Initialize addmittance controller
     AdmitCont_.initialize();
@@ -103,9 +106,13 @@ bool WholeBodyController::update() {
     // Plan of attack: set tau to zero --> add in every update loop.
     // Note that nullspace solution should be included in various subproblems
     // Not sure if this is the right approach: summing the taus up and then doing nullspace projection may result in smoother transitions
-    for (int i = 0; i<tau_.size(); i++) tau_(i) = 0;
-    CIleft_.update(Jacobian_, tau_);
-    CIright_.update(Jacobian_, tau_);
+    for (int i = 0; i<F_task_.rows(); i++) F_task_(i) = 0;
+    CIleft_.update(F_task_);
+    CIright_.update(F_task_);
+
+    // Compute torques
+    // ToDo: include this somehow in class
+    tau_ = Jacobian_.transpose() * F_task_;
 
     ///ROS_INFO("tau %f %f %f %f", tau_(0),  tau_(1),  tau_(2),  tau_(3));
     //ROS_INFO("FSpindle %f", tau_(7));
