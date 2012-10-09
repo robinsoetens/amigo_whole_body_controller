@@ -17,7 +17,7 @@ if __name__ == '__main__':
     ''' Left '''
     targetx = 0.45
     targety = 0.3
-    targetz = 0.66
+    targetz = 0.46
     targetRoll = 0
     targetPitch = 0
     targetYaw = 0
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     [rx,ry,rz,rw] = tf.transformations.quaternion_from_euler(targetRoll,targetPitch,targetYaw) 
     
     goalPose = PoseStamped();
-    goalPose.header.frame_id = "/map"
+    goalPose.header.frame_id = "/base_link"
     goalPose.pose.position.x = targetx
     goalPose.pose.position.y = targety
     goalPose.pose.position.z = targetz
