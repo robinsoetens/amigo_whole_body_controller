@@ -68,6 +68,8 @@ protected:
 
     uint F_start_index_;
 
+    bool is_active_;
+
 };
 
 #endif

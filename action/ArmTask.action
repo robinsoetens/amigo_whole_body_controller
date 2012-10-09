@@ -1,0 +1,11 @@
+# Define the goal
+std_msgs/String reference_frame
+std_msgs/String end_effector_frame
+geometry_msgs/Pose goal_pose
+bool[6] constraint_dofs
+---
+# Define the result
+WholeBodyControllerStatus status_code 
+---
+# Define a feedback message
+float64[6] pose_error 

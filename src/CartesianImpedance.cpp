@@ -1,6 +1,9 @@
 #include "CartesianImpedance.h"
 #include <tf/transform_datatypes.h>
 
+#include <amigo_whole_body_controller/ArmTaskAction.h>
+#include <actionlib/server/simple_action_server.h>
+
 CartesianImpedance::CartesianImpedance() {
 
 }
@@ -20,6 +23,7 @@ bool CartesianImpedance::initialize(const std::string& end_effector_frame, uint 
 
     end_effector_frame_ = end_effector_frame;
     F_start_index_ = F_start_index;
+    is_active_ = false;
 
     if (end_effector_frame_ == "/grippoint_left") {
         target_sub_ = n.subscribe<geometry_msgs::PoseStamped>("/arm_left_target_pose", 10, &CartesianImpedance::callbackTarget, this);
@@ -65,6 +69,9 @@ bool CartesianImpedance::initialize(const std::string& end_effector_frame, uint 
 void CartesianImpedance::callbackTarget(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 
     ROS_INFO("Received target");
+
+    is_active_ = true;
+
     //Transform message into tooltip frame. This directly implies e = x_d - x
     errorPose = CartesianImpedance::transformPose(listener, *msg);
 
@@ -108,6 +115,8 @@ void CartesianImpedance::update(Eigen::VectorXd& F_task) {
     ///ROS_INFO("FSpindle %f", tau(7));
      *
      */
-    F_task.segment(F_start_index_,6) = K_ * error_vector_;
+    if (is_active_) F_task.segment(F_start_index_,6) = K_ * error_vector_;
+    else for (uint i = 0; i < 6; i++) F_task(i+F_start_index_) = 0;
+    is_active_ = false;
 
 }
