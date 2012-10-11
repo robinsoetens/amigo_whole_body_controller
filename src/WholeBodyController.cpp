@@ -82,8 +82,27 @@ bool WholeBodyController::initialize() {
     // Implement right Cartesian Impedance
     CIright_.initialize(std::string("/grippoint_right"), 6);
 
-    // Initialize addmittance controller
+    // Initialize admittance controller
     AdmitCont_.initialize();
+
+    // Initialize nullspace calculator
+    // ToDo: Make this variable
+    Eigen::MatrixXd A;
+    A.resize(ComputeJacobian_.num_joints,ComputeJacobian_.num_joints);
+    for (uint i = 0; i < ComputeJacobian_.num_joints; i++) {
+        for (uint j = 0; j<ComputeJacobian_.num_joints; j++) {
+            if (i==j) A(i,j) = 1;
+            else A(i,j) = 0;
+        }
+    }
+    ComputeNullspace_.initialize(12,ComputeJacobian_.num_joints, A);
+    N_.resize(ComputeJacobian_.num_joints,ComputeJacobian_.num_joints);
+
+    // ToDo: make variable
+    std::vector<double> JLAgain(ComputeJacobian_.num_joints);
+    for (uint i = 0; i < ComputeJacobian_.num_joints; i++) JLAgain[i] = 1;
+    JointLimitAvoidance_.initialize(ComputeJacobian_.joint_min,ComputeJacobian_.joint_max,JLAgain);
+    tau_joint_limit_avoidance_.resize(ComputeJacobian_.num_joints);
 
     ROS_INFO("Whole Body Controller Initialized");
 
@@ -116,6 +135,14 @@ bool WholeBodyController::update() {
 
     ///ROS_INFO("tau %f %f %f %f", tau_(0),  tau_(1),  tau_(2),  tau_(3));
     //ROS_INFO("FSpindle %f", tau_(7));
+
+    ComputeNullspace_.update(Jacobian_, N_);
+    ROS_INFO("Nullspace updated");
+
+    JointLimitAvoidance_.update(q_current_, tau_joint_limit_avoidance_);
+    ROS_INFO("Joint limit avoidance updated");
+
+    tau_ += N_ * tau_joint_limit_avoidance_;
 
     AdmitCont_.update(tau_,qdot_reference_);
 

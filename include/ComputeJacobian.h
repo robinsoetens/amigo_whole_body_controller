@@ -49,6 +49,9 @@ public:
     //!Number of joints
     unsigned int num_joints;//, num_manipulator_joints, num_torso_joints;
 
+    //! Joint limits
+    KDL::JntArray joint_min, joint_max;
+
 private:
 
     /*
@@ -68,9 +71,6 @@ private:
     //std::vector<boost::scoped_ptr<KDL::ChainJntToJacSolver> > jnt_to_jac_solver_array;
     //boost::scoped_ptr<KDL::ChainJntToJacSolver> jnt_to_jac_solver_array[2];
     std::vector<KDL::ChainJntToJacSolver*> jnt_to_jac_solver_array;
-
-    //! Joint limits
-    KDL::JntArray joint_min, joint_max;
 
     //! Number of chains used
     int num_chains;

@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 2.4.6)
 include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 
+find_package(Eigen REQUIRED)
+include_directories(${EIGEN_INCLUDE_DIRS})
+add_definitions(${EIGEN_DEFINITIONS})
+
 # Set the build type.  Options are:
 #  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
 #  Debug          : w/ debug symbols, w/o optimization
@@ -35,7 +39,9 @@ rosbuild_add_library(wholebodycontroller
 					src/WholeBodyController.cpp
 					src/CartesianImpedance.cpp
 					src/ComputeJacobian.cpp
-					src/AdmittanceController.cpp)
+					src/AdmittanceController.cpp
+					src/ComputeNullspace.cpp
+					src/JointLimitAvoidance.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)

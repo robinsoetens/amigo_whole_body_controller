@@ -20,7 +20,12 @@
 #include "CartesianImpedance.h"
 #include "ComputeJacobian.h"
 #include "AdmittanceController.h"
+#include "ComputeNullspace.h"
+#include "JointLimitAvoidance.h"
 //#include "TreeDescription.h"
+
+// Vector
+#include <vector>
 
 class WholeBodyController {
 
@@ -47,6 +52,8 @@ protected:
     CartesianImpedance CIright_;
     ComputeJacobian ComputeJacobian_;
     AdmittanceController AdmitCont_;
+    ComputeNullspace ComputeNullspace_;
+    JointLimitAvoidance JointLimitAvoidance_;
 
     //! Map contains a string to describe the (root joint of the component) this concerns and a vector (is sufficient) with the current joint values
     std::map<std::string, std::vector<double> > q_current_map_;
@@ -58,9 +65,14 @@ protected:
 
     Eigen::VectorXd tau_;
 
+    Eigen::VectorXd tau_joint_limit_avoidance_;
+
     Eigen::VectorXd F_task_;
 
     Eigen::VectorXd qdot_reference_;
+
+    //! Nullspace projection matrix
+    Eigen::MatrixXd N_;
 
     double Ts;
 
