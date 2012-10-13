@@ -51,6 +51,8 @@ public:
 
     //! Joint limits
     KDL::JntArray joint_min, joint_max;
+    std::vector<double> q_min_, q_max_;
+
 
 private:
 

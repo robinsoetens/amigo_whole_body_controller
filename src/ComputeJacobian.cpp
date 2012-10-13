@@ -6,6 +6,7 @@ ComputeJacobian::ComputeJacobian() {
 
 ComputeJacobian::~ComputeJacobian() {
 
+    //ToDo: Make this work
     std::vector<KDL::ChainJntToJacSolver*>::iterator iter = jnt_to_jac_solver_array.begin();
     while (iter != jnt_to_jac_solver_array.end() ) {
         delete *iter;
@@ -102,6 +103,8 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description>& c
 
     }
 
+    for (uint i = 0; i < num_joints; i++) ROS_INFO("Joint limits joint %i are %f %f",i,q_min_[i],q_max_[i]);
+
     return true;
 }
 
@@ -121,7 +124,11 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
         // Integer to count the number of joints of this component
         int current_num_joints = 0;
 
+        // Vector containing joint limits of this component
+        std::vector<double> current_temp_joint_min, current_temp_joint_max;
+
         std::string root_name = component_description_map[chain_description_vector[i]].root_name;
+
         //ROS_INFO("Root name = %s", root_name.c_str());
         while (link && link->name != root_name) {
             joint = robot_model.getJoint(link->parent_joint->name);
@@ -132,10 +139,20 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
             // Only count joints if they're not fixed or unknown
             if (joint->type != urdf::Joint::UNKNOWN && joint->type != urdf::Joint::FIXED) {
                 current_num_joints++;
+                if (joint->type != urdf::Joint::CONTINUOUS) {
+                    current_temp_joint_min.push_back(joint->limits->lower);
+                    current_temp_joint_max.push_back(joint->limits->upper);
+                }
+                else {
+                    ROS_WARN("This is not yet nicely implemented");
+                    current_temp_joint_min.push_back(-1000000);
+                    current_temp_joint_max.push_back(1000000);
+                }
             }
             link = robot_model.getLink(link->getParent()->name);
         }
 
+        // Only add info to component description map if this has not been done yet
         if (component_description_map[chain_description_vector[i]].number_of_joints == 0) {
             num_joints += current_num_joints;
             component_description_map[chain_description_vector[i]].start_index = num_joints-current_num_joints;
@@ -143,10 +160,25 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
             component_description_map[chain_description_vector[i]].number_of_joints = current_num_joints;
             component_description_map[chain_description_vector[i]].q.resize(current_num_joints);
             ROS_INFO("Component %s gets startindex %i and endindex %i", chain_description_vector[i].c_str(), component_description_map[chain_description_vector[i]].start_index, component_description_map[chain_description_vector[i]].end_index);
+
+            for (int i = 0; i < current_num_joints; i++) {
+                //temp_joint_min.push_back(current_temp_joint_min[i]);
+                //temp_joint_max.push_back(current_temp_joint_max[i]);
+                q_min_.push_back(current_temp_joint_min[i]);
+                q_max_.push_back(current_temp_joint_max[i]);
+            }
         }
 
     }
 
+    /*// Fill in joint limits in joint limit array
+    joint_min.resize(num_joints);
+    joint_max.resize(num_joints);
+    for (uint i = 0; i < num_joints; i++) {
+        ROS_INFO("Joint limits joint %i are %f %f",i,temp_joint_min[i],temp_joint_max[i]);
+        joint_min(i) = temp_joint_min[i];
+        joint_max(i) = temp_joint_max[i];
+    }*/
     return true;
 }
 

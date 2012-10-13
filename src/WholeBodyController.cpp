@@ -14,6 +14,16 @@ WholeBodyController::~WholeBodyController() {
     measured_right_arm_position_sub_.shutdown();
     measured_head_pan_sub_.shutdown();
     measured_head_tilt_sub_.shutdown();
+    torso_pub_.shutdown();
+    left_arm_pub_.shutdown();
+    right_arm_pub_.shutdown();
+    head_pub_.shutdown();
+    /*CIleft_.~CartesianImpedance();
+    CIright_.~CartesianImpedance();
+    ComputeJacobian_.~ComputeJacobian();
+    AdmitCont_.~AdmittanceController();
+    ComputeNullspace_.~ComputeNullspace();
+    JointLimitAvoidance_.~JointLimitAvoidance();*/
 
 }
 
@@ -101,7 +111,8 @@ bool WholeBodyController::initialize() {
     // ToDo: make variable
     std::vector<double> JLAgain(ComputeJacobian_.num_joints);
     for (uint i = 0; i < ComputeJacobian_.num_joints; i++) JLAgain[i] = 1;
-    JointLimitAvoidance_.initialize(ComputeJacobian_.joint_min,ComputeJacobian_.joint_max,JLAgain);
+    ///JointLimitAvoidance_.initialize(ComputeJacobian_.joint_min,ComputeJacobian_.joint_max,JLAgain);
+    JointLimitAvoidance_.initialize(ComputeJacobian_.q_min_,ComputeJacobian_.q_max_,JLAgain);
     tau_joint_limit_avoidance_.resize(ComputeJacobian_.num_joints);
 
     ROS_INFO("Whole Body Controller Initialized");
@@ -136,13 +147,17 @@ bool WholeBodyController::update() {
     ///ROS_INFO("tau %f %f %f %f", tau_(0),  tau_(1),  tau_(2),  tau_(3));
     //ROS_INFO("FSpindle %f", tau_(7));
 
-    ComputeNullspace_.update(Jacobian_, N_);
-    ROS_INFO("Nullspace updated");
+    ROS_WARN("Nullspace computation disabled");
+    //ComputeNullspace_.update(Jacobian_, N_);
+    //ROS_INFO("Nullspace updated");
 
     JointLimitAvoidance_.update(q_current_, tau_joint_limit_avoidance_);
     ROS_INFO("Joint limit avoidance updated");
 
-    tau_ += N_ * tau_joint_limit_avoidance_;
+    //tau_ += N_ * tau_joint_limit_avoidance_;
+
+    ROS_WARN("Only joint limit avoidance");
+    tau_ = -tau_joint_limit_avoidance_;
 
     AdmitCont_.update(tau_,qdot_reference_);
 
