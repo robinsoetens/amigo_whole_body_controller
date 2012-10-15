@@ -105,6 +105,12 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description>& c
 
     for (uint i = 0; i < num_joints; i++) ROS_INFO("Joint limits joint %i are %f %f",i,q_min_[i],q_max_[i]);
 
+    // Set all chains to false for initialization.
+    for (uint i = 0; i < chain_array.size(); i++) {
+        previous_isactive_vector_.push_back(false);
+    }
+    num_active_chains_ = 0;
+
     return true;
 }
 
@@ -164,92 +170,104 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
             for (int i = 0; i < current_num_joints; i++) {
                 //temp_joint_min.push_back(current_temp_joint_min[i]);
                 //temp_joint_max.push_back(current_temp_joint_max[i]);
-                q_min_.push_back(current_temp_joint_min[i]);
-                q_max_.push_back(current_temp_joint_max[i]);
+                // The joints are read from tip to root but appear in the joint vectors from root to tip so have to be 'used' in reverse order.
+                q_min_.push_back(current_temp_joint_min[current_num_joints-1-i]);
+                q_max_.push_back(current_temp_joint_max[current_num_joints-1-i]);
             }
         }
 
     }
 
-    /*// Fill in joint limits in joint limit array
-    joint_min.resize(num_joints);
-    joint_max.resize(num_joints);
-    for (uint i = 0; i < num_joints; i++) {
-        ROS_INFO("Joint limits joint %i are %f %f",i,temp_joint_min[i],temp_joint_max[i]);
-        joint_min(i) = temp_joint_min[i];
-        joint_max(i) = temp_joint_max[i];
-    }*/
     return true;
 }
 
-void ComputeJacobian::Update(std::map<std::string, component_description>& component_description_map, Eigen::MatrixXd& Jacobian) {
+void ComputeJacobian::Update(std::map<std::string, component_description> component_description_map, const std::vector<bool>& isactive_vector, Eigen::MatrixXd& Jacobian) {
 
     //ROS_INFO("Updating Jacobian matrices");
+    if (isactive_vector != previous_isactive_vector_) {
+        num_active_chains_ = 0;
+        for (uint i = 0; i < isactive_vector.size(); i++) {
+            if (isactive_vector[i]) num_active_chains_++;
+        }
+        ROS_INFO("Current number of active tasks = %i",num_active_chains_);
+        Jacobian.resize(6*num_active_chains_,Jacobian.cols());
+        Jacobian.setZero();
+    }
 
     KDL::JntArray chain_joint_array;
     KDL::Jacobian chain_jacobian;
-    ///uint index;
+    uint chain_index = 0;
 
     // Compute Jacobian for every chain
     for (uint i = 0; i < chain_description_array.size(); i++) {
 
-        ///index = 0;
-        // Fill in correct joint array
-        // ToDo: RESIZING SHOULDN'T BE DONE IN REALTIME
-        chain_joint_array.resize(chain_array[i].getNrOfJoints());
-        chain_jacobian.resize(chain_array[i].getNrOfJoints());
-        ///ROS_INFO("Number of joints of this chain = %i", chain_array[i].getNrOfJoints());
-        uint current_index = chain_array[i].getNrOfJoints();
+        ///ROS_INFO("Chain description array %i = %d",i,isactive_vector[i]);
 
-        // Fill in joints for every component in this chain
-        for (uint ii = 0; ii < chain_description_array[i].size(); ii++) {
+        // Only update the Jacobian for chains with an active task
+        if (isactive_vector[i]) {
 
-            std::string component_name = chain_description_array[i][ii];
-            ///ROS_INFO("Inserting %i joint positions of %s", component_description_map[component_name].number_of_joints, component_name.c_str());
-            ///ROS_INFO("Size of jointarray of %s = %i", component_name.c_str(), component_description_map[component_name].q.size());
+            ///index = 0;
+            // Fill in correct joint array
+            // ToDo: RESIZING SHOULDN'T BE DONE IN REALTIME
+            chain_joint_array.resize(chain_array[i].getNrOfJoints());
+            chain_jacobian.resize(chain_array[i].getNrOfJoints());
+            ///ROS_INFO("Number of joints of this chain = %i", chain_array[i].getNrOfJoints());
+            uint current_index = chain_array[i].getNrOfJoints();
 
-            // For every joint within this component
-            // ToDo: make this more effective
+            // Fill in joints for every component in this chain
+            for (uint ii = 0; ii < chain_description_array[i].size(); ii++) {
 
-            ///ROS_INFO("First value is %f", component_description_map[component_name].q[0]);
+                std::string component_name = chain_description_array[i][ii];
+                ///ROS_INFO("Inserting %i joint positions of %s", component_description_map[component_name].number_of_joints, component_name.c_str());
+                ///ROS_INFO("Size of jointarray of %s = %i", component_name.c_str(), component_description_map[component_name].q.size());
 
-            /*for (int iii = 0; iii<component_description_map[component_name].number_of_joints; iii++) {
+                // For every joint within this component
+                // ToDo: make this more effective
+
+                ///ROS_INFO("First value is %f", component_description_map[component_name].q[0]);
+
+                /*for (int iii = 0; iii<component_description_map[component_name].number_of_joints; iii++) {
                 ///ROS_INFO("Joint %i = %f", iii, component_description_map[chain_description_array[i][ii]].q[iii]);
                 chain_joint_array(index) = component_description_map[component_name].q[iii];
                 index++;
             }*/
 
-            current_index -= component_description_map[component_name].number_of_joints;
-            for (int iii = 0; iii<component_description_map[component_name].number_of_joints; iii++) {
-                chain_joint_array(current_index+iii) = component_description_map[component_name].q[iii];
+                current_index -= component_description_map[component_name].number_of_joints;
+                for (int iii = 0; iii<component_description_map[component_name].number_of_joints; iii++) {
+                    chain_joint_array(current_index+iii) = component_description_map[component_name].q[iii];
+                }
+
             }
+            ///ROS_INFO("Chain %s",chain_description_array[i][0].c_str());
+            ///ROS_INFO("Joint values: %f, %f, %f, %f, %f, %f, %f, %f",chain_joint_array(0),chain_joint_array(1),chain_joint_array(2),chain_joint_array(3),chain_joint_array(4),chain_joint_array(5),chain_joint_array(6),chain_joint_array(7));
 
+            // Solve Jacobian of chain
+            jnt_to_jac_solver_array[i]->JntToJac(chain_joint_array,chain_jacobian);
+
+            ///uint show_column = 0;
+            ///ROS_INFO("%i column of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",show_column+1,chain_jacobian.data(0,show_column),chain_jacobian.data(1,show_column),chain_jacobian.data(2,show_column),chain_jacobian.data(3,show_column),chain_jacobian.data(4,show_column),chain_jacobian.data(5,show_column));
+
+            // Put resulting Jacobian in correct blocks into large Jacobian
+            ///Block of size (p,q), starting at (i,j)   matrix.block(i,j,p,q);
+            // For every component in the chain
+            ///uint current_index = 0;
+            current_index = chain_array[i].getNrOfJoints();
+            for (uint iiii = 0; iiii < chain_description_array[i].size(); iiii++) {
+                std::string component_name = chain_description_array[i][iiii];
+                current_index -= component_description_map[component_name].number_of_joints;
+
+                Jacobian.block(6*chain_index,component_description_map[component_name].start_index,6,component_description_map[component_name].number_of_joints) =
+                        chain_jacobian.data.block(0,current_index,6,component_description_map[component_name].number_of_joints);
+                ///current_index += component_description_map[component_name].number_of_joints;
+
+                ///ROS_INFO("Size of Jacobian is %i x %i",Jacobian.data.rows(),Jacobian.data.cols());
+            }
+            chain_index++;
         }
-        ///ROS_INFO("Chain %s",chain_description_array[i][0].c_str());
-        ///ROS_INFO("Joint values: %f, %f, %f, %f, %f, %f, %f, %f",chain_joint_array(0),chain_joint_array(1),chain_joint_array(2),chain_joint_array(3),chain_joint_array(4),chain_joint_array(5),chain_joint_array(6),chain_joint_array(7));
 
-        // Solve Jacobian of chain
-        jnt_to_jac_solver_array[i]->JntToJac(chain_joint_array,chain_jacobian);
-
-        ///uint show_column = 0;
-        ///ROS_INFO("%i column of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",show_column+1,chain_jacobian.data(0,show_column),chain_jacobian.data(1,show_column),chain_jacobian.data(2,show_column),chain_jacobian.data(3,show_column),chain_jacobian.data(4,show_column),chain_jacobian.data(5,show_column));
-
-        // Put resulting Jacobian in correct blocks into large Jacobian
-        ///Block of size (p,q), starting at (i,j)   matrix.block(i,j,p,q);
-        // For every component in the chain
-        ///uint current_index = 0;
-        current_index = chain_array[i].getNrOfJoints();
-        for (uint iiii = 0; iiii < chain_description_array[i].size(); iiii++) {
-            std::string component_name = chain_description_array[i][iiii];
-            current_index -= component_description_map[component_name].number_of_joints;
-
-            Jacobian.block(6*i,component_description_map[component_name].start_index,6,component_description_map[component_name].number_of_joints) =
-                    chain_jacobian.data.block(0,current_index,6,component_description_map[component_name].number_of_joints);
-            ///current_index += component_description_map[component_name].number_of_joints;
-
-            ///ROS_INFO("Size of Jacobian is %i x %i",Jacobian.data.rows(),Jacobian.data.cols());
-        }
+        ///ROS_INFO("Eighth column of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",Jacobian(0,7),Jacobian(1,7),Jacobian(2,7),Jacobian(3,7),Jacobian(4,7),Jacobian(5,7));
     }
-    ///ROS_INFO("Eighth column of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",Jacobian(0,7),Jacobian(1,7),Jacobian(2,7),Jacobian(3,7),Jacobian(4,7),Jacobian(5,7));
+    ///ROS_INFO("Copy isactive_vector");
+    previous_isactive_vector_ = isactive_vector;
 
 }

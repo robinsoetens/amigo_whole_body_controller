@@ -43,7 +43,10 @@ public:
     /**
      * Update
      */
-    void update(Eigen::VectorXd&);
+    void update(Eigen::VectorXd&, uint& force_vector_index);
+
+    //! Bool indicating whether this is active
+    bool is_active_;
 
 protected:
 
@@ -67,8 +70,6 @@ protected:
     std::string end_effector_frame_;
 
     uint F_start_index_;
-
-    bool is_active_;
 
 };
 

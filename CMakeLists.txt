@@ -17,6 +17,7 @@ rosbuild_find_ros_package(actionlib_msgs)
 include(${actionlib_msgs_PACKAGE_PATH}/cmake/actionbuild.cmake)
 genaction()
 
+file(GLOB_RECURSE HEADER_FILES include/*.h)
 rosbuild_init()
 
 #set the default path for built executables to the "bin" directory
@@ -45,5 +46,5 @@ rosbuild_add_library(wholebodycontroller
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-rosbuild_add_executable(whole_body_controller src/whole_body_controller_node.cpp)
+rosbuild_add_executable(whole_body_controller src/whole_body_controller_node.cpp ${HEADER_FILES})
 target_link_libraries(whole_body_controller wholebodycontroller)

@@ -33,7 +33,7 @@ public:
     /*
      * Deconstructor
      */
-    virtual ~ComputeJacobian();
+   virtual ~ComputeJacobian();
 
     /*
      * Initialize
@@ -41,7 +41,8 @@ public:
     bool Initialize(std::map<std::string, component_description>& component_description_map);
 
     //void Update(std::map<std::string, std::vector<double> >);
-    void Update(std::map<std::string, component_description>&, Eigen::MatrixXd&);
+    // Why can't I make the update const &?
+    void Update(std::map<std::string, component_description>, const std::vector<bool>&, Eigen::MatrixXd&);
 
     //! Map contains a string to describe which component this concerns and a vector with eventually two integers to describe the start and end-index of this component
     std::map<std::string, std::vector<int> > index_map;
@@ -50,7 +51,7 @@ public:
     unsigned int num_joints;//, num_manipulator_joints, num_torso_joints;
 
     //! Joint limits
-    KDL::JntArray joint_min, joint_max;
+    ///KDL::JntArray joint_min, joint_max;
     std::vector<double> q_min_, q_max_;
 
 
@@ -69,13 +70,16 @@ private:
     //! Vector containing the various chains
     std::vector<KDL::Chain> chain_array;
 
+    //! Vector containing bools to indicate the previous 'active' chains (an update is provided as function of the update hook)
+    std::vector<bool> previous_isactive_vector_;
+
     //! Vector containing the ChainJntToJacSolvers
     //std::vector<boost::scoped_ptr<KDL::ChainJntToJacSolver> > jnt_to_jac_solver_array;
     //boost::scoped_ptr<KDL::ChainJntToJacSolver> jnt_to_jac_solver_array[2];
     std::vector<KDL::ChainJntToJacSolver*> jnt_to_jac_solver_array;
 
-    //! Number of chains used
-    int num_chains;
+    //! Number of chains and active chainsused
+    int num_chains, num_active_chains_;
 
 };
 

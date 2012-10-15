@@ -27,7 +27,7 @@ public:
     /*
      * Initialize function required for resizing etc
      */
-    void initialize(const uint num_dofs, const uint num_joints, const Eigen::MatrixXd& A);
+    void initialize(const uint num_joints, const Eigen::MatrixXd& A);
 
     /*
      * Update function
@@ -49,6 +49,9 @@ protected:
 
     //! Matrix containing inverted singular values
     Eigen::MatrixXd Sinv_;
+
+    //! Number of DoFs active during previous update
+    uint previous_num_active_dofs_;
 
 
 };

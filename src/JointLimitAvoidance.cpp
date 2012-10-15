@@ -45,9 +45,8 @@ void JointLimitAvoidance::update(const KDL::JntArray& q_in, Eigen::VectorXd& tau
 
     //ToDo: Check joint limit avoidance algorithm
     for (uint i = 0; i < num_joints_; i++) {
-        tau_out(i) = K_[i]*(q_in(i) - q0_(i));
+        tau_out(i) = K_[i]*(q0_(i) - q_in(i));
+        //ROS_INFO("q(%i) = %f\tq0 = %f\ttau = %f ",i,q_in(i),q0_(i),tau_out(i));
     }
-    ROS_INFO("Joint limit avoidance\n%f\n%f\n%f\n%f\n%f\n%f\n%f\n%f",
-             tau_out(0),tau_out(1),tau_out(2),tau_out(3),tau_out(4),tau_out(5),tau_out(6),tau_out(7));
 
 }

@@ -74,6 +74,13 @@ protected:
     //! Nullspace projection matrix
     Eigen::MatrixXd N_;
 
+    //! Vector containing bools to indicate the previous 'active' chains (an update is provided as function of the update hook)
+    std::vector<bool> isactive_vector_;
+
+    //! Vector containing the number of active tasks during previous loop
+    uint previous_num_active_tasks_;
+
+    //! Sampling time
     double Ts;
 
     /**

@@ -87,7 +87,7 @@ void CartesianImpedance::callbackTarget(const geometry_msgs::PoseStamped::ConstP
     error_vector_(4) = pitch;
     error_vector_(5) = yaw;
 
-    ROS_DEBUG("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+    ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
 
 }
 
@@ -102,9 +102,10 @@ geometry_msgs::PoseStamped CartesianImpedance::transformPose(const tf::Transform
 
 }
 
-void CartesianImpedance::update(Eigen::VectorXd& F_task) {
+void CartesianImpedance::update(Eigen::VectorXd& F_task, uint& force_vector_index) {
 
-    /*///ROS_INFO("Updating Cartesian Impedance");
+    ROS_INFO("Updating Cartesian Impedance, force_vector_index = %i",force_vector_index);
+    /*
 
     // ToDo: Make this variable
     Eigen::MatrixXd sub_jacobian = Jacobian.block(0,0,6,Jacobian.cols());
@@ -115,8 +116,18 @@ void CartesianImpedance::update(Eigen::VectorXd& F_task) {
     ///ROS_INFO("FSpindle %f", tau(7));
      *
      */
+    /* //15 okt
     if (is_active_) F_task.segment(F_start_index_,6) = K_ * error_vector_;
     else for (uint i = 0; i < 6; i++) F_task(i+F_start_index_) = 0;
+    is_active_ = false;
+    */
+
+    if (is_active_) {
+        F_task.segment(force_vector_index,6) = K_ * error_vector_;
+        force_vector_index += 6;
+    }
+    ///else for (uint i = 0; i < 6; i++) F_task(i+force_vector_index) = 0;
+
     is_active_ = false;
 
 }
