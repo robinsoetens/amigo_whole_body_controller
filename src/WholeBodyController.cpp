@@ -68,23 +68,6 @@ bool WholeBodyController::initialize() {
     ///ROS_INFO("Number of torso joints equals %i", component_description_map_["torso"].number_of_joints);
     ///ROS_INFO("Number of left arm joints equals %i", component_description_map_["left_arm"].number_of_joints);
     ///ROS_INFO("Number of right arm joints equals %i", component_description_map_["right_arm"].number_of_joints);
-    q_current_.resize(ComputeJacobian_.num_joints);
-    qdot_reference_.resize(ComputeJacobian_.num_joints);
-
-    // Jacobian is resized to zero rows, number of rows depends on number of tasks
-    Jacobian_.resize(0,ComputeJacobian_.num_joints);
-    /*Jacobian_.resize(12,ComputeJacobian_.num_joints);
-    for (uint i = 0; i<12; i++) {
-        for (uint ii = 0; ii<ComputeJacobian_.num_joints; ii++) {
-            qdot_reference_(ii) = 0;
-            Jacobian_(i,ii) = 0;
-        }
-    }*/
-
-    tau_.resize(ComputeJacobian_.num_joints);
-    // Resize F_ such that it accomodates the correct number of DoFs
-    // ToDo: Make this variable
-    F_task_.resize(12);
 
     // Initialize subscribers etc.
     setTopics();
@@ -96,7 +79,7 @@ bool WholeBodyController::initialize() {
     CIright_.initialize(std::string("/grippoint_right"), 6);
 
     // Initialize admittance controller
-    AdmitCont_.initialize();
+    AdmitCont_.initialize(ComputeJacobian_.q_min_, ComputeJacobian_.q_max_);
 
     // Initialize nullspace calculator
     // ToDo: Make this variable
@@ -111,15 +94,33 @@ bool WholeBodyController::initialize() {
     ComputeNullspace_.initialize(ComputeJacobian_.num_joints, A);
     N_.resize(ComputeJacobian_.num_joints,ComputeJacobian_.num_joints);
 
+    // Initialize Joint Limit Avoidance
     // ToDo: make variable
-    std::vector<double> JLAgain(ComputeJacobian_.num_joints);
-    for (uint i = 0; i < ComputeJacobian_.num_joints; i++) JLAgain[i] = 1;
-    ///JointLimitAvoidance_.initialize(ComputeJacobian_.joint_min,ComputeJacobian_.joint_max,JLAgain);
-    JointLimitAvoidance_.initialize(ComputeJacobian_.q_min_,ComputeJacobian_.q_max_,JLAgain);
-    tau_joint_limit_avoidance_.resize(ComputeJacobian_.num_joints);
+    std::vector<double> JLA_gain(ComputeJacobian_.num_joints);      // Gain for the joint limit avoidance
+    std::vector<double> JLA_workspace(ComputeJacobian_.num_joints); // Workspace: joint gets 'pushed' back when it's outside of this part of the center of the workspace
+    for (uint i = 0; i < ComputeJacobian_.num_joints; i++) {
+        JLA_gain[i] = 1;
+        JLA_workspace[i] = 0.9;
+    }
+    JointLimitAvoidance_.initialize(ComputeJacobian_.q_min_, ComputeJacobian_.q_max_, JLA_gain, JLA_workspace);
+    ROS_INFO("Joint limit avoidance initialized");
 
+    // Initialize Posture Controller
+    // ToDo: make variable
+    std::vector<double> posture_gain(ComputeJacobian_.num_joints);
+    for (uint i = 0; i < ComputeJacobian_.num_joints; i++) posture_gain[i] = 1;
+    PostureControl_.initialize(ComputeJacobian_.q_min_,ComputeJacobian_.q_max_,posture_gain);
+    ROS_INFO("Posture Control initialized");
+
+    // Resize additional variables
+    F_task_.resize(0);
+    q_current_.resize(ComputeJacobian_.num_joints);
+    qdot_reference_.resize(ComputeJacobian_.num_joints);
+    q_reference_.resize(ComputeJacobian_.num_joints);
+    Jacobian_.resize(0,ComputeJacobian_.num_joints);                // Jacobian is resized to zero rows, number of rows depends on number of tasks
+    tau_.resize(ComputeJacobian_.num_joints);
+    tau_nullspace_.resize(ComputeJacobian_.num_joints);
     isactive_vector_.resize(2);
-
     previous_num_active_tasks_ = 0;
 
     ROS_INFO("Whole Body Controller Initialized");
@@ -133,6 +134,7 @@ bool WholeBodyController::update() {
     // Set some variables to zero
     ///for (int i = 0; i<F_task_.rows(); i++) F_task_(i) = 0
     tau_.setZero();
+    tau_nullspace_.setZero();
     uint force_vector_index = 0;
     uint num_active_tasks = 0;
 
@@ -149,8 +151,11 @@ bool WholeBodyController::update() {
     }
     else isactive_vector_[1] = false;
 
-    F_task_.resize(6*num_active_tasks);
-    F_task_.setZero();
+    // Only resize F_task_ when number of active tasks has chaned
+    if (num_active_tasks != previous_num_active_tasks_) {
+        F_task_.resize(6*num_active_tasks);
+        F_task_.setZero();
+    }
 
     // Compute new Jacobian matrix
     ///ROS_INFO("Updating wholebodycontroller");
@@ -182,19 +187,18 @@ bool WholeBodyController::update() {
     ///ROS_INFO("tau %f %f %f %f", tau_(0),  tau_(1),  tau_(2),  tau_(3));
     //ROS_INFO("FSpindle %f", tau_(7));
 
-    ROS_WARN("Nullspace computation disabled");
     ComputeNullspace_.update(Jacobian_, N_);
     //ROS_INFO("Nullspace updated");
 
-    JointLimitAvoidance_.update(q_current_, tau_joint_limit_avoidance_);
+    JointLimitAvoidance_.update(q_current_, tau_nullspace_);
     ROS_INFO("Joint limit avoidance updated");
 
-    //tau_ += N_ * tau_joint_limit_avoidance_;
+    PostureControl_.update(q_current_, tau_nullspace_);
+    ROS_INFO("Posture control updated");
 
-    ROS_WARN("Only joint limit avoidance");
-    tau_ += N_ * tau_joint_limit_avoidance_;
+    tau_ += N_ * tau_nullspace_;
 
-    AdmitCont_.update(tau_,qdot_reference_);
+    AdmitCont_.update(tau_,qdot_reference_, q_current_, q_reference_);
 
     ///ROS_INFO("qdr = %f %f %f %f", qdot_reference_(0), qdot_reference_(1), qdot_reference_(2), qdot_reference_(3));
     ROS_INFO("qdrspindle = %f", qdot_reference_(7));
@@ -307,26 +311,35 @@ void WholeBodyController::publishReferences() {
     // Torso
     torso_msg.stop = 0;
     std::string component_name("torso");
-    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+    /*for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
         torso_msg.pos = component_description_map_[component_name].q[i] +
                         qdot_reference_(component_description_map_[component_name].start_index+i)*Ts;
+    }*/
+    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+        torso_msg.pos = q_reference_(component_description_map_[component_name].start_index + i);
     }
     torso_pub_.publish(torso_msg);
     ///ROS_INFO("Torso position = %f, reference = %f",component_description_map_[component_name].q[0],torso_msg.pos);
 
     // Left Arm
     component_name = "left_arm";
-    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+    /*for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
         arm_msg.pos[i].data = component_description_map_[component_name].q[i] +
                               qdot_reference_(component_description_map_[component_name].start_index+i)*Ts;
+    }*/
+    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+        arm_msg.pos[i].data = q_reference_(component_description_map_[component_name].start_index + i);
     }
     left_arm_pub_.publish(arm_msg);
 
     // Right Arm
     component_name = "right_arm";
-    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+    /*for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
         arm_msg.pos[i].data = component_description_map_[component_name].q[i] +
                               qdot_reference_(component_description_map_[component_name].start_index+i)*Ts;
+    }*/
+    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+        arm_msg.pos[i].data = q_reference_(component_description_map_[component_name].start_index + i);
     }
     right_arm_pub_.publish(arm_msg);
 

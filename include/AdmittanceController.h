@@ -33,12 +33,12 @@ public:
     /**
      * Initialize
      */
-    void initialize();
+    void initialize(const std::vector<double>& q_min, const std::vector<double>& q_max);
 
     /**
      * Update
      */
-    void update(const Eigen::VectorXd, Eigen::VectorXd&);
+    void update(const Eigen::VectorXd tau, Eigen::VectorXd& qdot_reference, const KDL::JntArray& q_current, Eigen::VectorXd& q_reference);
 
 private:
 
@@ -61,6 +61,9 @@ private:
     //! Vectors containing previous in- and outputs
     Eigen::VectorXd tau_previous_;
     Eigen::VectorXd qdot_reference_previous_;
+
+    //! Vectors containing joint limits
+    Eigen::VectorXd q_min_, q_max_;
 
     //! Sampling time
     double Ts;

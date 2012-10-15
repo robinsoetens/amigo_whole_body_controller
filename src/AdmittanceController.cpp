@@ -11,7 +11,7 @@ AdmittanceController::~AdmittanceController() {
 
 }
 
-void AdmittanceController::initialize() {
+void AdmittanceController::initialize(const std::vector<double>& q_min, const std::vector<double>& q_max) {
 
     // Resize relevant parameters
     uint num_joints = 15;
@@ -25,6 +25,8 @@ void AdmittanceController::initialize() {
     b_.resize(2,num_joints);
     tau_previous_.resize(num_joints);
     qdot_reference_previous_.resize(num_joints);
+    q_min_.resize(num_joints);
+    q_max_.resize(num_joints);
 
     // Set parameters (hardcoded)
     for (uint i = 0; i<num_joints; i++) {
@@ -57,13 +59,18 @@ void AdmittanceController::initialize() {
         tau_previous_(i) = 0;
         qdot_reference_previous_(i) = 0;
 
+        // Set joint limits
+        q_min_(i) = q_min[i];
+        q_max_(i) = q_max[i];
+
     }
 
     // Set inputs, states, outputs to zero
+    ROS_INFO("Admittance controller initialized");
 
 }
 
-void AdmittanceController::update(const Eigen::VectorXd tau, Eigen::VectorXd& qdot_reference) {
+void AdmittanceController::update(const Eigen::VectorXd tau, Eigen::VectorXd& qdot_reference, const KDL::JntArray& q_current, Eigen::VectorXd& q_reference) {
 
     // Update filters --> as a result desired velocities are known
     for (int i = 0; i<tau.size(); i++) {
@@ -72,6 +79,7 @@ void AdmittanceController::update(const Eigen::VectorXd tau, Eigen::VectorXd& qd
         qdot_reference(i) += b_(1,i) * tau_previous_(i);
         qdot_reference(i) -= a_(1,i) * qdot_reference_previous_(i);
         qdot_reference(i) *= k_(i);
+        q_reference(i) = std::min(q_max_(i),std::max(q_min_(i),q_current(i)+Ts*qdot_reference(i)));
 
     }
     tau_previous_ = tau;

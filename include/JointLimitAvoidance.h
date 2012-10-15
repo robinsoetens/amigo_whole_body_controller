@@ -21,8 +21,7 @@ public:
     virtual ~JointLimitAvoidance();
 
     //! Initialize();
-    //void initialize(const KDL::JntArray& q_min, const KDL::JntArray& q_max, const std::vector<double>& gain);
-    void initialize(const std::vector<double>& q_min, const std::vector<double>& q_max, const std::vector<double>& gain);
+    void initialize(const std::vector<double>& q_min, const std::vector<double>& q_max, const std::vector<double>& gain, const std::vector<double>& workspace);
 
     //! Update
     void update(const KDL::JntArray& q_in, Eigen::VectorXd& tau_out);
@@ -30,15 +29,17 @@ public:
 protected:
 
     //! Vector that hold the multiplication factor
-        std::vector<double> K_;
+    std::vector<double> K_;
 
-        //! Joint array with average joint value
-        // H = ((q-q0)/(qmax-qmin))^2
-        // dH/dq = 2(q-q0)/(qmax-qmin)^2
-        KDL::JntArray q0_;
+    //! Joint array with average joint value
+    // H = ((q-q0)/(qmax-qmin))^2
+    // dH/dq = 2(q-q0)/(qmax-qmin)^2
+    KDL::JntArray q0_;
 
-        //! Number of joints
-        uint num_joints_;
+    Eigen::VectorXd qmin_threshold_, qmax_threshold_;
+
+    //! Number of joints
+    uint num_joints_;
 
 };
 
