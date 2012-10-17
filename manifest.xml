@@ -23,6 +23,8 @@
   
   <depend package="kdl"/>
   <depend package="kdl_parser"/>
+  
+  <depend package="amigo_arm_navigation"/>
 
 </package>
 

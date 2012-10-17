@@ -19,6 +19,17 @@
 // Eigen
 #include <Eigen/Core>
 
+/////
+// Action server
+#include <actionlib/server/action_server.h>
+#include <actionlib/server/simple_action_server.h>
+
+// Action definition
+#include <amigo_arm_navigation/grasp_precomputeAction.h>
+
+
+/////
+
 class CartesianImpedance {
 
 public:
@@ -48,6 +59,10 @@ public:
     //! Bool indicating whether this is active
     bool is_active_;
 
+    /////
+
+    /////
+
 protected:
 
     /**
@@ -70,6 +85,25 @@ protected:
     std::string end_effector_frame_;
 
     uint F_start_index_;
+
+    /////
+    typedef actionlib::ActionServer<amigo_arm_navigation::grasp_precomputeAction> action_server;
+    typedef action_server::GoalHandle GoalHandle;
+
+    ///ros::NodeHandle nh_;//("~");
+    //action_server action_server_;
+    action_server* server_;//(node_, "/grasp_precompute_left", boost::bind(&execute, _1, &server, &client), false);
+    GoalHandle active_goal_;
+
+    geometry_msgs::PoseStamped goal_pose_;
+
+    void goalCB(GoalHandle gh);
+    void cancelCB(GoalHandle gh);
+
+
+
+    //void execute(const amigo_arm_navigation::grasp_precomputeGoalConstPtr& goal_in, action_server* as);
+    /////
 
 };
 

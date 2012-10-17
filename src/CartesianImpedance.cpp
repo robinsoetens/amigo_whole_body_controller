@@ -25,12 +25,20 @@ bool CartesianImpedance::initialize(const std::string& end_effector_frame, uint 
     F_start_index_ = F_start_index;
     is_active_ = false;
 
-    if (end_effector_frame_ == "/grippoint_left") {
+    // String to indicate which side to take for subscriber and action client
+    std::string side;
+    if (!std::strcmp(end_effector_frame.c_str(),"/grippoint_left")) side = "left";
+    else if (!std::strcmp(end_effector_frame.c_str(),"/grippoint_right")) side = "right";
+    else ROS_ERROR("Argument $SIDE argument unknown");
+    ROS_INFO("Side = %s",side.c_str());
+
+    /*if (end_effector_frame_ == "/grippoint_left") {
         target_sub_ = n.subscribe<geometry_msgs::PoseStamped>("/arm_left_target_pose", 10, &CartesianImpedance::callbackTarget, this);
     }
     else if (end_effector_frame_ == "/grippoint_right") {
         target_sub_ = n.subscribe<geometry_msgs::PoseStamped>("/arm_right_target_pose", 10, &CartesianImpedance::callbackTarget, this);
-    }
+    }*/
+    target_sub_ = n.subscribe<geometry_msgs::PoseStamped>("/arm_"+side+"_target_pose", 10, &CartesianImpedance::callbackTarget, this);
     ROS_INFO("Subscribed to %s topic for target",target_sub_.getTopic().c_str());
 
     // Fill in impedance matrix
@@ -59,6 +67,25 @@ bool CartesianImpedance::initialize(const std::string& end_effector_frame, uint 
     //ToDo: make this work!
     bool wait_for_transform = listener.waitForTransform(end_effector_frame_,"/map", ros::Time::now(), ros::Duration(1.0));
     if (!wait_for_transform) ROS_WARN("Transform between %s and /map is not available",end_effector_frame.c_str());
+
+    /////
+    ///KDL::ChainIkSolverVel_pinv* ik_solver_vel; //hpp
+    ///ik_solver_vel = new KDL::ChainIkSolverVel_pinv(chain);//cpp
+    ///action_server* server_; //h
+    /*server_ = new action_server(n, "/grasp_precompute_left", boost::bind(&execute, _1, &server, &client), false);
+    action_server_(node_, "joint_trajectory_action",
+                           boost::bind(&JointTrajectoryExecuter::goalCB, this, _1),
+                           boost::bind(&JointTrajectoryExecuter::cancelCB, this, _1),
+                           false)
+    */
+
+    server_ = new action_server(n,"/grasp_precompute_"+side,
+                                boost::bind(&CartesianImpedance::goalCB, this, _1),
+                                boost::bind(&CartesianImpedance::cancelCB, this, _1),
+                                false);
+
+    server_->start();
+    /////
 
     ROS_INFO("Initialized Cartesian Impedance");
 
@@ -104,23 +131,8 @@ geometry_msgs::PoseStamped CartesianImpedance::transformPose(const tf::Transform
 
 void CartesianImpedance::update(Eigen::VectorXd& F_task, uint& force_vector_index) {
 
-    ROS_INFO("Updating Cartesian Impedance, force_vector_index = %i",force_vector_index);
-    /*
-
-    // ToDo: Make this variable
-    Eigen::MatrixXd sub_jacobian = Jacobian.block(0,0,6,Jacobian.cols());
-
-    tau += sub_jacobian.transpose() * K_ * error_vector_;
-
-    ///ROS_INFO("tau %f %f %f %f", tau(0),  tau(1),  tau(2),  tau(3));
-    ///ROS_INFO("FSpindle %f", tau(7));
-     *
-     */
-    /* //15 okt
-    if (is_active_) F_task.segment(F_start_index_,6) = K_ * error_vector_;
-    else for (uint i = 0; i < 6; i++) F_task(i+F_start_index_) = 0;
-    is_active_ = false;
-    */
+    /// Previous implementation listening to topics
+    /*ROS_INFO("Updating Cartesian Impedance, force_vector_index = %i",force_vector_index);
 
     if (is_active_) {
         F_task.segment(force_vector_index,6) = K_ * error_vector_;
@@ -128,6 +140,89 @@ void CartesianImpedance::update(Eigen::VectorXd& F_task, uint& force_vector_inde
     }
     ///else for (uint i = 0; i < 6; i++) F_task(i+force_vector_index) = 0;
 
-    is_active_ = false;
+    is_active_ = false;*/
+
+    /////
+    if (is_active_) {
+        // ToDo: Check feedback and mark as completed
+
+
+        //Transform message into tooltip frame. This directly implies e = x_d - x
+        errorPose = CartesianImpedance::transformPose(listener, goal_pose_);
+
+        // ToDo: Check orientations as well
+        tf::Quaternion orientation;
+        tf::quaternionMsgToTF(errorPose.pose.orientation, orientation);
+        double roll, pitch, yaw;
+        btMatrix3x3(orientation).getRPY(roll, pitch, yaw);
+        error_vector_(0) = errorPose.pose.position.x;
+        error_vector_(1) = errorPose.pose.position.y;
+        error_vector_(2) = errorPose.pose.position.z;
+        error_vector_(3) = roll;
+        error_vector_(4) = pitch;
+        error_vector_(5) = yaw;
+
+        ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+
+        F_task.segment(force_vector_index,6) = K_ * error_vector_;
+        force_vector_index += 6;
+    }
+    /////
 
 }
+
+/////
+void CartesianImpedance::goalCB(GoalHandle gh) {
+
+    ROS_WARN("Received new goal");
+
+    // Cancels the currently active goal.
+    if (is_active_) {
+        // Stop something???
+
+        // Marks the current goal as canceled.
+        active_goal_.setCanceled();
+        is_active_ = false;
+        ROS_WARN("Canceling previous goal");
+    }
+
+    // ToDo: Check whether the received goal meets it requirements
+    if (gh.getGoal()->PERFORM_PRE_GRASP) {
+        ROS_ERROR("Pre-grasp not yet implemented, rejecting goal");
+        gh.setRejected();
+    }
+    else {
+
+        // Put the goal data in the right datatype
+        goal_pose_.header = gh.getGoal()->goal.header;
+        goal_pose_.pose.position.x = gh.getGoal()->goal.x;
+        goal_pose_.pose.position.y = gh.getGoal()->goal.y;
+        goal_pose_.pose.position.z = gh.getGoal()->goal.z;
+        double roll = gh.getGoal()->goal.roll;
+        double pitch = gh.getGoal()->goal.pitch;
+        double yaw = gh.getGoal()->goal.yaw;
+        geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
+        goal_pose_.pose.orientation = orientation;
+
+        // Set goal to accepted etc;
+        gh.setAccepted();
+        active_goal_ = gh;
+        is_active_ = true;
+    }
+
+
+
+}
+
+void CartesianImpedance::cancelCB(GoalHandle gh) {
+
+    if (active_goal_ == gh)
+    {
+        // Marks the current goal as canceled.
+        active_goal_.setCanceled();
+        is_active_ = false;
+    }
+
+}
+
+/////
