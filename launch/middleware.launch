@@ -12,6 +12,7 @@
 	
 	<!-- Arm & gripper control -->
 	<!--<include file="$(find amigo_launch_files)/launch/middleware/arms.launch" />-->
+	<include file="$(find amigo_gripper_server)/launch/start.launch" />
 	
 	<!-- Head control -->
 	<include file="$(find amigo_launch_files)/launch/middleware/head.launch" />	

@@ -94,13 +94,15 @@ bool CartesianImpedance::initialize(const std::string& end_effector_frame, uint 
 }
 
 void CartesianImpedance::callbackTarget(const geometry_msgs::PoseStamped::ConstPtr& msg) {
-
+//////
+    /*
     ROS_INFO("Received target");
 
     is_active_ = true;
 
     //Transform message into tooltip frame. This directly implies e = x_d - x
-    errorPose = CartesianImpedance::transformPose(listener, *msg);
+    /////errorPose = CartesianImpedance::transformPose(listener, *msg);
+    errorPose = CartesianImpedance::transformPose(*msg);
 
     // ToDo: Check orientations as well
     tf::Quaternion orientation;
@@ -115,16 +117,21 @@ void CartesianImpedance::callbackTarget(const geometry_msgs::PoseStamped::ConstP
     error_vector_(5) = yaw;
 
     ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+    */
+    //////
 
 }
 
-geometry_msgs::PoseStamped CartesianImpedance::transformPose(const tf::TransformListener& listener, geometry_msgs::PoseStamped poseMsg){
+/////geometry_msgs::PoseStamped CartesianImpedance::transformPose(const tf::TransformListener& listener, geometry_msgs::PoseStamped poseMsg){
+geometry_msgs::PoseStamped CartesianImpedance::transformPose(geometry_msgs::PoseStamped poseMsg){
+
+    //OBSOLETE??//
 
     geometry_msgs::PoseStamped poseInGripperFrame;
-
-    // Wait for transform???
+/*
+    // Wait for transform??
     listener.transformPose(end_effector_frame_,poseMsg,poseInGripperFrame);
-
+*/
     return poseInGripperFrame;
 
 }
@@ -145,10 +152,29 @@ void CartesianImpedance::update(Eigen::VectorXd& F_task, uint& force_vector_inde
     /////
     if (is_active_) {
         // ToDo: Check feedback and mark as completed
+        // ToDo: Include this in action message
+        int num_converged_dof = 0;
+        for (uint i = 0; i < 3; i++) {
+            if (error_vector_(i) < 0.025) ++num_converged_dof;
+        }
+        for (uint i = 0; i < 3; i++) {
+            if (error_vector_(i+3) < 0.3) ++num_converged_dof;
+        }
+        if (num_converged_dof == 6) active_goal_.setSucceeded();
 
 
         //Transform message into tooltip frame. This directly implies e = x_d - x
-        errorPose = CartesianImpedance::transformPose(listener, goal_pose_);
+        /////errorPose = CartesianImpedance::transformPose(listener, goal_pose_);
+        //errorPose = CartesianImpedance::transformPose(goal_pose_);
+
+        //listener.transformPose(end_effector_frame_,goal_pose_,errorPose);
+
+        // ToDo: why doesn't the state above work? Seems more sensible than below in terms of realtime behavior
+
+        //listener.waitForTransform()
+        ros::Time now = ros::Time::now();
+        bool wait_for_transform = listener.waitForTransform(end_effector_frame_,goal_pose_.header.frame_id, now, ros::Duration(1.0));
+        listener.transformPose(end_effector_frame_,now,goal_pose_,goal_pose_.header.frame_id,errorPose);
 
         // ToDo: Check orientations as well
         tf::Quaternion orientation;

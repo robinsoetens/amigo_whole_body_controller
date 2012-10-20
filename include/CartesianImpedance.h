@@ -74,7 +74,8 @@ protected:
 
     tf::TransformListener listener;
 
-    geometry_msgs::PoseStamped transformPose(const tf::TransformListener& listener, geometry_msgs::PoseStamped poseMsg);
+    /////geometry_msgs::PoseStamped transformPose(const tf::TransformListener& listener, geometry_msgs::PoseStamped poseMsg);
+    geometry_msgs::PoseStamped transformPose(geometry_msgs::PoseStamped poseMsg);
 
     geometry_msgs::PoseStamped errorPose;
     Eigen::VectorXd error_vector_;
