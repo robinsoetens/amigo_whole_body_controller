@@ -10,6 +10,8 @@ CartesianImpedance::CartesianImpedance() {
 
 CartesianImpedance::~CartesianImpedance() {
 
+    delete server_;
+
 }
 
 bool CartesianImpedance::initialize(const std::string& end_effector_frame, uint F_start_index) {
@@ -151,17 +153,6 @@ void CartesianImpedance::update(Eigen::VectorXd& F_task, uint& force_vector_inde
 
     /////
     if (is_active_) {
-        // ToDo: Check feedback and mark as completed
-        // ToDo: Include this in action message
-        int num_converged_dof = 0;
-        for (uint i = 0; i < 3; i++) {
-            if (error_vector_(i) < 0.025) ++num_converged_dof;
-        }
-        for (uint i = 0; i < 3; i++) {
-            if (error_vector_(i+3) < 0.3) ++num_converged_dof;
-        }
-        if (num_converged_dof == 6) active_goal_.setSucceeded();
-
 
         //Transform message into tooltip frame. This directly implies e = x_d - x
         /////errorPose = CartesianImpedance::transformPose(listener, goal_pose_);
@@ -188,10 +179,23 @@ void CartesianImpedance::update(Eigen::VectorXd& F_task, uint& force_vector_inde
         error_vector_(4) = pitch;
         error_vector_(5) = yaw;
 
-        ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+        ///ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
 
         F_task.segment(force_vector_index,6) = K_ * error_vector_;
         force_vector_index += 6;
+
+        // ToDo: Include boundaries in action message
+        int num_converged_dof = 0;
+        for (uint i = 0; i < 3; i++) {
+            if (fabs(error_vector_(i)) < 0.025) ++num_converged_dof;
+        }
+        for (uint i = 0; i < 3; i++) {
+            if (fabs(error_vector_(i+3)) < 0.3) ++num_converged_dof;
+        }
+        if (num_converged_dof == 6 && active_goal_.getGoalStatus().status == 1) {
+            active_goal_.setSucceeded();
+            ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+        }
     }
     /////
 
@@ -203,7 +207,7 @@ void CartesianImpedance::goalCB(GoalHandle gh) {
     ROS_WARN("Received new goal");
 
     // Cancels the currently active goal.
-    if (is_active_) {
+    if (active_goal_.getGoalStatus().status == 1) {
         // Stop something???
 
         // Marks the current goal as canceled.

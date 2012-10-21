@@ -49,7 +49,7 @@ void ComputeNullspace::update(const Eigen::MatrixXd& J, Eigen::MatrixXd& N) {
     }
     else {
 
-        if (J.rows() != previous_num_active_dofs_) {
+        if (J.rows() != (int)previous_num_active_dofs_) {
             Sinv_.resize(J.rows(),J.rows());
             Sinv_.setZero();
         }
@@ -60,7 +60,7 @@ void ComputeNullspace::update(const Eigen::MatrixXd& J, Eigen::MatrixXd& N) {
         //Eigen::JacobiSVD<Eigen::MatrixXd> WJsvd(WJ, Eigen::ComputeThinU | Eigen::ComputeThinV);
         Eigen::JacobiSVD<Eigen::MatrixXd> WJsvd(WJ, Eigen::ComputeThinU | Eigen::ComputeFullV);
 
-        ROS_INFO("Computing nullspace");
+        ///ROS_INFO("Computing nullspace");
 
         // ToDO: Choose eps wisely
         double eps=0.00001;
@@ -69,6 +69,7 @@ void ComputeNullspace::update(const Eigen::MatrixXd& J, Eigen::MatrixXd& N) {
             if (Svec(i) > eps) Sinv_(i,i) = 1.0/Svec(i);
             else Sinv_(i,i) = 0;
         }
+        /*
         ROS_INFO("Sigma inverse computed");
 
         ROS_INFO("Dimensions of A:  %i, %i", A_.rows(), A_.cols());
@@ -76,15 +77,16 @@ void ComputeNullspace::update(const Eigen::MatrixXd& J, Eigen::MatrixXd& N) {
         ROS_INFO("Dimensions of V:  %i, %i", WJsvd.matrixV().rows(), WJsvd.matrixV().cols());
         ROS_INFO("Dimensions of Si: %i, %i", Sinv_.rows(), Sinv_.cols());
         ROS_INFO("Dimensions of Ut: %i, %i", WJsvd.matrixU().cols(), WJsvd.matrixV().rows());
+        */
 
         // Jpinv = A*J^T * (J*A*J^T)^(-1)
         Eigen::MatrixXd Jpinv = A_ * J.transpose() * WJsvd.matrixV() * Sinv_ * WJsvd.matrixU().transpose();
 
-        ROS_INFO("Jpinv computed");
+        ///ROS_INFO("Jpinv computed");
 
         N = I_ - J.transpose() * Jpinv.transpose();
 
-        ROS_INFO("N computed");
+        ///ROS_INFO("N computed");
 
     }
 

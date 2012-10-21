@@ -161,12 +161,12 @@ bool WholeBodyController::update() {
     ///ROS_INFO("Updating wholebodycontroller");
     ComputeJacobian_.Update(component_description_map_, isactive_vector_, Jacobian_);
     if (isactive_vector_[0] || isactive_vector_[1]) {
-        uint show_column = 6;
-        uint show_row = 0;
-        ROS_INFO("Row %i, column %i of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",show_row+1,show_column+1,Jacobian_(6*show_row+0,show_column),Jacobian_(6*show_row+1,show_column),Jacobian_(6*show_row+2,show_column),Jacobian_(6*show_row+3,show_column),Jacobian_(6*show_row+4,show_column),Jacobian_(6*show_row+5,show_column));
-        ROS_INFO("Jacobian (x,q4) = %f, (y,q4) = %f, (z,q4) = %f, (z,torso) = %f", Jacobian_(0,3), Jacobian_(1,3), Jacobian_(2,3), Jacobian_(2,7));
+        ///uint show_column = 6;
+        ///uint show_row = 0;
+        ///ROS_INFO("Row %i, column %i of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",show_row+1,show_column+1,Jacobian_(6*show_row+0,show_column),Jacobian_(6*show_row+1,show_column),Jacobian_(6*show_row+2,show_column),Jacobian_(6*show_row+3,show_column),Jacobian_(6*show_row+4,show_column),Jacobian_(6*show_row+5,show_column));
+        ///ROS_INFO("Jacobian (x,q4) = %f, (y,q4) = %f, (z,q4) = %f, (z,torso) = %f", Jacobian_(0,3), Jacobian_(1,3), Jacobian_(2,3), Jacobian_(2,7));
     }
-    ROS_INFO("Jacobian updated");
+    //ROS_INFO("Jacobian updated");
 
     // Update the torque output
     // Currently only one torque 'source', when multiple ones a smarter solution has to be found
@@ -180,7 +180,7 @@ bool WholeBodyController::update() {
     // Compute torques (only compute tau_ if there is a task active)
     // ToDo: include this somehow in class
     if (isactive_vector_[0] || isactive_vector_[1]) {
-        ROS_INFO("Update tau: Jacobian = [%i,%i], F_task = [%i,%i]",Jacobian_.rows(),Jacobian_.cols(),F_task_.rows(),F_task_.cols());
+        ///ROS_INFO("Update tau: Jacobian = [%i,%i], F_task = [%i,%i]",Jacobian_.rows(),Jacobian_.cols(),F_task_.rows(),F_task_.cols());
         tau_ = Jacobian_.transpose() * F_task_;
     }
 
@@ -191,17 +191,17 @@ bool WholeBodyController::update() {
     //ROS_INFO("Nullspace updated");
 
     JointLimitAvoidance_.update(q_current_, tau_nullspace_);
-    ROS_INFO("Joint limit avoidance updated");
+    ///ROS_INFO("Joint limit avoidance updated");
 
     PostureControl_.update(q_current_, tau_nullspace_);
-    ROS_INFO("Posture control updated");
+    ///ROS_INFO("Posture control updated");
 
     tau_ += N_ * tau_nullspace_;
 
     AdmitCont_.update(tau_,qdot_reference_, q_current_, q_reference_);
 
     ///ROS_INFO("qdr = %f %f %f %f", qdot_reference_(0), qdot_reference_(1), qdot_reference_(2), qdot_reference_(3));
-    ROS_INFO("qdrspindle = %f", qdot_reference_(7));
+    ///ROS_INFO("qdrspindle = %f", qdot_reference_(7));
 
     publishReferences();
 
