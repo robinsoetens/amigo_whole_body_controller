@@ -6,6 +6,8 @@ whole_body_controller:
     kry: 1.25
     krz: 1.25
     
+    pre_grasp_delta: 0.1
+    
     #kx: 25
     #ky: 25
     #kz: 25

@@ -87,6 +87,10 @@ bool CartesianImpedance::initialize(const std::string& end_effector_frame, uint 
                                 false);
 
     server_->start();
+
+    // Pre-grasping
+    pre_grasp_ = false;
+    n.param<double> (ns+"/pre_grasp_delta", pre_grasp_delta_, 0.1);
     /////
 
     ROS_INFO("Initialized Cartesian Impedance");
@@ -96,7 +100,7 @@ bool CartesianImpedance::initialize(const std::string& end_effector_frame, uint 
 }
 
 void CartesianImpedance::callbackTarget(const geometry_msgs::PoseStamped::ConstPtr& msg) {
-//////
+    //////
     /*
     ROS_INFO("Received target");
 
@@ -130,7 +134,7 @@ geometry_msgs::PoseStamped CartesianImpedance::transformPose(geometry_msgs::Pose
     //OBSOLETE??//
 
     geometry_msgs::PoseStamped poseInGripperFrame;
-/*
+    /*
     // Wait for transform??
     listener.transformPose(end_effector_frame_,poseMsg,poseInGripperFrame);
 */
@@ -179,6 +183,9 @@ void CartesianImpedance::update(Eigen::VectorXd& F_task, uint& force_vector_inde
         error_vector_(4) = pitch;
         error_vector_(5) = yaw;
 
+        // If pre-grasping, an offset is added to the errorpose in x-direction
+        if (pre_grasp_) error_vector_(0) -= pre_grasp_delta_;
+
         ///ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
 
         F_task.segment(force_vector_index,6) = K_ * error_vector_;
@@ -192,7 +199,11 @@ void CartesianImpedance::update(Eigen::VectorXd& F_task, uint& force_vector_inde
         for (uint i = 0; i < 3; i++) {
             if (fabs(error_vector_(i+3)) < 0.3) ++num_converged_dof;
         }
-        if (num_converged_dof == 6 && active_goal_.getGoalStatus().status == 1) {
+        if (num_converged_dof == 6 && pre_grasp_) {
+            pre_grasp_ = false;
+            ROS_INFO("pre_grasp_ = %d",pre_grasp_);
+        }
+        else if (num_converged_dof == 6 && active_goal_.getGoalStatus().status == 1 && !pre_grasp_) {
             active_goal_.setSucceeded();
             ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
         }
@@ -217,28 +228,34 @@ void CartesianImpedance::goalCB(GoalHandle gh) {
     }
 
     // ToDo: Check whether the received goal meets it requirements
-    if (gh.getGoal()->PERFORM_PRE_GRASP) {
+    /*if (gh.getGoal()->PERFORM_PRE_GRASP) {
         ROS_ERROR("Pre-grasp not yet implemented, rejecting goal");
         gh.setRejected();
-    }
-    else {
+    }*/
+    //else {
 
-        // Put the goal data in the right datatype
-        goal_pose_.header = gh.getGoal()->goal.header;
-        goal_pose_.pose.position.x = gh.getGoal()->goal.x;
-        goal_pose_.pose.position.y = gh.getGoal()->goal.y;
-        goal_pose_.pose.position.z = gh.getGoal()->goal.z;
-        double roll = gh.getGoal()->goal.roll;
-        double pitch = gh.getGoal()->goal.pitch;
-        double yaw = gh.getGoal()->goal.yaw;
-        geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
-        goal_pose_.pose.orientation = orientation;
+    // Put the goal data in the right datatype
+    goal_pose_.header = gh.getGoal()->goal.header;
+    goal_pose_.pose.position.x = gh.getGoal()->goal.x;
+    goal_pose_.pose.position.y = gh.getGoal()->goal.y;
+    goal_pose_.pose.position.z = gh.getGoal()->goal.z;
+    double roll = gh.getGoal()->goal.roll;
+    double pitch = gh.getGoal()->goal.pitch;
+    double yaw = gh.getGoal()->goal.yaw;
+    geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
+    goal_pose_.pose.orientation = orientation;
 
-        // Set goal to accepted etc;
-        gh.setAccepted();
-        active_goal_ = gh;
-        is_active_ = true;
+    // Pre-grasp
+    if (gh.getGoal()->PERFORM_PRE_GRASP) {
+        pre_grasp_ = true;
+        ROS_INFO("pre_grasp_ = %d",pre_grasp_);
     }
+
+    // Set goal to accepted etc;
+    gh.setAccepted();
+    active_goal_ = gh;
+    is_active_ = true;
+    //}
 
 
 

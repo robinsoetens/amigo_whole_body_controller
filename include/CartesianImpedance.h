@@ -101,7 +101,8 @@ protected:
     void goalCB(GoalHandle gh);
     void cancelCB(GoalHandle gh);
 
-
+    bool pre_grasp_;
+    double pre_grasp_delta_;
 
     //void execute(const amigo_arm_navigation::grasp_precomputeGoalConstPtr& goal_in, action_server* as);
     /////
