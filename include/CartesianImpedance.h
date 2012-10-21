@@ -98,7 +98,14 @@ protected:
 
     geometry_msgs::PoseStamped goal_pose_;
 
+    /**
+      * Callback function for Cartesian goal
+      */
     void goalCB(GoalHandle gh);
+
+    /**
+      * Callback function for cancel goal
+      */
     void cancelCB(GoalHandle gh);
 
     bool pre_grasp_;
