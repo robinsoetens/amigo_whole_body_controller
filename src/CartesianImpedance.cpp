@@ -166,9 +166,19 @@ void CartesianImpedance::update(Eigen::VectorXd& F_task, uint& force_vector_inde
         // ToDo: why doesn't the state above work? Seems more sensible than below in terms of realtime behavior
 
         //listener.waitForTransform()
-        ros::Time now = ros::Time::now();
-        bool wait_for_transform = listener.waitForTransform(end_effector_frame_,goal_pose_.header.frame_id, now, ros::Duration(1.0));
-        listener.transformPose(end_effector_frame_,now,goal_pose_,goal_pose_.header.frame_id,errorPose);
+
+        //ros::Time now = ros::Time::now();
+        //bool wait_for_transform = listener.waitForTransform(end_effector_frame_,goal_pose_.header.frame_id, now, ros::Duration(1.0));
+
+        goal_pose_.header.stamp = ros::Time();
+        try {
+            listener.transformPose(end_effector_frame_, goal_pose_, errorPose);
+        } catch (tf::TransformException& e) {
+            ROS_ERROR("CartesianImpedance: %s", e.what());
+            return;
+        }
+
+        //listener.transformPose(end_effector_frame_,now,goal_pose_,goal_pose_.header.frame_id,errorPose);
 
         // ToDo: Check orientations as well
         tf::Quaternion orientation;
@@ -193,7 +203,7 @@ void CartesianImpedance::update(Eigen::VectorXd& F_task, uint& force_vector_inde
         // ToDo: Include boundaries in action message
         int num_converged_dof = 0;
         for (uint i = 0; i < 3; i++) {
-            if (fabs(error_vector_(i)) < 0.025) ++num_converged_dof;
+            if (fabs(error_vector_(i)) < 0.035) ++num_converged_dof;
         }
         for (uint i = 0; i < 3; i++) {
             if (fabs(error_vector_(i+3)) < 0.3) ++num_converged_dof;
