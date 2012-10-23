@@ -5,13 +5,9 @@ ComputeJacobian::ComputeJacobian() {
 }
 
 ComputeJacobian::~ComputeJacobian() {
-
-    //ToDo: Make this work
-    std::vector<KDL::ChainJntToJacSolver*>::iterator iter = jnt_to_jac_solver_array.begin();
-    while (iter != jnt_to_jac_solver_array.end() ) {
+    for(std::vector<KDL::ChainJntToJacSolver*>::iterator iter = jnt_to_jac_solver_array.begin(); iter != jnt_to_jac_solver_array.end(); ++iter) {
         delete *iter;
     }
-
 }
 
 bool ComputeJacobian::Initialize(std::map<std::string, component_description>& component_description_map) {
