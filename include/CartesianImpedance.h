@@ -88,25 +88,25 @@ protected:
     uint F_start_index_;
 
     /////
-    typedef actionlib::ActionServer<amigo_arm_navigation::grasp_precomputeAction> action_server;
-    typedef action_server::GoalHandle GoalHandle;
+    typedef actionlib::SimpleActionServer<amigo_arm_navigation::grasp_precomputeAction> action_server;
+    //typedef action_server::GoalHandle GoalHandle;
 
     ///ros::NodeHandle nh_;//("~");
     //action_server action_server_;
     action_server* server_;//(node_, "/grasp_precompute_left", boost::bind(&execute, _1, &server, &client), false);
-    GoalHandle active_goal_;
+    //GoalHandle active_goal_;
 
     geometry_msgs::PoseStamped goal_pose_;
 
     /**
       * Callback function for Cartesian goal
       */
-    void goalCB(GoalHandle gh);
+    void goalCB();
 
     /**
       * Callback function for cancel goal
       */
-    void cancelCB(GoalHandle gh);
+    void cancelCB();
 
     bool pre_grasp_;
     double pre_grasp_delta_;
