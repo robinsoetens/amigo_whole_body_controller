@@ -131,6 +131,9 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
 
         std::string root_name = component_description_map[chain_description_vector[i]].root_name;
 
+        // Vector containing the joint names
+        std::vector<std::string> current_joint_names;
+
         //ROS_INFO("Root name = %s", root_name.c_str());
         while (link && link->name != root_name) {
             joint = robot_model.getJoint(link->parent_joint->name);
@@ -141,6 +144,7 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
             // Only count joints if they're not fixed or unknown
             if (joint->type != urdf::Joint::UNKNOWN && joint->type != urdf::Joint::FIXED) {
                 current_num_joints++;
+                current_joint_names.push_back(joint->name);
                 if (joint->type != urdf::Joint::CONTINUOUS) {
                     current_temp_joint_min.push_back(joint->limits->lower);
                     current_temp_joint_max.push_back(joint->limits->upper);
@@ -163,13 +167,15 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
             component_description_map[chain_description_vector[i]].q.resize(current_num_joints);
             ROS_INFO("Component %s gets startindex %i and endindex %i", chain_description_vector[i].c_str(), component_description_map[chain_description_vector[i]].start_index, component_description_map[chain_description_vector[i]].end_index);
 
-            for (int i = 0; i < current_num_joints; i++) {
+            for (int k = 0; k < current_num_joints; k++) {
                 //temp_joint_min.push_back(current_temp_joint_min[i]);
                 //temp_joint_max.push_back(current_temp_joint_max[i]);
                 // The joints are read from tip to root but appear in the joint vectors from root to tip so have to be 'used' in reverse order.
-                q_min_.push_back(current_temp_joint_min[current_num_joints-1-i]);
-                q_max_.push_back(current_temp_joint_max[current_num_joints-1-i]);
+                component_description_map[chain_description_vector[i]].joint_names.push_back(current_joint_names[current_num_joints-1-k]);
+                q_min_.push_back(current_temp_joint_min[current_num_joints-1-k]);
+                q_max_.push_back(current_temp_joint_max[current_num_joints-1-k]);
             }
+            for (int k = 0; k < current_num_joints; k++) ROS_INFO("Joint %i of %s is called %s",k,chain_description_vector[i].c_str(), component_description_map[chain_description_vector[i]].joint_names[k].c_str() );
         }
 
     }

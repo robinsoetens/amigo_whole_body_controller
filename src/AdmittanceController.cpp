@@ -79,6 +79,8 @@ void AdmittanceController::update(const Eigen::VectorXd tau, Eigen::VectorXd& qd
         qdot_reference(i) += b_(1,i) * tau_previous_(i);
         qdot_reference(i) -= a_(1,i) * qdot_reference_previous_(i);
         qdot_reference(i) *= k_(i);
+
+        // Integrate desired velocities and limit outputs
         q_reference(i) = std::min(q_max_(i),std::max(q_min_(i),q_current(i)+Ts*qdot_reference(i)));
 
     }

@@ -18,6 +18,7 @@ WholeBodyController::~WholeBodyController() {
     left_arm_pub_.shutdown();
     right_arm_pub_.shutdown();
     head_pub_.shutdown();
+
     /*CIleft_.~CartesianImpedance();
     CIright_.~CartesianImpedance();
     ComputeJacobian_.~ComputeJacobian();
@@ -123,6 +124,44 @@ bool WholeBodyController::initialize() {
     isactive_vector_.resize(2);
     previous_num_active_tasks_ = 0;
 
+    // Resize the vectors of the joint_state_msg
+    // ToDo: automate this
+    left_arm_msg_.name.resize(component_description_map_["left_arm"].number_of_joints);
+    left_arm_msg_.position.resize(component_description_map_["left_arm"].number_of_joints);
+    left_arm_msg_.velocity.resize(component_description_map_["left_arm"].number_of_joints);
+    left_arm_msg_.effort.resize(component_description_map_["left_arm"].number_of_joints);
+    for (int i = 0; i < component_description_map_["left_arm"].number_of_joints; i++) {
+        left_arm_msg_.name[i] = component_description_map_["left_arm"].joint_names[i];
+        component_description_map_["left_arm"].joint_name_map_[component_description_map_["left_arm"].joint_names[i]] = i;
+        ROS_INFO("Component left arm, joint %s, index %i", component_description_map_["left_arm"].joint_names[i].c_str(), component_description_map_["left_arm"].joint_name_map_[component_description_map_["left_arm"].joint_names[i]]);
+    }
+    right_arm_msg_.name.resize(component_description_map_["right_arm"].number_of_joints);
+    right_arm_msg_.position.resize(component_description_map_["right_arm"].number_of_joints);
+    right_arm_msg_.velocity.resize(component_description_map_["right_arm"].number_of_joints);
+    right_arm_msg_.effort.resize(component_description_map_["right_arm"].number_of_joints);
+    for (int i = 0; i < component_description_map_["right_arm"].number_of_joints; i++) {
+        right_arm_msg_.name[i] = component_description_map_["right_arm"].joint_names[i];
+        component_description_map_["right_arm"].joint_name_map_[component_description_map_["right_arm"].joint_names[i]] = i;
+    }
+    torso_msg_.name.resize(component_description_map_["torso"].number_of_joints);
+    torso_msg_.position.resize(component_description_map_["torso"].number_of_joints);
+    torso_msg_.velocity.resize(component_description_map_["torso"].number_of_joints);
+    torso_msg_.effort.resize(component_description_map_["torso"].number_of_joints);
+    for (int i = 0; i < component_description_map_["torso"].number_of_joints; i++) {
+        torso_msg_.name[i] = component_description_map_["torso"].joint_names[i];
+        component_description_map_["torso"].joint_name_map_[component_description_map_["torso"].joint_names[i]] = i;
+    }
+
+    /*head_msg_.name.resize(component_description_map_[component_name].number_of_joints);
+    head_msg_.position.resize(component_description_map_[component_name].number_of_joints);
+    head_msg_.velocity.resize(component_description_map_[component_name].number_of_joints);
+    head_msg_.effort.resize(component_description_map_[component_name].number_of_joints);*/
+
+    /*joint_state_msg_.name.resize(ComputeJacobian_.num_joints);
+    joint_state_msg_.position.resize(ComputeJacobian_.num_joints);
+    joint_state_msg_.velocity.resize(ComputeJacobian_.num_joints);
+    joint_state_msg_.effort.resize(ComputeJacobian_.num_joints);*/
+
     ROS_INFO("Whole Body Controller Initialized");
 
     return true;
@@ -175,7 +214,8 @@ bool WholeBodyController::update() {
     // Not sure if this is the right approach: summing the taus up and then doing nullspace projection may result in smoother transitions and is probably quicker
     CIleft_.update(F_task_, force_vector_index);
     CIright_.update(F_task_, force_vector_index);
-    ///if (num_active_tasks == 2) ROS_INFO("F_task\n0x = %f\t0y = %f0z = %f\n0x = %f\t0y = %f\t0z = %f\n1x = %f\t1y = %f1z = %f\n1x = %f\t1y = %f\t1z = %f",F_task_(0),F_task_(1),F_task_(2),F_task_(3),F_task_(4),F_task_(5),F_task_(6),F_task_(7),F_task_(8),F_task_(9),F_task_(10),F_task_(11));
+
+    //for (uint i = 0; i < F_task_.rows(); i++) ROS_INFO("F(%i) = %f",i,F_task_(i));
 
     // Compute torques (only compute tau_ if there is a task active)
     // ToDo: include this somehow in class
@@ -183,6 +223,7 @@ bool WholeBodyController::update() {
         ///ROS_INFO("Update tau: Jacobian = [%i,%i], F_task = [%i,%i]",Jacobian_.rows(),Jacobian_.cols(),F_task_.rows(),F_task_.cols());
         tau_ = Jacobian_.transpose() * F_task_;
     }
+    //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
 
     ///ROS_INFO("tau %f %f %f %f", tau_(0),  tau_(1),  tau_(2),  tau_(3));
     //ROS_INFO("FSpindle %f", tau_(7));
@@ -197,12 +238,16 @@ bool WholeBodyController::update() {
     ///ROS_INFO("Posture control updated");
 
     tau_ += N_ * tau_nullspace_;
+    //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Total torques (%i) = %f",i,tau_(i));
 
-    AdmitCont_.update(tau_,qdot_reference_, q_current_, q_reference_);
+    AdmitCont_.update(tau_, qdot_reference_, q_current_, q_reference_);
 
     ///ROS_INFO("qdr = %f %f %f %f", qdot_reference_(0), qdot_reference_(1), qdot_reference_(2), qdot_reference_(3));
     ///ROS_INFO("qdrspindle = %f", qdot_reference_(7));
 
+    //for (uint i = 0; i < qdot_reference_.rows(); i++) ROS_INFO("qd joint %i = %f",i,qdot_reference_(i));
+    //for (uint i = 0; i < q_current_.rows(); i++) ROS_INFO("Position joint %i = %f",i,q_current_(i));
+    //for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));
     publishReferences();
 
     previous_num_active_tasks_ = num_active_tasks;
@@ -221,34 +266,42 @@ void WholeBodyController::setTopics() {
     // ToDo: make temp_vector.resize and map arguments variable
     // ToDo: fill in odom topic and make base publisher
     //odom_sub_ = ;
-    measured_torso_position_sub_ = n.subscribe<std_msgs::Float64>("/spindle_position", 1, &WholeBodyController::callbackMeasuredTorsoPosition, this);
+    ///measured_torso_position_sub_ = n.subscribe<std_msgs::Float64>("/spindle_position", 1, &WholeBodyController::callbackMeasuredTorsoPosition, this);
+    measured_torso_position_sub_ = n.subscribe<sensor_msgs::JointState>("/torso_controller/measurements", 1, &WholeBodyController::callbackMeasuredTorsoPosition, this);
     temp_vector.resize(1);
     q_current_map_["spindle_joint"] = temp_vector;
 
-    measured_left_arm_position_sub_ = n.subscribe<amigo_msgs::arm_joints>("/arm_left_controller/joint_measurements", 1, &WholeBodyController::callbackMeasuredLeftArmPosition, this);
+    ///measured_left_arm_position_sub_ = n.subscribe<amigo_msgs::arm_joints>("/arm_left_controller/joint_measurements", 1, &WholeBodyController::callbackMeasuredLeftArmPosition, this);
+    measured_left_arm_position_sub_ = n.subscribe<sensor_msgs::JointState>("/arm_left_controller/measurements", 1, &WholeBodyController::callbackMeasuredLeftArmPosition, this);
     temp_vector.resize(7);
     q_current_map_["shoulder_yaw_joint_left"] = temp_vector;
 
-    measured_right_arm_position_sub_ = n.subscribe<amigo_msgs::arm_joints>("/arm_right_controller/joint_measurements", 1, &WholeBodyController::callbackMeasuredRightArmPosition, this);
+    ///measured_right_arm_position_sub_ = n.subscribe<amigo_msgs::arm_joints>("/arm_right_controller/joint_measurements", 1, &WholeBodyController::callbackMeasuredRightArmPosition, this);
+    measured_right_arm_position_sub_ = n.subscribe<sensor_msgs::JointState>("/arm_right_controller/measurements", 1, &WholeBodyController::callbackMeasuredRightArmPosition, this);
     temp_vector.resize(7);
     q_current_map_["shoulder_yaw_joint_right"] = temp_vector;
 
-    measured_head_pan_sub_ = n.subscribe<std_msgs::Float64>("/head_pan_angle", 1, &WholeBodyController::callbackMeasuredHeadPan, this);
-    temp_vector.resize(1);
-    q_current_map_["pan_joint"] = temp_vector; //NOT_CORRECT
+    //measured_head_pan_sub_ = n.subscribe<std_msgs::Float64>("/head_pan_angle", 1, &WholeBodyController::callbackMeasuredHeadPan, this);
+    //temp_vector.resize(1);
+    //q_current_map_["pan_joint"] = temp_vector; //NOT_CORRECT
 
-    measured_head_tilt_sub_ = n.subscribe<std_msgs::Float64>("/head_tilt_angle", 1, &WholeBodyController::callbackMeasuredHeadTilt, this);
-    temp_vector.resize(1);
-    q_current_map_["tilt_joint"] = temp_vector; //NOT CORRECT
+    //measured_head_tilt_sub_ = n.subscribe<std_msgs::Float64>("/head_tilt_angle", 1, &WholeBodyController::callbackMeasuredHeadTilt, this);
+    //temp_vector.resize(1);
+    //q_current_map_["tilt_joint"] = temp_vector; //NOT CORRECT
 
     //ros::Publisher torso_pub_, left_arm_pub_, right_arm_pub_, head_pub_;
-    torso_pub_ = n.advertise<amigo_msgs::spindle_setpoint>("/spindle_controller/spindle_coordinates", 10);
+    /*torso_pub_ = n.advertise<amigo_msgs::spindle_setpoint>("/spindle_controller/spindle_coordinates", 10);
     left_arm_pub_ = n.advertise<amigo_msgs::arm_joints>("/arm_left_controller/joint_references", 10);
     right_arm_pub_ = n.advertise<amigo_msgs::arm_joints>("/arm_right_controller/joint_references", 10);
-    head_pub_ = n.advertise<amigo_msgs::head_ref>("/head_controller/set_Head", 10);
+    head_pub_ = n.advertise<amigo_msgs::head_ref>("/head_controller/set_Head", 10);*/
+    torso_pub_ = n.advertise<sensor_msgs::JointState>("/torso_controller/references", 10);
+    left_arm_pub_ = n.advertise<sensor_msgs::JointState>("/arm_left_controller/references", 10);
+    right_arm_pub_ = n.advertise<sensor_msgs::JointState>("/arm_right_controller/references", 10);
+    //head_pub_ = n.advertise<sensor_msgs::JointState>("/head_controller/set_Head", 10);
+
 
 }
-
+/*
 void WholeBodyController::callbackMeasuredTorsoPosition(const std_msgs::Float64::ConstPtr& msg) {
 
     //TODO: Get rid of hardcoded root_joint
@@ -301,24 +354,103 @@ void WholeBodyController::callbackMeasuredHeadPan(const std_msgs::Float64::Const
 void WholeBodyController::callbackMeasuredHeadTilt(const std_msgs::Float64::ConstPtr& msg) {
 
 }
+*/
+void WholeBodyController::callbackMeasuredTorsoPosition(const sensor_msgs::JointState::ConstPtr& msg) {
+
+    //TODO: Get rid of hardcoded root_joint
+
+    std::string component_name = "torso";
+    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+        ///component_description_map_[component_name].q[i] = msg->data;
+        ///component_description_map_[component_name].q[i] = msg->position[i];
+        ///q_current_(i+component_description_map_[component_name].start_index) = msg->position[i];
+
+        std::string joint_name = msg->name[i];
+        double data = msg->position[i];
+        component_description_map_[component_name].q[component_description_map_[component_name].joint_name_map_[joint_name]] = data;
+        q_current_(component_description_map_[component_name].joint_name_map_[joint_name]+component_description_map_[component_name].start_index) = data;
+        //ROS_INFO("%s joint %i (%s) = %f",component_name.c_str(),i+1,joint_name.c_str(),component_description_map_[component_name].q[i]);
+    }
+
+}
+
+void WholeBodyController::callbackMeasuredLeftArmPosition(const sensor_msgs::JointState::ConstPtr& msg) {
+
+    //TODO: Get rid of hardcoded root_joint
+
+    std::string component_name = "left_arm";
+    uint num_comp_joints = component_description_map_[component_name].number_of_joints;
+    for (uint i = 0; i<num_comp_joints; i++) {
+        ///component_description_map_[component_name].q[i] = msg->position[i];
+        ///q_current_(i+component_description_map_[component_name].start_index) = msg->position[i];
+
+        std::string joint_name = msg->name[i];
+        double data = msg->position[i];
+        component_description_map_[component_name].q[component_description_map_[component_name].joint_name_map_[joint_name]] = data;
+        q_current_(component_description_map_[component_name].joint_name_map_[joint_name]+component_description_map_[component_name].start_index) = data;
+        //ROS_INFO("%s joint %i (%s) = %f",component_name.c_str(),i+1,joint_name.c_str(),component_description_map_[component_name].q[i]);
+        // I guess we need to reverse this vector --> probably not
+        ///component_description_map_[component_name].q[i] = msg->pos[num_comp_joints-1-i].data;
+        //ROS_INFO("%s joint %i = %f",component_name.c_str(),i+1,component_description_map_[component_name].q[i]);
+    }
+}
+
+void WholeBodyController::callbackMeasuredRightArmPosition(const sensor_msgs::JointState::ConstPtr& msg) {
+
+    //TODO: Get rid of hardcoded root_joint
+
+    std::string component_name = "right_arm";
+    uint num_comp_joints = component_description_map_[component_name].number_of_joints;
+    for (uint i = 0; i<num_comp_joints; i++) {
+        ///component_description_map_[component_name].q[i] = msg->position[i];
+        ///q_current_(i+component_description_map_[component_name].start_index) = msg->position[i];
+
+        std::string joint_name = msg->name[i];
+        double data = msg->position[i];
+        component_description_map_[component_name].q[component_description_map_[component_name].joint_name_map_[joint_name]] = data;
+        q_current_(component_description_map_[component_name].joint_name_map_[joint_name]+component_description_map_[component_name].start_index) = data;
+        //ROS_INFO("%s joint %i (%s) = %f",component_name.c_str(),i+1,joint_name.c_str(),component_description_map_[component_name].q[i]);
+        // I guess we need to reverse this vector --> probably not
+        ///component_description_map_[component_name].q[i] = msg->pos[num_comp_joints-1-i].data;
+        //ROS_INFO("%s joint %i = %f",component_name.c_str(),i+1,component_description_map_[component_name].q[i]);
+    }
+}
+
+//void WholeBodyController::callbackMeasuredHeadPan(const std_msgs::Float64::ConstPtr& msg) {
+
+//}
+
+//void WholeBodyController::callbackMeasuredHeadTilt(const std_msgs::Float64::ConstPtr& msg) {
+
+//}
 
 void WholeBodyController::publishReferences() {
 
-    amigo_msgs::spindle_setpoint torso_msg;
-    amigo_msgs::arm_joints arm_msg;
+    // Push the reference of every component into the correct vector
+    /*for (std::map<std::string, component_description>::iterator iter = component_description_map_.begin(); iter != component_description_map_.end(); ++iter) {
+
+    }*/
+    /*for (uint i = 0; i < ComputeJacobian_.num_joints; i++) {
+        joint_state_msg_.position[i] = q_reference_(i);
+    }*/
+
+    // Everything in this function below will become obsolete when the standardized interface has been completed
+    ///amigo_msgs::spindle_setpoint torso_msg;
+    ///amigo_msgs::arm_joints arm_msg;
     // Base
 
     // Torso
-    torso_msg.stop = 0;
+    ///torso_msg.stop = 0;
     std::string component_name("torso");
     /*for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
         torso_msg.pos = component_description_map_[component_name].q[i] +
                         qdot_reference_(component_description_map_[component_name].start_index+i)*Ts;
     }*/
     for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
-        torso_msg.pos = q_reference_(component_description_map_[component_name].start_index + i);
+        ///torso_msg.pos = q_reference_(component_description_map_[component_name].start_index + i);
+        torso_msg_.position[i] = q_reference_(component_description_map_[component_name].start_index + i);
     }
-    torso_pub_.publish(torso_msg);
+    torso_pub_.publish(torso_msg_);
     ///ROS_INFO("Torso position = %f, reference = %f",component_description_map_[component_name].q[0],torso_msg.pos);
 
     // Left Arm
@@ -328,9 +460,10 @@ void WholeBodyController::publishReferences() {
                               qdot_reference_(component_description_map_[component_name].start_index+i)*Ts;
     }*/
     for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
-        arm_msg.pos[i].data = q_reference_(component_description_map_[component_name].start_index + i);
+        ///arm_msg.pos[i].data = q_reference_(component_description_map_[component_name].start_index + i);
+        left_arm_msg_.position[i] = q_reference_(component_description_map_[component_name].start_index + i);
     }
-    left_arm_pub_.publish(arm_msg);
+    left_arm_pub_.publish(left_arm_msg_);
 
     // Right Arm
     component_name = "right_arm";
@@ -339,9 +472,11 @@ void WholeBodyController::publishReferences() {
                               qdot_reference_(component_description_map_[component_name].start_index+i)*Ts;
     }*/
     for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
-        arm_msg.pos[i].data = q_reference_(component_description_map_[component_name].start_index + i);
+        ///arm_msg.pos[i].data = q_reference_(component_description_map_[component_name].start_index + i);
+        right_arm_msg_.position[i] = q_reference_(component_description_map_[component_name].start_index + i);
     }
-    right_arm_pub_.publish(arm_msg);
+    right_arm_pub_.publish(right_arm_msg_);
+    //ROS_WARN("Right arm message not published");
 
     // Head
 

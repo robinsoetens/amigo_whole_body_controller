@@ -12,6 +12,7 @@
 
 // Messages
 #include <std_msgs/Float64.h>
+#include <sensor_msgs/JointState.h>
 #include <amigo_msgs/arm_joints.h>
 #include <amigo_msgs/spindle_setpoint.h>
 #include <amigo_msgs/head_ref.h>
@@ -74,6 +75,10 @@ protected:
     Eigen::VectorXd qdot_reference_;
 
     Eigen::VectorXd q_reference_;
+    sensor_msgs::JointState left_arm_msg_;
+    sensor_msgs::JointState right_arm_msg_;
+    sensor_msgs::JointState torso_msg_;
+    sensor_msgs::JointState head_msg_;
 
     //! Nullspace projection matrix
     Eigen::MatrixXd N_;
@@ -106,11 +111,16 @@ protected:
     void setTopics();
 
     //callbackOdometry
-    void callbackMeasuredTorsoPosition(const std_msgs::Float64::ConstPtr& msg);
+    /*void callbackMeasuredTorsoPosition(const std_msgs::Float64::ConstPtr& msg);
     void callbackMeasuredLeftArmPosition(const amigo_msgs::arm_joints::ConstPtr& msg);
     void callbackMeasuredRightArmPosition(const amigo_msgs::arm_joints::ConstPtr& msg);
     void callbackMeasuredHeadPan(const std_msgs::Float64::ConstPtr& msg);
-    void callbackMeasuredHeadTilt(const std_msgs::Float64::ConstPtr& msg);
+    void callbackMeasuredHeadTilt(const std_msgs::Float64::ConstPtr& msg);*/
+    void callbackMeasuredTorsoPosition(const sensor_msgs::JointState::ConstPtr& msg);
+    void callbackMeasuredLeftArmPosition(const sensor_msgs::JointState::ConstPtr& msg);
+    void callbackMeasuredRightArmPosition(const sensor_msgs::JointState::ConstPtr& msg);
+    //void callbackMeasuredHeadPan(const std_msgs::Float64::ConstPtr& msg);
+    //void callbackMeasuredHeadTilt(const std_msgs::Float64::ConstPtr& msg);
 
 };
 

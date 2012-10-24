@@ -18,6 +18,7 @@
   <depend package="std_msgs"/>
   <depend package="amigo_msgs"/>
   <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
   
   <depend package="tf"/>
   
