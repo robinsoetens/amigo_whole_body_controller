@@ -38,11 +38,11 @@ public:
     /*
      * Initialize
      */
-    bool Initialize(std::map<std::string, component_description>& component_description_map);
+    bool Initialize(std::map<std::string, component_description>& component_description_map, std::map<std::string, uint>& joint_name_index_map);
 
     //void Update(std::map<std::string, std::vector<double> >);
     // Why can't I make the update const &?
-    void Update(std::map<std::string, component_description>, const std::vector<bool>&, Eigen::MatrixXd&);
+    void Update(const KDL::JntArray& q_current, std::map<std::string, uint>& joint_name_index_map, std::map<std::string, component_description>, const std::vector<bool>&, Eigen::MatrixXd&);
 
     //! Map contains a string to describe which component this concerns and a vector with eventually two integers to describe the start and end-index of this component
     std::map<std::string, std::vector<int> > index_map;
@@ -61,7 +61,7 @@ private:
      * Function reads the number of joints in a certain chain and puts the desired values in the index_map
      *
      */
-    bool readJoints(urdf::Model &robot_model, std::map<std::string, component_description>& component_description_map, const std::vector<std::string>& chain_description_vector);
+    bool readJoints(urdf::Model &robot_model, std::map<std::string, component_description>& component_description_map, const std::vector<std::string>& chain_description_vector, std::map<std::string, uint>& joint_name_index_map);
 
     //! Vector containing interfaces between various components
     //TODO: This isn't quite enough, it would also be desirable to know what components it concerns (for bookkeeping)

@@ -18,7 +18,7 @@ struct component_description {
         std::string root_name;
         std::vector<std::string> tip_names;
         int number_of_joints;
-        std::vector<double> q;
+        ///std::vector<double> q;
         std::vector<std::string> joint_names;
         int start_index;
         int end_index;

@@ -43,25 +43,23 @@ bool WholeBodyController::initialize() {
     component_description_map_["torso"].tip_names.push_back("shoulder_mount_left");
     component_description_map_["torso"].tip_names.push_back("shoulder_mount_right");
     component_description_map_["torso"].number_of_joints = 0;
-    component_description_map_["torso"].q.resize(component_description_map_["torso"].number_of_joints);
 
     component_description_map_["left_arm"].root_name = "shoulder_mount_left";
     component_description_map_["left_arm"].tip_names.push_back("grippoint_left");
     component_description_map_["left_arm"].number_of_joints = 0;
-    component_description_map_["left_arm"].q.resize(component_description_map_["left_arm"].number_of_joints);
 
     component_description_map_["right_arm"].root_name = "shoulder_mount_right";
     component_description_map_["right_arm"].tip_names.push_back("grippoint_right");
     component_description_map_["right_arm"].number_of_joints = 0;
-    component_description_map_["right_arm"].q.resize(component_description_map_["right_arm"].number_of_joints);
 
     // Implement Jacobian matrix
     // Needs to be done before defining the subscribers, since the callback functions depend on
     // the mapping that results from this initialization
-    ComputeJacobian_.Initialize(component_description_map_);
+    ComputeJacobian_.Initialize(component_description_map_, joint_name_index_map_);
     ///ROS_INFO("Number of torso joints equals %i", component_description_map_["torso"].number_of_joints);
     ///ROS_INFO("Number of left arm joints equals %i", component_description_map_["left_arm"].number_of_joints);
     ///ROS_INFO("Number of right arm joints equals %i", component_description_map_["right_arm"].number_of_joints);
+    num_joints_ = ComputeJacobian_.num_joints;
 
     // Initialize subscribers etc.
     setTopics();
@@ -78,21 +76,21 @@ bool WholeBodyController::initialize() {
     // Initialize nullspace calculator
     // ToDo: Make this variable
     Eigen::MatrixXd A;
-    A.resize(ComputeJacobian_.num_joints,ComputeJacobian_.num_joints);
-    for (uint i = 0; i < ComputeJacobian_.num_joints; i++) {
-        for (uint j = 0; j<ComputeJacobian_.num_joints; j++) {
+    A.resize(num_joints_,num_joints_);
+    for (uint i = 0; i < num_joints_; i++) {
+        for (uint j = 0; j< num_joints_; j++) {
             if (i==j) A(i,j) = 1;
             else A(i,j) = 0;
         }
     }
-    ComputeNullspace_.initialize(ComputeJacobian_.num_joints, A);
-    N_.resize(ComputeJacobian_.num_joints,ComputeJacobian_.num_joints);
+    ComputeNullspace_.initialize(num_joints_, A);
+    N_.resize(num_joints_,num_joints_);
 
     // Initialize Joint Limit Avoidance
     // ToDo: make variable
-    std::vector<double> JLA_gain(ComputeJacobian_.num_joints);      // Gain for the joint limit avoidance
-    std::vector<double> JLA_workspace(ComputeJacobian_.num_joints); // Workspace: joint gets 'pushed' back when it's outside of this part of the center of the workspace
-    for (uint i = 0; i < ComputeJacobian_.num_joints; i++) {
+    std::vector<double> JLA_gain(num_joints_);      // Gain for the joint limit avoidance
+    std::vector<double> JLA_workspace(num_joints_); // Workspace: joint gets 'pushed' back when it's outside of this part of the center of the workspace
+    for (uint i = 0; i < num_joints_; i++) {
         JLA_gain[i] = 1;
         JLA_workspace[i] = 0.9;
     }
@@ -101,37 +99,40 @@ bool WholeBodyController::initialize() {
 
     // Initialize Posture Controller
     // ToDo: make variable
-    std::vector<double> posture_gain(ComputeJacobian_.num_joints);
-    for (uint i = 0; i < ComputeJacobian_.num_joints; i++) posture_gain[i] = 1;
+    std::vector<double> posture_gain(num_joints_);
+    for (uint i = 0; i < num_joints_; i++) posture_gain[i] = 1;
     PostureControl_.initialize(ComputeJacobian_.q_min_,ComputeJacobian_.q_max_,posture_gain);
     ROS_INFO("Posture Control initialized");
 
     // Resize additional variables
     F_task_.resize(0);
-    q_current_.resize(ComputeJacobian_.num_joints);
-    qdot_reference_.resize(ComputeJacobian_.num_joints);
-    q_reference_.resize(ComputeJacobian_.num_joints);
-    Jacobian_.resize(0,ComputeJacobian_.num_joints);                // Jacobian is resized to zero rows, number of rows depends on number of tasks
-    tau_.resize(ComputeJacobian_.num_joints);
-    tau_nullspace_.resize(ComputeJacobian_.num_joints);
+    q_current_.resize(num_joints_);
+    qdot_reference_.resize(num_joints_);
+    q_reference_.resize(num_joints_);
+    Jacobian_.resize(0,num_joints_);                // Jacobian is resized to zero rows, number of rows depends on number of tasks
+    tau_.resize(num_joints_);
+    tau_nullspace_.resize(num_joints_);
     isactive_vector_.resize(2);
     previous_num_active_tasks_ = 0;
 
     // Resize the vectors of the joint_state_msg
     // ToDo: automate this
+    ///ROS_INFO("Resizing messages");
     left_arm_msg_.name.resize(component_description_map_["left_arm"].number_of_joints);
     left_arm_msg_.position.resize(component_description_map_["left_arm"].number_of_joints);
     left_arm_msg_.velocity.resize(component_description_map_["left_arm"].number_of_joints);
     left_arm_msg_.effort.resize(component_description_map_["left_arm"].number_of_joints);
+    ///ROS_INFO("Insert joint names in left arm message");
     for (int i = 0; i < component_description_map_["left_arm"].number_of_joints; i++) {
         left_arm_msg_.name[i] = component_description_map_["left_arm"].joint_names[i];
         component_description_map_["left_arm"].joint_name_map_[component_description_map_["left_arm"].joint_names[i]] = i;
-        ROS_INFO("Component left arm, joint %s, index %i", component_description_map_["left_arm"].joint_names[i].c_str(), component_description_map_["left_arm"].joint_name_map_[component_description_map_["left_arm"].joint_names[i]]);
+        /////ROS_INFO("Component left arm, joint %s, index %i", component_description_map_["left_arm"].joint_names[i].c_str(), component_description_map_["left_arm"].joint_name_map_[component_description_map_["left_arm"].joint_names[i]]);
     }
     right_arm_msg_.name.resize(component_description_map_["right_arm"].number_of_joints);
     right_arm_msg_.position.resize(component_description_map_["right_arm"].number_of_joints);
     right_arm_msg_.velocity.resize(component_description_map_["right_arm"].number_of_joints);
     right_arm_msg_.effort.resize(component_description_map_["right_arm"].number_of_joints);
+    ///ROS_INFO("Insert joint names in right arm message");
     for (int i = 0; i < component_description_map_["right_arm"].number_of_joints; i++) {
         right_arm_msg_.name[i] = component_description_map_["right_arm"].joint_names[i];
         component_description_map_["right_arm"].joint_name_map_[component_description_map_["right_arm"].joint_names[i]] = i;
@@ -149,6 +150,10 @@ bool WholeBodyController::initialize() {
     head_msg_.position.resize(component_description_map_[component_name].number_of_joints);
     head_msg_.velocity.resize(component_description_map_[component_name].number_of_joints);
     head_msg_.effort.resize(component_description_map_[component_name].number_of_joints);*/
+
+    for (std::map<std::string, uint>::iterator iter = joint_name_index_map_.begin(); iter != joint_name_index_map_.end(); ++iter) {
+        ROS_INFO("Joint %s has index %i",iter->first.c_str(),iter->second);
+    }
 
     ROS_INFO("Whole Body Controller Initialized");
 
@@ -186,7 +191,7 @@ bool WholeBodyController::update() {
 
     // Compute new Jacobian matrix
     ///ROS_INFO("Updating wholebodycontroller");
-    ComputeJacobian_.Update(component_description_map_, isactive_vector_, Jacobian_);
+    ComputeJacobian_.Update(q_current_, joint_name_index_map_, component_description_map_, isactive_vector_, Jacobian_);
     if (isactive_vector_[0] || isactive_vector_[1]) {
         ///uint show_column = 6;
         ///uint show_row = 0;
@@ -279,6 +284,8 @@ void WholeBodyController::setTopics() {
 
 void WholeBodyController::callbackMeasuredTorsoPosition(const sensor_msgs::JointState::ConstPtr& msg) {
 
+    ///ROS_INFO("Update torso position");
+
     //TODO: Get rid of hardcoded root_joint
 
     std::string component_name = "torso";
@@ -286,7 +293,7 @@ void WholeBodyController::callbackMeasuredTorsoPosition(const sensor_msgs::Joint
 
         std::string joint_name = msg->name[i];
         double data = msg->position[i];
-        component_description_map_[component_name].q[component_description_map_[component_name].joint_name_map_[joint_name]] = data;
+        ///component_description_map_[component_name].q[component_description_map_[component_name].joint_name_map_[joint_name]] = data;
         q_current_(component_description_map_[component_name].joint_name_map_[joint_name]+component_description_map_[component_name].start_index) = data;
         //ROS_INFO("%s joint %i (%s) = %f",component_name.c_str(),i+1,joint_name.c_str(),component_description_map_[component_name].q[i]);
     }
@@ -294,6 +301,8 @@ void WholeBodyController::callbackMeasuredTorsoPosition(const sensor_msgs::Joint
 }
 
 void WholeBodyController::callbackMeasuredLeftArmPosition(const sensor_msgs::JointState::ConstPtr& msg) {
+
+    ///ROS_INFO("Update left arm position");
 
     //TODO: Get rid of hardcoded root_joint
 
@@ -303,13 +312,15 @@ void WholeBodyController::callbackMeasuredLeftArmPosition(const sensor_msgs::Joi
 
         std::string joint_name = msg->name[i];
         double data = msg->position[i];
-        component_description_map_[component_name].q[component_description_map_[component_name].joint_name_map_[joint_name]] = data;
+        ///component_description_map_[component_name].q[component_description_map_[component_name].joint_name_map_[joint_name]] = data;
         q_current_(component_description_map_[component_name].joint_name_map_[joint_name]+component_description_map_[component_name].start_index) = data;
         //ROS_INFO("%s joint %i (%s) = %f",component_name.c_str(),i+1,joint_name.c_str(),component_description_map_[component_name].q[i]);
     }
 }
 
 void WholeBodyController::callbackMeasuredRightArmPosition(const sensor_msgs::JointState::ConstPtr& msg) {
+
+    ///ROS_INFO("Update right arm position");
 
     //TODO: Get rid of hardcoded root_joint
 
@@ -319,7 +330,7 @@ void WholeBodyController::callbackMeasuredRightArmPosition(const sensor_msgs::Jo
 
         std::string joint_name = msg->name[i];
         double data = msg->position[i];
-        component_description_map_[component_name].q[component_description_map_[component_name].joint_name_map_[joint_name]] = data;
+        ///component_description_map_[component_name].q[component_description_map_[component_name].joint_name_map_[joint_name]] = data;
         q_current_(component_description_map_[component_name].joint_name_map_[joint_name]+component_description_map_[component_name].start_index) = data;
         //ROS_INFO("%s joint %i (%s) = %f",component_name.c_str(),i+1,joint_name.c_str(),component_description_map_[component_name].q[i]);
     }

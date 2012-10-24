@@ -10,7 +10,7 @@ ComputeJacobian::~ComputeJacobian() {
     }
 }
 
-bool ComputeJacobian::Initialize(std::map<std::string, component_description>& component_description_map) {
+bool ComputeJacobian::Initialize(std::map<std::string, component_description>& component_description_map, std::map<std::string, uint>& joint_name_index_map) {
 
     //Load parameters from parameter server
     // Get node handle
@@ -90,7 +90,7 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description>& c
         chain_array.push_back(temp_chain);
 
         // Read joints and make index map of joints
-        if (!readJoints(robot_model, component_description_map, chain_description_array[i])) {
+        if (!readJoints(robot_model, component_description_map, chain_description_array[i], joint_name_index_map)) {
             ROS_FATAL("Could not read information about the joints");
             return false;
         }
@@ -110,7 +110,7 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description>& c
     return true;
 }
 
-bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string, component_description>& component_description_map, const std::vector<std::string>& chain_description_vector) {
+bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string, component_description>& component_description_map, const std::vector<std::string>& chain_description_vector, std::map<std::string, uint>& joint_name_index_map) {
 
     // get joint maxs and mins
     ///boost::shared_ptr<const urdf::Link> link = robot_model.getLink(chain_description_vector[0]);
@@ -164,18 +164,21 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
             component_description_map[chain_description_vector[i]].start_index = num_joints-current_num_joints;
             component_description_map[chain_description_vector[i]].end_index = num_joints-1;
             component_description_map[chain_description_vector[i]].number_of_joints = current_num_joints;
-            component_description_map[chain_description_vector[i]].q.resize(current_num_joints);
+            ///component_description_map[chain_description_vector[i]].q.resize(current_num_joints);
             ROS_INFO("Component %s gets startindex %i and endindex %i", chain_description_vector[i].c_str(), component_description_map[chain_description_vector[i]].start_index, component_description_map[chain_description_vector[i]].end_index);
 
             for (int k = 0; k < current_num_joints; k++) {
                 //temp_joint_min.push_back(current_temp_joint_min[i]);
                 //temp_joint_max.push_back(current_temp_joint_max[i]);
                 // The joints are read from tip to root but appear in the joint vectors from root to tip so have to be 'used' in reverse order.
-                component_description_map[chain_description_vector[i]].joint_names.push_back(current_joint_names[current_num_joints-1-k]);
+                std::string joint_name(current_joint_names[current_num_joints-1-k]);
+                ///component_description_map[chain_description_vector[i]].joint_names.push_back(current_joint_names[current_num_joints-1-k]);
                 q_min_.push_back(current_temp_joint_min[current_num_joints-1-k]);
                 q_max_.push_back(current_temp_joint_max[current_num_joints-1-k]);
+                ///ROS_INFO("Insert joint %s in map",joint_name.c_str());
+                joint_name_index_map[joint_name] = k+num_joints-current_num_joints;
             }
-            for (int k = 0; k < current_num_joints; k++) ROS_INFO("Joint %i of %s is called %s",k,chain_description_vector[i].c_str(), component_description_map[chain_description_vector[i]].joint_names[k].c_str() );
+
         }
 
     }
@@ -183,7 +186,7 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
     return true;
 }
 
-void ComputeJacobian::Update(std::map<std::string, component_description> component_description_map, const std::vector<bool>& isactive_vector, Eigen::MatrixXd& Jacobian) {
+void ComputeJacobian::Update(const KDL::JntArray& q_current, std::map<std::string, uint>& joint_name_index_map, std::map<std::string, component_description> component_description_map, const std::vector<bool>& isactive_vector, Eigen::MatrixXd& Jacobian) {
 
     //ROS_INFO("Updating Jacobian matrices");
     if (isactive_vector != previous_isactive_vector_) {
@@ -228,15 +231,11 @@ void ComputeJacobian::Update(std::map<std::string, component_description> compon
 
                 ///ROS_INFO("First value is %f", component_description_map[component_name].q[0]);
 
-                /*for (int iii = 0; iii<component_description_map[component_name].number_of_joints; iii++) {
-                ///ROS_INFO("Joint %i = %f", iii, component_description_map[chain_description_array[i][ii]].q[iii]);
-                chain_joint_array(index) = component_description_map[component_name].q[iii];
-                index++;
-            }*/
-
                 current_index -= component_description_map[component_name].number_of_joints;
                 for (int iii = 0; iii<component_description_map[component_name].number_of_joints; iii++) {
-                    chain_joint_array(current_index+iii) = component_description_map[component_name].q[iii];
+                    ///chain_joint_array(current_index+iii) = component_description_map[component_name].q[iii];
+                    std::string joint_name = component_description_map[component_name].joint_names[iii];
+                    chain_joint_array(current_index+iii) = q_current(joint_name_index_map[joint_name]);
                 }
 
             }
