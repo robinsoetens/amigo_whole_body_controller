@@ -1,0 +1,73 @@
+/*!
+ * \author Janno Lunenburg
+ * \date September, 2012
+ * \version 0.1
+ */
+
+#ifndef WBC_OBSTACLEAVOIDANCE_H_
+#define WBC_OBSTACLEAVOIDANCE_H_
+
+// ROS
+#include "ros/ros.h"
+
+// tf
+#include <tf/transform_listener.h>
+
+// Eigen
+#include <Eigen/Core>
+
+/////
+
+class ObstacleAvoidance {
+
+public:
+
+    //ToDo: make configure, start- and stophook. Components can be started/stopped in an actionlib kind of fashion
+
+    /**
+     * Constructor
+     */
+    ObstacleAvoidance();
+
+    /**
+     * Deconstructor
+     */
+    virtual ~ObstacleAvoidance();
+
+    /**
+     * Initialize function
+     */
+    bool initialize(const std::string&, uint);
+
+    /**
+     * Update
+     */
+    void update(Eigen::VectorXd&, uint& force_vector_index);
+
+protected:
+
+    /**
+     * Subscriber to target position
+     */
+    ros::Subscriber target_sub_;
+
+    void callbackTarget(const geometry_msgs::PoseStamped::ConstPtr& msg);
+
+    tf::TransformListener listener_;
+
+    /////geometry_msgs::PoseStamped transformPose(const tf::TransformListener& listener, geometry_msgs::PoseStamped poseMsg);
+    geometry_msgs::PoseStamped transformPose(geometry_msgs::PoseStamped poseMsg);
+
+    geometry_msgs::PoseStamped errorPose;
+    Eigen::VectorXd error_vector_;
+
+    // Cartesian Impedance matrix
+    Eigen::MatrixXd K_;
+
+    std::string end_effector_frame_;
+
+    uint F_start_index_;
+
+};
+
+#endif

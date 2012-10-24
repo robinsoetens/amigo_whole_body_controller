@@ -42,6 +42,7 @@ rosbuild_add_library(wholebodycontroller
 					src/ComputeJacobian.cpp
 					src/AdmittanceController.cpp
 					src/ComputeNullspace.cpp
+					src/ObstacleAvoidance.cpp
                                         src/JointLimitAvoidance.cpp
                                         src/PostureControl.cpp)
 #                                        src/JointTrajectoryAction.cpp)
