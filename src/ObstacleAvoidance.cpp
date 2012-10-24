@@ -29,18 +29,21 @@ bool ObstacleAvoidance::initialize(const std::string& end_effector_frame, uint F
 
 void ObstacleAvoidance::update(Eigen::VectorXd& F_task, uint& force_vector_index) {
 
-    tf::Stamped<tf::Pose> pose;
-    pose.setIdentity();
-    pose.frame_id_ = end_effector_frame_;
-    pose.stamp_ = ros::Time();
+    tf::Stamped<tf::Pose> end_effector_pose;
+    end_effector_pose.setIdentity();
+    end_effector_pose.frame_id_ = end_effector_frame_;
+    end_effector_pose.stamp_ = ros::Time();
 
-    goal_pose_.header.stamp = ros::Time();
+    tf::Stamped<tf::Pose> end_effector_pose_MAP;
+
     try {
-        listener.transformPose(end_effector_frame_, goal_pose_, errorPose);
+        listener.transformPose("/map", end_effector_pose, end_effector_pose_MAP);
     } catch (tf::TransformException& e) {
         ROS_ERROR("CartesianImpedance: %s", e.what());
         return;
     }
+
+
 
     //listener.transformPose(end_effector_frame_,now,goal_pose_,goal_pose_.header.frame_id,errorPose);
 
