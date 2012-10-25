@@ -185,7 +185,12 @@ void CartesianImpedance::update(Eigen::VectorXd& F_task, uint& force_vector_inde
         tf::quaternionMsgToTF(errorPose.pose.orientation, orientation);
         double roll, pitch, yaw;
 
-        btMatrix3x3(orientation).getRPY(roll, pitch, yaw);
+#if ROS_VERSION_MINIMUM(1, 8, 0)
+    tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
+#else
+    btMatrix3x3(orientation).getRPY(roll, pitch, yaw);
+#endif
+
         error_vector_(0) = errorPose.pose.position.x;
         error_vector_(1) = errorPose.pose.position.y;
         error_vector_(2) = errorPose.pose.position.z;

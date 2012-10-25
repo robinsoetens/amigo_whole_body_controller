@@ -1,6 +1,8 @@
 #include "ObstacleAvoidance.h"
 #include <tf/transform_datatypes.h>
 
+using namespace std;
+
 ObstacleAvoidance::ObstacleAvoidance() {
 
 }
@@ -50,7 +52,36 @@ void ObstacleAvoidance::update(Eigen::VectorXd& F_task, uint& force_vector_index
 
     Eigen::Vector3d end_effector_pos(end_effector_pose_MAP.getOrigin().getX(), end_effector_pose_MAP.getOrigin().getY(), end_effector_pose_MAP.getOrigin().getZ());
 
-    F_task.segment(0, 3) += end_effector_pos - Eigen::Vector3d(-0.077122, 0.252178, 0.511944);
+    //Eigen::Vector3d diff = end_effector_pos - Eigen::Vector3d(-0.272971, 0.250703, 0.505021);
+    //Eigen::Vector3d diff = end_effector_pos - Eigen::Vector3d(-1.121356, 0.178698, 1.302811);
+
+    Eigen::Vector3d diff = end_effector_pos - Eigen::Vector3d(end_effector_pose_MAP.getOrigin().getX(), end_effector_pose_MAP.getOrigin().getY(), 0.7);
+
+    if (end_effector_pose_MAP.getOrigin().getZ() < 0.7) {
+         F_task.segment(0, 3) += Eigen::Vector3d(0, 0, 1) * 10;
+         return;
+    }
+
+    double distance = diff.norm();
+    Eigen::Vector3d diff_normalized = diff / distance;
+
+    cout << "Distance = " << distance << endl;
+
+    double weight = 0;
+    if (distance < 0.1) {
+        weight = 1;
+    } else if (distance < 0.2) {
+        weight = (double)0.01 / (distance * distance);
+    } else if (distance < 0.3) {
+        weight = 0;//0.1 - (distance - 0.2) / 10;
+    }
+
+    F_task.segment(0, 3) += diff_normalized * weight;
+
+    cout << F_task << endl;
+
+
+    //F_task.segment(0, 3) += end_effector_pos - Eigen::Vector3d(-1.027083, 0.216306, 1.286768);
 
 /*
     //listener.transformPose(end_effector_frame_,now,goal_pose_,goal_pose_.header.frame_id,errorPose);
