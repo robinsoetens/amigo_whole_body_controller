@@ -73,8 +73,27 @@ bool WholeBodyController::initialize() {
 
     obstacle_avoidance_.initialize("/grippoint_left", 0);
 
+    // Read parameters
+    std::vector<double> JLA_gain(num_joints_);      // Gain for the joint limit avoidance
+    std::vector<double> JLA_workspace(num_joints_); // Workspace: joint gets 'pushed' back when it's outside of this part of the center of the workspace
+
+    std::vector<double> posture_q0(num_joints_);
+    std::vector<double> posture_gain(num_joints_);
+
+    std::vector<double> admittance_mass(num_joints_);
+    std::vector<double> admittance_damping(num_joints_);
+    for (std::map<std::string, uint>::iterator iter = joint_name_index_map_.begin(); iter != joint_name_index_map_.end(); ++iter) {
+        n.param<double> (ns+"/joint_limit_avoidance/gain/"+iter->first, JLA_gain[iter->second], 1.0);
+        n.param<double> (ns+"/joint_limit_avoidance/workspace/"+iter->first, JLA_workspace[iter->second], 0.9);
+        n.param<double> (ns+"/posture_control/home_position/"+iter->first, posture_q0[iter->second], 0);
+        n.param<double> (ns+"/posture_control/gain/"+iter->first, posture_gain[iter->second], 1);
+        n.param<double> (ns+"/admittance_control/mass/"+iter->first, admittance_mass[iter->second], 10);
+        n.param<double> (ns+"/admittance_control/damping/"+iter->first, admittance_damping[iter->second], 10);
+        ROS_INFO("Damping joint %s = %f",iter->first.c_str(),admittance_damping[iter->second]);
+    }
+
     // Initialize admittance controller
-    AdmitCont_.initialize(ComputeJacobian_.q_min_, ComputeJacobian_.q_max_);
+    AdmitCont_.initialize(ComputeJacobian_.q_min_, ComputeJacobian_.q_max_, admittance_mass, admittance_damping);
 
     // Initialize nullspace calculator
     // ToDo: Make this variable
@@ -89,20 +108,6 @@ bool WholeBodyController::initialize() {
     A.setIdentity(num_joints_,num_joints_);
     ComputeNullspace_.initialize(num_joints_, A);
     N_.resize(num_joints_,num_joints_);
-
-    // Read parameters
-    std::vector<double> JLA_gain(num_joints_);      // Gain for the joint limit avoidance
-    std::vector<double> JLA_workspace(num_joints_); // Workspace: joint gets 'pushed' back when it's outside of this part of the center of the workspace
-
-    std::vector<double> posture_q0(num_joints_);
-    std::vector<double> posture_gain(num_joints_);
-    for (std::map<std::string, uint>::iterator iter = joint_name_index_map_.begin(); iter != joint_name_index_map_.end(); ++iter) {
-        n.param<double> (ns+"/joint_limit_avoidance/gain/"+iter->first, JLA_gain[iter->second], 1.0);
-        n.param<double> (ns+"/joint_limit_avoidance/workspace/"+iter->first, JLA_workspace[iter->second], 0.9);
-        n.param<double> (ns+"/posture_control/home_position/"+iter->first, posture_q0[iter->second], 0);
-        n.param<double> (ns+"/posture_control/gain"+iter->first, posture_gain[iter->second], 1);
-        ROS_INFO("Q0 joint %s = %f",iter->first.c_str(),posture_q0[iter->second]);
-    }
 
     // Initialize Joint Limit Avoidance
     for (uint i = 0; i < 15; i++) ROS_INFO("JLA gain of joint %i is %f",i,JLA_gain[i]);

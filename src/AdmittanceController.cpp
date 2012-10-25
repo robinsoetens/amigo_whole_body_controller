@@ -11,7 +11,7 @@ AdmittanceController::~AdmittanceController() {
 
 }
 
-void AdmittanceController::initialize(const std::vector<double>& q_min, const std::vector<double>& q_max) {
+void AdmittanceController::initialize(const std::vector<double>& q_min, const std::vector<double>& q_max, const std::vector<double>& mass, const std::vector<double>& damping) {
 
     // Resize relevant parameters
     uint num_joints = 15;
@@ -28,13 +28,19 @@ void AdmittanceController::initialize(const std::vector<double>& q_min, const st
     q_min_.resize(num_joints);
     q_max_.resize(num_joints);
 
-    // Set parameters (hardcoded)
+    // Set parameters
+    /*(hardcoded)
     for (uint i = 0; i<num_joints; i++) {
         m_(i) = 0.1;
         d_(i) = 1;
     }
     m_(7) = 1; // Torso
     d_(7) = 10;   // Torso
+    */
+    for (uint i = 0; i < num_joints; i++) {
+        m_(i) = mass[i];
+        d_(i) = damping[i];
+    }
 
     for (uint i = 0; i<num_joints; i++) {
 
