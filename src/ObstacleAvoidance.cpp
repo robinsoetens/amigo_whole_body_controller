@@ -37,12 +37,14 @@ void ObstacleAvoidance::update(Eigen::VectorXd& F_task, uint& force_vector_index
     tf::Stamped<tf::Pose> end_effector_pose_MAP;
 
     try {
-        listener.transformPose("/map", end_effector_pose, end_effector_pose_MAP);
+        listener_.transformPose("/map", end_effector_pose, end_effector_pose_MAP);
     } catch (tf::TransformException& e) {
         ROS_ERROR("CartesianImpedance: %s", e.what());
         return;
     }
 
+    ROS_INFO("End effector pose: %f, %f, %f", end_effector_pose_MAP.getOrigin().getX(), end_effector_pose_MAP.getOrigin().getY(), end_effector_pose_MAP.getOrigin().getZ());
+/*
 
 
     //listener.transformPose(end_effector_frame_,now,goal_pose_,goal_pose_.header.frame_id,errorPose);
@@ -83,76 +85,7 @@ void ObstacleAvoidance::update(Eigen::VectorXd& F_task, uint& force_vector_index
         server_->setSucceeded();
         ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
     }
-
-
-}
-
-/////
-void CartesianImpedance::goalCB() {
-
-    const amigo_arm_navigation::grasp_precomputeGoal& goal = *server_->acceptNewGoal();
-
-    ROS_WARN("Received new goal");
-
-    /*
-    // Cancels the currently active goal.
-    if (active_goal_.getGoalStatus().status == 1) {
-        // Stop something???
-
-        // Marks the current goal as canceled.
-        active_goal_.setCanceled();
-        is_active_ = false;
-        ROS_WARN("Canceling previous goal");
-    }
     */
 
-    // ToDo: Check whether the received goal meets it requirements
-    /*if (gh.getGoal()->PERFORM_PRE_GRASP) {
-        ROS_ERROR("Pre-grasp not yet implemented, rejecting goal");
-        gh.setRejected();
-    }*/
-    //else {
-
-    // Put the goal data in the right datatype
-    goal_pose_.header = goal.goal.header;
-    goal_pose_.pose.position.x = goal.goal.x;
-    goal_pose_.pose.position.y = goal.goal.y;
-    goal_pose_.pose.position.z = goal.goal.z;
-    double roll = goal.goal.roll;
-    double pitch = goal.goal.pitch;
-    double yaw = goal.goal.yaw;
-    geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
-    goal_pose_.pose.orientation = orientation;
-
-    // Pre-grasp
-    if (goal.PERFORM_PRE_GRASP) {
-        pre_grasp_ = true;
-        ROS_INFO("pre_grasp_ = %d",pre_grasp_);
-    }
-
-    // Set goal to accepted etc;
-    //gh.setAccepted();
-    //active_goal_ = gh;
-    is_active_ = true;
-    //}
-
-
 
 }
-
-void CartesianImpedance::cancelCB() {
-
-    /*
-    if (active_goal_ == gh)
-    {
-        // Marks the current goal as canceled.
-        active_goal_.setCanceled();
-        is_active_ = false;
-    }
-    */
-
-    is_active_ = false;
-    server_->setPreempted();
-}
-
-/////

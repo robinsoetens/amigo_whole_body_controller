@@ -24,6 +24,7 @@
 #include "ComputeNullspace.h"
 #include "JointLimitAvoidance.h"
 #include "PostureControl.h"
+#include "ObstacleAvoidance.h"
 //#include "TreeDescription.h"
 
 // Vector
@@ -57,6 +58,8 @@ protected:
     ComputeNullspace ComputeNullspace_;
     JointLimitAvoidance JointLimitAvoidance_;
     PostureControl PostureControl_;
+
+    ObstacleAvoidance obstacle_avoidance_;
 
     //! Map contains a string to describe the (root joint of the component) this concerns and a vector (is sufficient) with the current joint values
     std::map<std::string, std::vector<double> > q_current_map_;

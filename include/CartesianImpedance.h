@@ -27,7 +27,6 @@
 // Action definition
 #include <amigo_arm_navigation/grasp_precomputeAction.h>
 
-
 /////
 
 class CartesianImpedance {

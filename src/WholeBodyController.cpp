@@ -70,6 +70,8 @@ bool WholeBodyController::initialize() {
     // Implement right Cartesian Impedance
     CIright_.initialize(std::string("/grippoint_right"), 6);
 
+    obstacle_avoidance_.initialize("/grippoint_left", 0);
+
     // Initialize admittance controller
     AdmitCont_.initialize(ComputeJacobian_.q_min_, ComputeJacobian_.q_max_);
 
@@ -205,6 +207,8 @@ bool WholeBodyController::update() {
     // Not sure if this is the right approach: summing the taus up and then doing nullspace projection may result in smoother transitions and is probably quicker
     CIleft_.update(F_task_, force_vector_index);
     CIright_.update(F_task_, force_vector_index);
+
+    obstacle_avoidance_.update(F_task_, force_vector_index);
 
     //for (uint i = 0; i < F_task_.rows(); i++) ROS_INFO("F(%i) = %f",i,F_task_(i));
 
