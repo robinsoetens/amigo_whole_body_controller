@@ -99,7 +99,7 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description>& c
 
     }
 
-    for (uint i = 0; i < num_joints; i++) ROS_INFO("Joint limits joint %i are %f %f",i,q_min_[i],q_max_[i]);
+    //for (uint i = 0; i < num_joints; i++) ROS_INFO("Joint limits joint %i are %f %f",i,q_min_[i],q_max_[i]);
 
     // Set all chains to false for initialization.
     for (uint i = 0; i < chain_array.size(); i++) {

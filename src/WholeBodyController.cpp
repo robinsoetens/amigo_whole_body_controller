@@ -35,6 +35,7 @@ bool WholeBodyController::initialize() {
 
     // Get node handle
     ros::NodeHandle n("~");
+    std::string ns = n.getNamespace();
     //ROS_INFO("Nodehandle %s",n.getNamespace().c_str());
     ROS_INFO("Initializing whole body controller");
 
@@ -78,13 +79,14 @@ bool WholeBodyController::initialize() {
     // Initialize nullspace calculator
     // ToDo: Make this variable
     Eigen::MatrixXd A;
-    A.resize(num_joints_,num_joints_);
+    /*A.resize(num_joints_,num_joints_);
     for (uint i = 0; i < num_joints_; i++) {
         for (uint j = 0; j< num_joints_; j++) {
             if (i==j) A(i,j) = 1;
             else A(i,j) = 0;
         }
-    }
+    }*/
+    A.setIdentity(num_joints_,num_joints_);
     ComputeNullspace_.initialize(num_joints_, A);
     N_.resize(num_joints_,num_joints_);
 
@@ -92,10 +94,17 @@ bool WholeBodyController::initialize() {
     // ToDo: make variable
     std::vector<double> JLA_gain(num_joints_);      // Gain for the joint limit avoidance
     std::vector<double> JLA_workspace(num_joints_); // Workspace: joint gets 'pushed' back when it's outside of this part of the center of the workspace
-    for (uint i = 0; i < num_joints_; i++) {
+    /*for (uint i = 0; i < num_joints_; i++) {
         JLA_gain[i] = 1;
         JLA_workspace[i] = 0.9;
     }
+    ROS_INFO("Joint %s has index %i",iter->first.c_str(),iter->second);*/
+    for (std::map<std::string, uint>::iterator iter = joint_name_index_map_.begin(); iter != joint_name_index_map_.end(); ++iter) {
+        n.param<double> (ns+"/joint_limit_avoidance/gain/"+iter->first, JLA_gain[iter->second], 1.0);
+        n.param<double> (ns+"/joint_limit_avoidance/workspace"+iter->first, JLA_workspace[iter->second], 0.9);
+    }
+    for (uint i = 0; i < 15; i++) ROS_INFO("JLA gain of joint %i is %f",i,JLA_gain[i]);
+
     JointLimitAvoidance_.initialize(ComputeJacobian_.q_min_, ComputeJacobian_.q_max_, JLA_gain, JLA_workspace);
     ROS_INFO("Joint limit avoidance initialized");
 
@@ -126,9 +135,7 @@ bool WholeBodyController::initialize() {
     left_arm_msg_.effort.resize(component_description_map_["left_arm"].number_of_joints);
     for (int i = 0; i < component_description_map_["left_arm"].number_of_joints; i++) {
         left_arm_msg_.name[i] = component_description_map_["left_arm"].joint_names[i];
-        ROS_INFO("Test");
         component_description_map_["left_arm"].joint_name_map_[component_description_map_["left_arm"].joint_names[i]] = i;
-        ROS_INFO("Component left arm, joint %s, index %i", component_description_map_["left_arm"].joint_names[i].c_str(), component_description_map_["left_arm"].joint_name_map_[component_description_map_["left_arm"].joint_names[i]]);
     }
     right_arm_msg_.name.resize(component_description_map_["right_arm"].number_of_joints);
     right_arm_msg_.position.resize(component_description_map_["right_arm"].number_of_joints);
@@ -152,9 +159,9 @@ bool WholeBodyController::initialize() {
     head_msg_.velocity.resize(component_description_map_[component_name].number_of_joints);
     head_msg_.effort.resize(component_description_map_[component_name].number_of_joints);*/
 
-    for (std::map<std::string, uint>::iterator iter = joint_name_index_map_.begin(); iter != joint_name_index_map_.end(); ++iter) {
-        ROS_INFO("Joint %s has index %i",iter->first.c_str(),iter->second);
-    }
+    //for (std::map<std::string, uint>::iterator iter = joint_name_index_map_.begin(); iter != joint_name_index_map_.end(); ++iter) {
+    //   ROS_INFO("Joint %s has index %i",iter->first.c_str(),iter->second);
+    //}
 
     ROS_INFO("Whole Body Controller Initialized");
 
@@ -213,7 +220,7 @@ bool WholeBodyController::update() {
     //obstacle_avoidance_.update(F_task_, force_vector_index);
 
     if (F_task_.size() > 0) {
-        std::cout << F_task_ << std::endl;
+        //std::cout << F_task_ << std::endl;
     }
 
     for(unsigned int i = 0; i < 2; ++i) {
