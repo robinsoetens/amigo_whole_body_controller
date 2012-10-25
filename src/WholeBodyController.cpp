@@ -111,10 +111,11 @@ bool WholeBodyController::initialize() {
     q_current_.resize(num_joints_);
     qdot_reference_.resize(num_joints_);
     q_reference_.resize(num_joints_);
-    Jacobian_.resize(0,num_joints_);                // Jacobian is resized to zero rows, number of rows depends on number of tasks
+    Jacobian_.resize(12,num_joints_);                // Jacobian is resized to zero rows, number of rows depends on number of tasks
     tau_.resize(num_joints_);
     tau_nullspace_.resize(num_joints_);
     isactive_vector_.resize(2);
+    F_task_.resize(12);
     previous_num_active_tasks_ = 0;
 
     // Resize the vectors of the joint_state_msg
@@ -184,14 +185,15 @@ bool WholeBodyController::update() {
     else isactive_vector_[1] = false;
 
     // Only resize F_task_ when number of active tasks has chaned
-    if (num_active_tasks != previous_num_active_tasks_) {
-        F_task_.resize(6*num_active_tasks);
-        F_task_.setZero();
+    /*if (num_active_tasks != previous_num_active_tasks_) {
+        F_task_.resize(6*num_active_tasks);        
     }
+    */
+    F_task_.setZero();
 
     // Compute new Jacobian matrix
     ///ROS_INFO("Updating wholebodycontroller");
-    ComputeJacobian_.Update(q_current_, joint_name_index_map_, component_description_map_, isactive_vector_, Jacobian_);
+
     if (isactive_vector_[0] || isactive_vector_[1]) {
         ///uint show_column = 6;
         ///uint show_row = 0;
@@ -208,7 +210,22 @@ bool WholeBodyController::update() {
     CIleft_.update(F_task_, force_vector_index);
     CIright_.update(F_task_, force_vector_index);
 
-    obstacle_avoidance_.update(F_task_, force_vector_index);
+    //obstacle_avoidance_.update(F_task_, force_vector_index);
+
+    if (F_task_.size() > 0) {
+        std::cout << F_task_ << std::endl;
+    }
+
+    for(unsigned int i = 0; i < 2; ++i) {
+        isactive_vector_[i] = false;
+        for(unsigned int j = 0; j < 6; ++j) {
+            if (F_task_[i*6 + j] != 0) {
+                isactive_vector_[i] = true;
+            }
+        }
+    }
+
+    ComputeJacobian_.Update(q_current_, joint_name_index_map_, component_description_map_, isactive_vector_, Jacobian_);
 
     //for (uint i = 0; i < F_task_.rows(); i++) ROS_INFO("F(%i) = %f",i,F_task_(i));
 

@@ -189,6 +189,7 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
 void ComputeJacobian::Update(const KDL::JntArray& q_current, std::map<std::string, uint>& joint_name_index_map, std::map<std::string, component_description> component_description_map, const std::vector<bool>& isactive_vector, Eigen::MatrixXd& Jacobian) {
 
     //ROS_INFO("Updating Jacobian matrices");
+    /*
     if (isactive_vector != previous_isactive_vector_) {
         num_active_chains_ = 0;
         for (uint i = 0; i < isactive_vector.size(); i++) {
@@ -198,10 +199,13 @@ void ComputeJacobian::Update(const KDL::JntArray& q_current, std::map<std::strin
         Jacobian.resize(6*num_active_chains_,Jacobian.cols());
         Jacobian.setZero();
     }
+    */
+
+    Jacobian.setZero();
 
     KDL::JntArray chain_joint_array;
     KDL::Jacobian chain_jacobian;
-    uint chain_index = 0;
+   // uint chain_index = 0;
 
     // Compute Jacobian for every chain
     for (uint i = 0; i < chain_description_array.size(); i++) {
@@ -257,13 +261,13 @@ void ComputeJacobian::Update(const KDL::JntArray& q_current, std::map<std::strin
                 std::string component_name = chain_description_array[i][iiii];
                 current_index -= component_description_map[component_name].number_of_joints;
 
-                Jacobian.block(6*chain_index,component_description_map[component_name].start_index,6,component_description_map[component_name].number_of_joints) =
+                Jacobian.block(6 * i,component_description_map[component_name].start_index,6,component_description_map[component_name].number_of_joints) =
                         chain_jacobian.data.block(0,current_index,6,component_description_map[component_name].number_of_joints);
                 ///current_index += component_description_map[component_name].number_of_joints;
 
                 ///ROS_INFO("Size of Jacobian is %i x %i",Jacobian.data.rows(),Jacobian.data.cols());
             }
-            chain_index++;
+
         }
 
         ///ROS_INFO("Eighth column of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",Jacobian(0,7),Jacobian(1,7),Jacobian(2,7),Jacobian(3,7),Jacobian(4,7),Jacobian(5,7));

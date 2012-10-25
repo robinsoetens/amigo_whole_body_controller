@@ -44,9 +44,15 @@ void ObstacleAvoidance::update(Eigen::VectorXd& F_task, uint& force_vector_index
     }
 
     ROS_INFO("End effector pose: %f, %f, %f", end_effector_pose_MAP.getOrigin().getX(), end_effector_pose_MAP.getOrigin().getY(), end_effector_pose_MAP.getOrigin().getZ());
+
+
+    //-0.077122, 0.252178, 0.511944
+
+    Eigen::Vector3d end_effector_pos(end_effector_pose_MAP.getOrigin().getX(), end_effector_pose_MAP.getOrigin().getY(), end_effector_pose_MAP.getOrigin().getZ());
+
+    F_task.segment(0, 3) += end_effector_pos - Eigen::Vector3d(-0.077122, 0.252178, 0.511944);
+
 /*
-
-
     //listener.transformPose(end_effector_frame_,now,goal_pose_,goal_pose_.header.frame_id,errorPose);
 
     // ToDo: Check orientations as well
