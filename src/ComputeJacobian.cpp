@@ -172,7 +172,7 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
                 //temp_joint_max.push_back(current_temp_joint_max[i]);
                 // The joints are read from tip to root but appear in the joint vectors from root to tip so have to be 'used' in reverse order.
                 std::string joint_name(current_joint_names[current_num_joints-1-k]);
-                ///component_description_map[chain_description_vector[i]].joint_names.push_back(current_joint_names[current_num_joints-1-k]);
+                component_description_map[chain_description_vector[i]].joint_names.push_back(current_joint_names[current_num_joints-1-k]);
                 q_min_.push_back(current_temp_joint_min[current_num_joints-1-k]);
                 q_max_.push_back(current_temp_joint_max[current_num_joints-1-k]);
                 ///ROS_INFO("Insert joint %s in map",joint_name.c_str());
