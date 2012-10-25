@@ -1,0 +1,36 @@
+whole_body_controller:
+    admittance_control:
+        mass:
+            spindle_joint: 1.0
+            shoulder_yaw_joint_left: 0.1
+            shoulder_yaw_joint_right: 0.1
+            shoulder_pitch_joint_left: 0.1
+            shoulder_pitch_joint_right: 0.1
+            shoulder_roll_joint_left: 0.1
+            shoulder_roll_joint_right: 0.1
+            elbow_pitch_joint_left: 0.1
+            elbow_pitch_joint_right: 0.1
+            elbow_roll_joint_left: 0.1
+            elbow_roll_joint_right: 0.1
+            wrist_pitch_joint_left: 0.1
+            wrist_pitch_joint_right: 0.1
+            wrist_yaw_joint_left: 0.1
+            wrist_yaw_joint_right: 0.1
+        
+        damping:
+            spindle_joint: 10.0
+            shoulder_yaw_joint_left: 1.0
+            shoulder_yaw_joint_right: 1.0
+            shoulder_pitch_joint_left: 1.0
+            shoulder_pitch_joint_right: 1.0
+            shoulder_roll_joint_left: 1.0
+            shoulder_roll_joint_right: 1.0
+            elbow_pitch_joint_left: 1.0
+            elbow_pitch_joint_right: 1.0
+            elbow_roll_joint_left: 1.0
+            elbow_roll_joint_right: 1.0
+            wrist_pitch_joint_left: 1.0
+            wrist_pitch_joint_right: 1.0
+            wrist_yaw_joint_left: 1.0
+            wrist_yaw_joint_right: 1.0
+
