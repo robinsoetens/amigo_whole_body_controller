@@ -20,6 +20,16 @@
 
 class ObstacleAvoidance {
 
+    struct Box {
+
+        Box(const Eigen::Vector3d& min, const Eigen::Vector3d& max)
+            : min_(min), max_(max) {
+        }
+
+        Eigen::Vector3d min_;
+        Eigen::Vector3d max_;
+    };
+
 public:
 
     //ToDo: make configure, start- and stophook. Components can be started/stopped in an actionlib kind of fashion
@@ -44,29 +54,19 @@ public:
      */
     void update(Eigen::VectorXd&, uint& force_vector_index);
 
+    void visualize(const Eigen::Vector3d& dir_position) const;
+
 protected:
 
-    /**
-     * Subscriber to target position
-     */
-    ros::Subscriber target_sub_;
-
-    void callbackTarget(const geometry_msgs::PoseStamped::ConstPtr& msg);
+    std::vector<Box*> boxes_;
 
     tf::TransformListener listener_;
 
-    /////geometry_msgs::PoseStamped transformPose(const tf::TransformListener& listener, geometry_msgs::PoseStamped poseMsg);
-    geometry_msgs::PoseStamped transformPose(geometry_msgs::PoseStamped poseMsg);
-
-    geometry_msgs::PoseStamped errorPose;
-    Eigen::VectorXd error_vector_;
-
-    // Cartesian Impedance matrix
-    Eigen::MatrixXd K_;
-
-    std::string end_effector_frame_;
+    std::string end_effector_frame_;  
 
     uint F_start_index_;
+
+    ros::Publisher pub_marker_;
 
 };
 

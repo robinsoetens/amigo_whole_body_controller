@@ -1,6 +1,6 @@
 #include "WholeBodyController.h"
 
-const double loop_rate_ = 10;
+const double loop_rate_ = 50;
 
 int main(int argc, char **argv) {
 

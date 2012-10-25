@@ -27,6 +27,8 @@
   
   <depend package="amigo_arm_navigation"/>
   <depend package="amigo_joint_interface_converter"/>
+  
+  <depend package="visualization_msgs"/>
 
 </package>
 
