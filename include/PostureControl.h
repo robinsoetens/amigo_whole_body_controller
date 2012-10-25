@@ -21,7 +21,7 @@ public:
     virtual ~PostureControl();
 
     //! Initialize();
-    void initialize(const std::vector<double>& q_min, const std::vector<double>& q_max, const std::vector<double>& gain);
+    void initialize(const std::vector<double>& q_min, const std::vector<double>& q_max, const std::vector<double>& q0, const std::vector<double>& gain);
 
     //! Update
     void update(const KDL::JntArray& q_in, Eigen::VectorXd& tau_out);
@@ -34,7 +34,7 @@ protected:
         //! Joint array with average joint value
         // H = ((q-q0)/(qmax-qmin))^2
         // dH/dq = 2(q-q0)/(qmax-qmin)^2
-        KDL::JntArray q0_;
+        std::vector<double> q0_;
 
         //! Number of joints
         uint num_joints_;

@@ -38,7 +38,7 @@ void JointLimitAvoidance::initialize(const std::vector<double>& q_min, const std
         K_[i] = 2*gain[i] / ((q_max[i] - q_min[i])*(q_max[i] - q_min[i]));
         qmin_threshold_(i) = q_min[i] + (1.0-workspace[i])/2 * (q_max[i] - q_min[i]);
         qmax_threshold_(i) = q_max[i] - (1.0-workspace[i])/2 * (q_max[i] - q_min[i]);
-        ROS_INFO("qmin = %f, qthresmin = %f, qthresmax = %f, qmax = %f, K = %f",q_min[i],qmin_threshold_(i),qmax_threshold_(i),q_max[i], K_[i]);
+        //ROS_INFO("qmin = %f, qthresmin = %f, qthresmax = %f, qmax = %f, K = %f",q_min[i],qmin_threshold_(i),qmax_threshold_(i),q_max[i], K_[i]);
     }
 
 }

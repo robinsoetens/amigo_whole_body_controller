@@ -1,0 +1,35 @@
+whole_body_controller:
+    posture_control:
+        gain:
+            spindle_joint: 2.0
+            shoulder_yaw_joint_left: 2.0
+            shoulder_yaw_joint_right: 2.0
+            shoulder_pitch_joint_left: 2.0
+            shoulder_pitch_joint_right: 2.0
+            shoulder_roll_joint_left: 2.0
+            shoulder_roll_joint_right: 2.0
+            elbow_pitch_joint_left: 2.0
+            elbow_pitch_joint_right: 2.0
+            elbow_roll_joint_left: 2.0
+            elbow_roll_joint_right: 2.0
+            wrist_pitch_joint_left: 2.0
+            wrist_pitch_joint_right: 2.0
+            wrist_yaw_joint_left: 2.0
+            wrist_yaw_joint_right: 2.0
+        
+        home_position:
+            spindle_joint: 0.35
+            shoulder_yaw_joint_left: -0.1
+            shoulder_yaw_joint_right: -0.1
+            shoulder_pitch_joint_left: -0.2
+            shoulder_pitch_joint_right: -0.2
+            shoulder_roll_joint_left: 0.2
+            shoulder_roll_joint_right: 0.2
+            elbow_pitch_joint_left: 0.8
+            elbow_pitch_joint_right: 0.8
+            elbow_roll_joint_left: 0.0
+            elbow_roll_joint_right: 0.0
+            wrist_pitch_joint_left: 0.0
+            wrist_pitch_joint_right: 0.0
+            wrist_yaw_joint_left: 0.0
+            wrist_yaw_joint_right: 0.0

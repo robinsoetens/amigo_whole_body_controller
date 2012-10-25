@@ -90,29 +90,28 @@ bool WholeBodyController::initialize() {
     ComputeNullspace_.initialize(num_joints_, A);
     N_.resize(num_joints_,num_joints_);
 
-    // Initialize Joint Limit Avoidance
-    // ToDo: make variable
+    // Read parameters
     std::vector<double> JLA_gain(num_joints_);      // Gain for the joint limit avoidance
     std::vector<double> JLA_workspace(num_joints_); // Workspace: joint gets 'pushed' back when it's outside of this part of the center of the workspace
-    /*for (uint i = 0; i < num_joints_; i++) {
-        JLA_gain[i] = 1;
-        JLA_workspace[i] = 0.9;
-    }
-    ROS_INFO("Joint %s has index %i",iter->first.c_str(),iter->second);*/
+
+    std::vector<double> posture_q0(num_joints_);
+    std::vector<double> posture_gain(num_joints_);
     for (std::map<std::string, uint>::iterator iter = joint_name_index_map_.begin(); iter != joint_name_index_map_.end(); ++iter) {
         n.param<double> (ns+"/joint_limit_avoidance/gain/"+iter->first, JLA_gain[iter->second], 1.0);
-        n.param<double> (ns+"/joint_limit_avoidance/workspace"+iter->first, JLA_workspace[iter->second], 0.9);
+        n.param<double> (ns+"/joint_limit_avoidance/workspace/"+iter->first, JLA_workspace[iter->second], 0.9);
+        n.param<double> (ns+"/posture_control/home_position/"+iter->first, posture_q0[iter->second], 0);
+        n.param<double> (ns+"/posture_control/gain"+iter->first, posture_gain[iter->second], 1);
+        ROS_INFO("Q0 joint %s = %f",iter->first.c_str(),posture_q0[iter->second]);
     }
-    for (uint i = 0; i < 15; i++) ROS_INFO("JLA gain of joint %i is %f",i,JLA_gain[i]);
 
+    // Initialize Joint Limit Avoidance
+    for (uint i = 0; i < 15; i++) ROS_INFO("JLA gain of joint %i is %f",i,JLA_gain[i]);
     JointLimitAvoidance_.initialize(ComputeJacobian_.q_min_, ComputeJacobian_.q_max_, JLA_gain, JLA_workspace);
     ROS_INFO("Joint limit avoidance initialized");
 
     // Initialize Posture Controller
-    // ToDo: make variable
-    std::vector<double> posture_gain(num_joints_);
     for (uint i = 0; i < num_joints_; i++) posture_gain[i] = 1;
-    PostureControl_.initialize(ComputeJacobian_.q_min_,ComputeJacobian_.q_max_,posture_gain);
+    PostureControl_.initialize(ComputeJacobian_.q_min_, ComputeJacobian_.q_max_, posture_q0, posture_gain);
     ROS_INFO("Posture Control initialized");
 
     // Resize additional variables
