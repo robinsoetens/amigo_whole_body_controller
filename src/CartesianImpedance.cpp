@@ -91,6 +91,7 @@ bool CartesianImpedance::initialize(const std::string& end_effector_frame, uint 
     pre_grasp_ = false;
     n.param<double> (ns+"/pre_grasp_delta", pre_grasp_delta_, 0.1);
     /////
+	ROS_WARN("force_vector_index in update hook is now obsolete");
 
     ROS_INFO("Initialized Cartesian Impedance");
 
@@ -203,8 +204,8 @@ void CartesianImpedance::update(Eigen::VectorXd& F_task, uint& force_vector_inde
 
         ///ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
 
-        F_task.segment(force_vector_index,6) = K_ * error_vector_;
-        force_vector_index += 6;
+        F_task.segment(F_start_index_,6) = K_ * error_vector_;
+        //force_vector_index += 6;
 
         // ToDo: Include boundaries in action message
         int num_converged_dof = 0;
