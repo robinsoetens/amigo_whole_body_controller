@@ -39,7 +39,62 @@ bool WholeBodyController::initialize() {
     //ROS_INFO("Nodehandle %s",n.getNamespace().c_str());
     ROS_INFO("Initializing whole body controller");
 
+    // Fill in component description map
+
+    XmlRpc::XmlRpcValue component_params;
+    if (!n.getParam(ns + "/component_description", component_params)) {
+        ROS_ERROR("No component description given. (namespace: %s)", n.getNamespace().c_str());
+        return false;
+    }
+
+    if (component_params.getType() != XmlRpc::XmlRpcValue::TypeArray) {
+        ROS_ERROR("Component description list should be an array.  (namespace: %s)", n.getNamespace().c_str());
+        return false;
+    }
+
+    for(int i = 0; i < component_params.size(); ++i) {
+        XmlRpc::XmlRpcValue& component_struct = component_params[i];
+        if (!component_struct.getType() == XmlRpc::XmlRpcValue::TypeStruct) {
+            ROS_ERROR("Component description should be an struct. (namespace: %s)", n.getNamespace().c_str());
+            return false;
+        }
+
+        if (component_struct.size() != 1) {
+            ROS_ERROR("Malformed component description. (namespace: %s)", n.getNamespace().c_str());
+            return false;
+        }
+
+        component_description comp_description;
+
+        std::string component_name = component_struct.begin()->first;
+        XmlRpc::XmlRpcValue& component_param = component_struct.begin()->second;
+
+        XmlRpc::XmlRpcValue& v_root_name = component_param["root_name"];
+        if (v_root_name.getType() == XmlRpc::XmlRpcValue::TypeString) {
+            comp_description.root_name = (std::string)v_root_name;
+        } else {
+            ROS_ERROR("Component description for '%s' does not contain 'root_name'. (namespace: %s)", component_name.c_str(), n.getNamespace().c_str());
+            return false;
+        }
+
+        XmlRpc::XmlRpcValue& v_leaf_names = component_param["leaf_names"];
+        if (v_leaf_names.getType() != XmlRpc::XmlRpcValue::TypeArray) {
+            ROS_ERROR("Component description for '%s' doesn not contain 'leaf_names'. (namespace: %s)", component_name.c_str(), n.getNamespace().c_str());
+            return false;
+        }
+
+        for(int j = 0 ; j < v_leaf_names.size(); ++j) {
+            std::cout << (std::string)v_leaf_names[j] << std::endl;
+            comp_description.tip_names.push_back((std::string)v_leaf_names[j]);
+        }
+
+        comp_description.number_of_joints = 0;
+
+        component_description_map_[component_name] = comp_description;
+    }
+
     // Fill in component description map. This should be parsed from parameter file
+    /*
     component_description_map_["torso"].root_name = "base";
     component_description_map_["torso"].tip_names.push_back("shoulder_mount_left");
     component_description_map_["torso"].tip_names.push_back("shoulder_mount_right");
@@ -52,6 +107,7 @@ bool WholeBodyController::initialize() {
     component_description_map_["right_arm"].root_name = "shoulder_mount_right";
     component_description_map_["right_arm"].tip_names.push_back("grippoint_right");
     component_description_map_["right_arm"].number_of_joints = 0;
+    */
 
     // Implement Jacobian matrix
     // Needs to be done before defining the subscribers, since the callback functions depend on

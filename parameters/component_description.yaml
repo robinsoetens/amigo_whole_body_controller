@@ -2,14 +2,14 @@ whole_body_controller:
     component_description:
         - torso:
             root_name: "base"
-            tip_names:
+            leaf_names:
                 - "shoulder_mount_left"
                 - "shoulder_mount_right"
         - left_arm:
             root_name: "shoulder_mount_left"
-            tip_names:
+            leaf_names:
                 - "grippoint_left"
         - right_arm:
             root_name: "shoulder_mount_right"
-            tip_names:
+            leaf_names:
                 - "grippoint_right"
