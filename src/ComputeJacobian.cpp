@@ -119,10 +119,6 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description>& c
 
     //for (uint i = 0; i < num_joints; i++) ROS_INFO("Joint limits joint %i are %f %f",i,q_min_[i],q_max_[i]);
 
-    // Set all chains to false for initialization.
-    for (uint i = 0; i < chain_array.size(); i++) {
-        previous_isactive_vector_.push_back(false);
-    }
     num_active_chains_ = 0;
 
     return true;
@@ -137,6 +133,11 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
     //ROS_INFO("Tip name is %s", tip_name.c_str());
     boost::shared_ptr<const urdf::Link> link = robot_model.getLink(tip_name);
     boost::shared_ptr<const urdf::Joint> joint;
+
+    if (!link) {
+        ROS_ERROR("Could not get link for joint %s\n", tip_name.c_str());
+        return false;
+    }
 
     //Loop over every 'component' in the chain
     for (uint i = 0; i < chain_description_vector.size(); i++) {
@@ -154,11 +155,20 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
 
         //ROS_INFO("Root name = %s", root_name.c_str());
         while (link && link->name != root_name) {
+
+            if (!link->parent_joint) {
+                ROS_ERROR("Reached end of chain and link '%s' was not found.", root_name.c_str());
+                return false;
+            }
+
             joint = robot_model.getJoint(link->parent_joint->name);
             if (!joint) {
                 ROS_ERROR("Could not find joint: %s",link->parent_joint->name.c_str());
+
+                ROS_INFO("ComputeJacobian::readJoints - FALSE");
                 return false;
             }
+
             // Only count joints if they're not fixed or unknown
             if (joint->type != urdf::Joint::UNKNOWN && joint->type != urdf::Joint::FIXED) {
                 current_num_joints++;
@@ -173,6 +183,7 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
                     current_temp_joint_max.push_back(1000000);
                 }
             }
+
             link = robot_model.getLink(link->getParent()->name);
         }
 

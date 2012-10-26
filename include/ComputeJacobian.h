@@ -70,9 +70,6 @@ private:
     //! Vector containing the various chains
     std::vector<KDL::Chain> chain_array;
 
-    //! Vector containing bools to indicate the previous 'active' chains (an update is provided as function of the update hook)
-    std::vector<bool> previous_isactive_vector_;
-
     //! Vector containing the ChainJntToJacSolvers
     //std::vector<boost::scoped_ptr<KDL::ChainJntToJacSolver> > jnt_to_jac_solver_array;
     //boost::scoped_ptr<KDL::ChainJntToJacSolver> jnt_to_jac_solver_array[2];
