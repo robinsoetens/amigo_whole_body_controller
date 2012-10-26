@@ -261,7 +261,7 @@ bool WholeBodyController::update() {
     CIleft_.update(F_task_, force_vector_index);
     CIright_.update(F_task_, force_vector_index);
 
-    obstacle_avoidance_.update(F_task_, force_vector_index);
+    //obstacle_avoidance_.update(F_task_, force_vector_index);
 
     if (F_task_.size() > 0) {
         //std::cout << F_task_ << std::endl;
