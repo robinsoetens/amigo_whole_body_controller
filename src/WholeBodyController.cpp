@@ -93,22 +93,6 @@ bool WholeBodyController::initialize() {
         component_description_map_[component_name] = comp_description;
     }
 
-    // Fill in component description map. This should be parsed from parameter file
-    /*
-    component_description_map_["torso"].root_name = "base";
-    component_description_map_["torso"].tip_names.push_back("shoulder_mount_left");
-    component_description_map_["torso"].tip_names.push_back("shoulder_mount_right");
-    component_description_map_["torso"].number_of_joints = 0;
-
-    component_description_map_["left_arm"].root_name = "shoulder_mount_left";
-    component_description_map_["left_arm"].tip_names.push_back("grippoint_left");
-    component_description_map_["left_arm"].number_of_joints = 0;
-
-    component_description_map_["right_arm"].root_name = "shoulder_mount_right";
-    component_description_map_["right_arm"].tip_names.push_back("grippoint_right");
-    component_description_map_["right_arm"].number_of_joints = 0;
-    */
-
     // Implement Jacobian matrix
     // Needs to be done before defining the subscribers, since the callback functions depend on
     // the mapping that results from this initialization
