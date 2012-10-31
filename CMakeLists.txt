@@ -47,6 +47,7 @@ rosbuild_add_library(wholebodycontroller
                                         src/PostureControl.cpp
                                         src/Component.cpp
                                         src/Chain.cpp
+                                        src/ChainParser.cpp
 )
 #                                        src/JointTrajectoryAction.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)

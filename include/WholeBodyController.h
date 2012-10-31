@@ -109,21 +109,6 @@ protected:
      */
     void publishReferences();
 
-    /**
-     * Subscribers to odometry and various joint positions
-     */
-    //ros::Subscriber odom_sub_, measured_torso_position_sub_, measured_left_arm_position_sub_, measured_right_arm_position_sub_, measured_head_pan_sub_, measured_head_tilt_sub_;
-    //ros::Publisher torso_pub_, left_arm_pub_, right_arm_pub_, head_pub_;
-
-    void setTopics();
-
-    //callbackOdometry
-    void callbackMeasuredTorsoPosition(const sensor_msgs::JointState::ConstPtr& msg);
-    void callbackMeasuredLeftArmPosition(const sensor_msgs::JointState::ConstPtr& msg);
-    void callbackMeasuredRightArmPosition(const sensor_msgs::JointState::ConstPtr& msg);
-    //void callbackMeasuredHeadPan(const std_msgs::Float64::ConstPtr& msg);
-    //void callbackMeasuredHeadTilt(const std_msgs::Float64::ConstPtr& msg);
-
 };
 
 #endif

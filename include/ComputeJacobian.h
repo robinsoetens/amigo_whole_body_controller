@@ -60,28 +60,7 @@ public:
 
 private:
 
-    /*
-     * Function reads the number of joints in a certain chain and puts the desired values in the index_map
-     *
-     */
-    bool readJoints(urdf::Model &robot_model, const Chain& chain, std::map<std::string, uint>& joint_name_index_map);
-
     std::vector<Chain> chains_;
-
-    //! Vector containing interfaces between various components
-    //TODO: This isn't quite enough, it would also be desirable to know what components it concerns (for bookkeeping)
-    //std::vector<std::vector<std::string> > chain_description_array;
-
-    //! Vector containing the various chains
-    //std::vector<KDL::Chain> chain_array;
-
-    //! Vector containing the ChainJntToJacSolvers
-    //std::vector<boost::scoped_ptr<KDL::ChainJntToJacSolver> > jnt_to_jac_solver_array;
-    //boost::scoped_ptr<KDL::ChainJntToJacSolver> jnt_to_jac_solver_array[2];
-    //std::vector<KDL::ChainJntToJacSolver*> jnt_to_jac_solver_array;
-
-    //! Number of chains and active chainsused
-    int num_chains, num_active_chains_;
 
 };
 
