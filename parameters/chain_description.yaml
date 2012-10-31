@@ -1,6 +1,4 @@
 whole_body_controller:
     chain_description:
-        - - "left_arm"
-          - "torso"
-        - - "right_arm"
-          - "torso"
+        - ["left_arm", "torso"]
+        - ["right_arm", "torso"]

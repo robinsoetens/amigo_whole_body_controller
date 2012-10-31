@@ -5,12 +5,14 @@ ComputeJacobian::ComputeJacobian() {
 }
 
 ComputeJacobian::~ComputeJacobian() {
+    /*
     for(std::vector<KDL::ChainJntToJacSolver*>::iterator iter = jnt_to_jac_solver_array.begin(); iter != jnt_to_jac_solver_array.end(); ++iter) {
         delete *iter;
     }
+    */
 }
 
-bool ComputeJacobian::Initialize(std::map<std::string, component_description>& component_description_map, std::map<std::string, uint>& joint_name_index_map) {
+bool ComputeJacobian::Initialize(const std::map<std::string, Component*>& component_map, std::map<std::string, uint>& joint_name_index_map) {
 
     //Load parameters from parameter server
     // Get node handle
@@ -34,7 +36,8 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description>& c
         return false;
     }
 
-    chain_description_array.resize(chain_params.size());
+    //chain_description_array.resize(chain_params.size());
+    chains_.resize(chain_params.size());
     for(int i = 0; i < chain_params.size(); ++i) {
         XmlRpc::XmlRpcValue& chain_description = chain_params[i];
         if (!chain_description.getType() == XmlRpc::XmlRpcValue::TypeArray) {
@@ -42,8 +45,11 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description>& c
             return false;
         }
 
+        printf("Chain size: %i\n", chain_description.size());
+
         for(int j = 0; j < chain_description.size(); ++j) {
-            chain_description_array[i].push_back((std::string)chain_description[j]);
+            chains_[i].addComponent((std::string)chain_description[j]);
+            //chain_description_array[i].push_back((std::string)chain_description[j]);
         }
     }
 
@@ -91,29 +97,27 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description>& c
 
     // Number of joints starts with zero, will increase when adding chain objects. Eventually, everything will be resized
     num_joints = 0;
-    for (uint i = 0; i<chain_description_array.size(); i++) {
+    for (uint i = 0; i < chains_.size(); i++) {
 
-        KDL::Chain temp_chain;
-        std::string chain_name = chain_description_array[i][0];
+        std::string chain_name = chains_[i].components_[0]->name_;
         ///ROS_INFO("Object chain %i concerns %s", i+1, chain_name.c_str());
-        std::string tip_name = component_description_map[chain_name].tip_names[0];
+        std::string tip_name = component_map[chain_name].tip_names[0];
         ///ROS_INFO("Tip name %i = %s", i+1, tip_name.c_str());
         //TODO: Make "base" variable
 
-        if (!tree.getChain("base", tip_name, temp_chain)) {
+        if (!tree.getChain("base", tip_name, chains_[i].kdl_chain_)) {
             ROS_FATAL("Could not initialize chain object");
             return false;
         }
-        //ROS_INFO("Number of joints = %i",temp_chain.getNrOfJoints());
-        chain_array.push_back(temp_chain);
+        //ROS_INFO("Number of joints = %i", chains_[i].kdl_chain_.getNrOfJoints());
 
         // Read joints and make index map of joints
-        if (!readJoints(robot_model, component_description_map, chain_description_array[i], joint_name_index_map)) {
+        if (!readJoints(robot_model, component_map, chains_[i], joint_name_index_map)) {
             ROS_FATAL("Could not read information about the joints");
             return false;
         }
 
-        jnt_to_jac_solver_array.push_back(new KDL::ChainJntToJacSolver(temp_chain));
+        chains_[i].jnt_to_jac_solver_ = new KDL::ChainJntToJacSolver(chains_[i].kdl_chain_);
 
     }
 
@@ -124,12 +128,13 @@ bool ComputeJacobian::Initialize(std::map<std::string, component_description>& c
     return true;
 }
 
-bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string, component_description>& component_description_map, const std::vector<std::string>& chain_description_vector, std::map<std::string, uint>& joint_name_index_map) {
+bool ComputeJacobian::readJoints(urdf::Model &robot_model, const Chain& chain, std::map<std::string, uint>& joint_name_index_map) {
 
     // get joint maxs and mins
     ///boost::shared_ptr<const urdf::Link> link = robot_model.getLink(chain_description_vector[0]);
 
-    std::string tip_name = component_description_map[chain_description_vector[0]].tip_names[0];
+    //std::string tip_name = component_description_map[chain_description_vector[0]].tip_names[0];
+    std::string tip_name = chain.components_[0]->tip_names_[0];
     //ROS_INFO("Tip name is %s", tip_name.c_str());
     boost::shared_ptr<const urdf::Link> link = robot_model.getLink(tip_name);
     boost::shared_ptr<const urdf::Joint> joint;
@@ -215,7 +220,7 @@ bool ComputeJacobian::readJoints(urdf::Model &robot_model, std::map<std::string,
     return true;
 }
 
-void ComputeJacobian::Update(const KDL::JntArray& q_current, std::map<std::string, uint>& joint_name_index_map, const std::map<std::string, component_description> component_description_map, const std::vector<bool>& isactive_vector, Eigen::MatrixXd& Jacobian) {
+void ComputeJacobian::Update(const KDL::JntArray& q_current, const std::map<std::string, Component*> component_map, Eigen::MatrixXd& Jacobian) {
 
     Jacobian.setZero();
 
@@ -227,7 +232,7 @@ void ComputeJacobian::Update(const KDL::JntArray& q_current, std::map<std::strin
     for (uint i = 0; i < chain_description_array.size(); i++) {
 
         printf("\nChain description: ");
-        for (uint j = 0; j < chain_description_array.size(); j++) {
+        for (uint j = 0; j < chain_description_array[i].size(); j++) {
             printf("%s ", chain_description_array[i][j].c_str());
         }
         printf("\n");

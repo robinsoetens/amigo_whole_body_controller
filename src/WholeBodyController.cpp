@@ -1,5 +1,7 @@
 #include "WholeBodyController.h"
 
+using namespace std;
+
 WholeBodyController::WholeBodyController() {
 
     initialize();
@@ -9,22 +11,6 @@ WholeBodyController::WholeBodyController() {
 WholeBodyController::~WholeBodyController() {
 
     ROS_INFO("Shutting down whole body controller");
-    measured_torso_position_sub_.shutdown();
-    measured_left_arm_position_sub_.shutdown();
-    measured_right_arm_position_sub_.shutdown();
-    measured_head_pan_sub_.shutdown();
-    measured_head_tilt_sub_.shutdown();
-    torso_pub_.shutdown();
-    left_arm_pub_.shutdown();
-    right_arm_pub_.shutdown();
-    head_pub_.shutdown();
-
-    /*CIleft_.~CartesianImpedance();
-    CIright_.~CartesianImpedance();
-    ComputeJacobian_.~ComputeJacobian();
-    AdmitCont_.~AdmittanceController();
-    ComputeNullspace_.~ComputeNullspace();
-    JointLimitAvoidance_.~JointLimitAvoidance();*/
 
 }
 
@@ -64,39 +50,36 @@ bool WholeBodyController::initialize() {
             return false;
         }
 
-        component_description comp_description;
-
         std::string component_name = component_struct.begin()->first;
+        Component* component = new Component(component_name);
+
         XmlRpc::XmlRpcValue& component_param = component_struct.begin()->second;
 
         XmlRpc::XmlRpcValue& v_root_name = component_param["root_name"];
         if (v_root_name.getType() == XmlRpc::XmlRpcValue::TypeString) {
-            comp_description.root_name = (std::string)v_root_name;
+            component->setRootLinkName((std::string)v_root_name);
         } else {
-            ROS_ERROR("Component description for '%s' does not contain 'root_name'. (namespace: %s)", component_name.c_str(), n.getNamespace().c_str());
+            ROS_ERROR("Component description for '%s' does not contain 'root_name'. (namespace: %s)", component->getName().c_str(), n.getNamespace().c_str());
             return false;
         }
 
         XmlRpc::XmlRpcValue& v_leaf_names = component_param["leaf_names"];
         if (v_leaf_names.getType() != XmlRpc::XmlRpcValue::TypeArray) {
-            ROS_ERROR("Component description for '%s' doesn not contain 'leaf_names'. (namespace: %s)", component_name.c_str(), n.getNamespace().c_str());
+            ROS_ERROR("Component description for '%s' doesn not contain 'leaf_names'. (namespace: %s)", component->getName().c_str(), n.getNamespace().c_str());
             return false;
         }
 
         for(int j = 0 ; j < v_leaf_names.size(); ++j) {
-            std::cout << (std::string)v_leaf_names[j] << std::endl;
-            comp_description.tip_names.push_back((std::string)v_leaf_names[j]);
+            component->addLeafLinkName((std::string)v_leaf_names[j]);
         }
 
-        comp_description.number_of_joints = 0;
-
-        component_description_map_[component_name] = comp_description;
+        component_map_[component->getName()] = component;
     }
 
     // Implement Jacobian matrix
     // Needs to be done before defining the subscribers, since the callback functions depend on
     // the mapping that results from this initialization
-    ComputeJacobian_.Initialize(component_description_map_, joint_name_index_map_);
+    ComputeJacobian_.Initialize(component_map_, joint_name_index_map_);
     ///ROS_INFO("Number of torso joints equals %i", component_description_map_["torso"].number_of_joints);
     ///ROS_INFO("Number of left arm joints equals %i", component_description_map_["left_arm"].number_of_joints);
     ///ROS_INFO("Number of right arm joints equals %i", component_description_map_["right_arm"].number_of_joints);
@@ -161,7 +144,6 @@ bool WholeBodyController::initialize() {
 
     // Resize additional variables
     F_task_.resize(0);
-    q_current_.resize(num_joints_);
     qdot_reference_.resize(num_joints_);
     q_reference_.resize(num_joints_);
     Jacobian_.resize(12,num_joints_);                // Jacobian is resized to zero rows, number of rows depends on number of tasks
@@ -170,33 +152,6 @@ bool WholeBodyController::initialize() {
     isactive_vector_.resize(2);
     F_task_.resize(12);
     previous_num_active_tasks_ = 0;
-
-    // Resize the vectors of the joint_state_msg
-    // ToDo: automate this
-    left_arm_msg_.name.resize(component_description_map_["left_arm"].number_of_joints);
-    left_arm_msg_.position.resize(component_description_map_["left_arm"].number_of_joints);
-    left_arm_msg_.velocity.resize(component_description_map_["left_arm"].number_of_joints);
-    left_arm_msg_.effort.resize(component_description_map_["left_arm"].number_of_joints);
-    for (int i = 0; i < component_description_map_["left_arm"].number_of_joints; i++) {
-        left_arm_msg_.name[i] = component_description_map_["left_arm"].joint_names[i];
-        component_description_map_["left_arm"].joint_name_map_[component_description_map_["left_arm"].joint_names[i]] = i;
-    }
-    right_arm_msg_.name.resize(component_description_map_["right_arm"].number_of_joints);
-    right_arm_msg_.position.resize(component_description_map_["right_arm"].number_of_joints);
-    right_arm_msg_.velocity.resize(component_description_map_["right_arm"].number_of_joints);
-    right_arm_msg_.effort.resize(component_description_map_["right_arm"].number_of_joints);
-    for (int i = 0; i < component_description_map_["right_arm"].number_of_joints; i++) {
-        right_arm_msg_.name[i] = component_description_map_["right_arm"].joint_names[i];
-        component_description_map_["right_arm"].joint_name_map_[component_description_map_["right_arm"].joint_names[i]] = i;
-    }
-    torso_msg_.name.resize(component_description_map_["torso"].number_of_joints);
-    torso_msg_.position.resize(component_description_map_["torso"].number_of_joints);
-    torso_msg_.velocity.resize(component_description_map_["torso"].number_of_joints);
-    torso_msg_.effort.resize(component_description_map_["torso"].number_of_joints);
-    for (int i = 0; i < component_description_map_["torso"].number_of_joints; i++) {
-        torso_msg_.name[i] = component_description_map_["torso"].joint_names[i];
-        component_description_map_["torso"].joint_name_map_[component_description_map_["torso"].joint_names[i]] = i;
-    }
 
     /*head_msg_.name.resize(component_description_map_[component_name].number_of_joints);
     head_msg_.position.resize(component_description_map_[component_name].number_of_joints);
@@ -276,7 +231,7 @@ bool WholeBodyController::update() {
         }
     }
 
-    ComputeJacobian_.Update(q_current_, joint_name_index_map_, component_description_map_, isactive_vector_, Jacobian_);
+    ComputeJacobian_.Update(component_map_, Jacobian_);
 
     //for (uint i = 0; i < F_task_.rows(); i++) ROS_INFO("F(%i) = %f",i,F_task_(i));
 
@@ -324,6 +279,7 @@ void WholeBodyController::setTopics() {
     // ToDo: fill in odom topic and make base publisher
     //odom_sub_ = ;
 
+    /*
     measured_torso_position_sub_ = n.subscribe<sensor_msgs::JointState>("/torso_controller/measurements", 1, &WholeBodyController::callbackMeasuredTorsoPosition, this);
     temp_vector.resize(1);
     q_current_map_["spindle_joint"] = temp_vector;
@@ -335,6 +291,7 @@ void WholeBodyController::setTopics() {
     measured_right_arm_position_sub_ = n.subscribe<sensor_msgs::JointState>("/arm_right_controller/measurements", 1, &WholeBodyController::callbackMeasuredRightArmPosition, this);
     temp_vector.resize(7);
     q_current_map_["shoulder_yaw_joint_right"] = temp_vector;
+    */
 
     //measured_head_pan_sub_ = n.subscribe<std_msgs::Float64>("/head_pan_angle", 1, &WholeBodyController::callbackMeasuredHeadPan, this);
     //temp_vector.resize(1);
@@ -344,9 +301,6 @@ void WholeBodyController::setTopics() {
     //temp_vector.resize(1);
     //q_current_map_["tilt_joint"] = temp_vector; //NOT CORRECT
 
-    torso_pub_ = n.advertise<sensor_msgs::JointState>("/torso_controller/references", 10);
-    left_arm_pub_ = n.advertise<sensor_msgs::JointState>("/arm_left_controller/references", 10);
-    right_arm_pub_ = n.advertise<sensor_msgs::JointState>("/arm_right_controller/references", 10);
     //head_pub_ = n.advertise<sensor_msgs::JointState>("/head_controller/set_Head", 10);
 
 
@@ -359,11 +313,11 @@ void WholeBodyController::callbackMeasuredTorsoPosition(const sensor_msgs::Joint
     //TODO: Get rid of hardcoded root_joint
 
     std::string component_name = "torso";
-    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
+    for (int i = 0; i<component_map_[component_name].number_of_joints; i++) {
 
         std::string joint_name = msg->name[i];
         double data = msg->position[i];
-        q_current_(component_description_map_[component_name].joint_name_map_[joint_name]+component_description_map_[component_name].start_index) = data;
+        q_current_(component_map_[component_name].joint_name_map_[joint_name]+component_map_[component_name].start_index) = data;
         //ROS_INFO("%s joint %i (%s) = %f",component_name.c_str(),i+1,joint_name.c_str(),component_description_map_[component_name].q[i]);
     }
 
@@ -376,12 +330,12 @@ void WholeBodyController::callbackMeasuredLeftArmPosition(const sensor_msgs::Joi
     //TODO: Get rid of hardcoded root_joint
 
     std::string component_name = "left_arm";
-    uint num_comp_joints = component_description_map_[component_name].number_of_joints;
+    uint num_comp_joints = component_map_[component_name].number_of_joints;
     for (uint i = 0; i<num_comp_joints; i++) {
 
         std::string joint_name = msg->name[i];
         double data = msg->position[i];
-        q_current_(component_description_map_[component_name].joint_name_map_[joint_name]+component_description_map_[component_name].start_index) = data;
+        q_current_(component_map_[component_name].joint_name_map_[joint_name]+component_map_[component_name].start_index) = data;
         //ROS_INFO("%s joint %i (%s) = %f",component_name.c_str(),i+1,joint_name.c_str(),component_description_map_[component_name].q[i]);
     }
 }
@@ -393,12 +347,12 @@ void WholeBodyController::callbackMeasuredRightArmPosition(const sensor_msgs::Jo
     //TODO: Get rid of hardcoded root_joint
 
     std::string component_name = "right_arm";
-    uint num_comp_joints = component_description_map_[component_name].number_of_joints;
+    uint num_comp_joints = component_map_[component_name].number_of_joints;
     for (uint i = 0; i<num_comp_joints; i++) {
 
         std::string joint_name = msg->name[i];
         double data = msg->position[i];
-        q_current_(component_description_map_[component_name].joint_name_map_[joint_name]+component_description_map_[component_name].start_index) = data;
+        q_current_(component_map_[component_name].joint_name_map_[joint_name]+component_map_[component_name].start_index) = data;
         //ROS_INFO("%s joint %i (%s) = %f",component_name.c_str(),i+1,joint_name.c_str(),component_description_map_[component_name].q[i]);
     }
 }
@@ -418,23 +372,23 @@ void WholeBodyController::publishReferences() {
     // Torso
     ///torso_msg.stop = 0;
     std::string component_name("torso");
-    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
-        torso_msg_.position[i] = q_reference_(component_description_map_[component_name].start_index + i);
+    for (int i = 0; i<component_map_[component_name].number_of_joints; i++) {
+        torso_msg_.position[i] = q_reference_(component_map_[component_name].start_index + i);
     }
     torso_pub_.publish(torso_msg_);
     ///ROS_INFO("Torso position = %f, reference = %f",component_description_map_[component_name].q[0],torso_msg.pos);
 
     // Left Arm
     component_name = "left_arm";
-    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
-        left_arm_msg_.position[i] = q_reference_(component_description_map_[component_name].start_index + i);
+    for (int i = 0; i<component_map_[component_name].number_of_joints; i++) {
+        left_arm_msg_.position[i] = q_reference_(component_map_[component_name].start_index + i);
     }
     left_arm_pub_.publish(left_arm_msg_);
 
     // Right Arm
     component_name = "right_arm";
-    for (int i = 0; i<component_description_map_[component_name].number_of_joints; i++) {
-        right_arm_msg_.position[i] = q_reference_(component_description_map_[component_name].start_index + i);
+    for (int i = 0; i<component_map_[component_name].number_of_joints; i++) {
+        right_arm_msg_.position[i] = q_reference_(component_map_[component_name].start_index + i);
     }
     right_arm_pub_.publish(right_arm_msg_);
     //ROS_WARN("Right arm message not published");

@@ -62,11 +62,11 @@ protected:
     ObstacleAvoidance obstacle_avoidance_;
 
     //! Map contains a string to describe the (root joint of the component) this concerns and a vector (is sufficient) with the current joint values
-    std::map<std::string, std::vector<double> > q_current_map_;
-    std::map<std::string, component_description> component_description_map_;
+    //std::map<std::string, std::vector<double> > q_current_map_;
+    std::map<std::string, Component*> component_map_;
     std::map<std::string, uint> joint_name_index_map_;
 
-    KDL::JntArray q_current_;
+   // KDL::JntArray q_current_;
     ///KDL::Jacobian Jacobian_;
     Eigen::MatrixXd Jacobian_;
 
@@ -112,8 +112,8 @@ protected:
     /**
      * Subscribers to odometry and various joint positions
      */
-    ros::Subscriber odom_sub_, measured_torso_position_sub_, measured_left_arm_position_sub_, measured_right_arm_position_sub_, measured_head_pan_sub_, measured_head_tilt_sub_;
-    ros::Publisher torso_pub_, left_arm_pub_, right_arm_pub_, head_pub_;
+    //ros::Subscriber odom_sub_, measured_torso_position_sub_, measured_left_arm_position_sub_, measured_right_arm_position_sub_, measured_head_pan_sub_, measured_head_tilt_sub_;
+    //ros::Publisher torso_pub_, left_arm_pub_, right_arm_pub_, head_pub_;
 
     void setTopics();
 

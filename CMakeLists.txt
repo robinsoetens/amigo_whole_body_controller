@@ -44,7 +44,10 @@ rosbuild_add_library(wholebodycontroller
 					src/ComputeNullspace.cpp
 					src/ObstacleAvoidance.cpp
                                         src/JointLimitAvoidance.cpp
-                                        src/PostureControl.cpp)
+                                        src/PostureControl.cpp
+                                        src/Component.cpp
+                                        src/Chain.cpp
+)
 #                                        src/JointTrajectoryAction.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
