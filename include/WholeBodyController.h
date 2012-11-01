@@ -49,13 +49,17 @@ public:
      */
     bool update();
 
+    void setMeasuredJointPosition(const std::string& joint_name, double pos);
+
     bool addConstraint(Constraint* constraint);
 
 protected:
 
     std::vector<Chain*> chains_;
 
-    std::vector<Component*> components_;
+    std::map<std::string, unsigned int> joint_name_to_index_;
+
+    std::vector<std::string> index_to_joint_name_;
 
     // The total measured joint array
     KDL::JntArray q_current_;

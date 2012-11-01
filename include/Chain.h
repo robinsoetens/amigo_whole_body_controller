@@ -19,22 +19,32 @@ public:
 
     const std::vector<Component*>& getComponents() const;
 
-    KDL::Jacobian getJacobian() const;
+    void setMeasuredJointPositions(const Eigen::VectorXd& all_joint_measurements);
 
-    Component* getRootComponent() const;
+    void addToJacobian(Eigen::VectorXd& jacobian) const;
 
-    Component* getLeafComponent() const;
+    void addToCartesianTorque(Eigen::VectorXd& torque);
 
     unsigned int getNumJoints() const;
 
-    void addEndEffectorTorque(const Eigen::VectorXd& torque);
+    void addCartesianTorque(const std::string& link_name, const Eigen::VectorXd& torque);
 
-    const Eigen::VectorXd& getEndEffectorTorque();
-
-    void removeEndEffectorTorque();
+    void removeCartesianTorques();
 
 protected:
 
+    KDL::JntArray joint_positions_;
+
+    std::vector<std::string> joint_names_;
+
+    std::vector<unsigned int> joint_chain_index_to_full_index_;
+
+    std::map<std::string, Eigen::VectorXd> cartesian_torques_;
+
+    KDL::ChainJntToJacSolver* jnt_to_jac_solver_;
+
+
+    /*
     std::vector<Component*> components_;
 
     unsigned int num_joints_;
@@ -43,13 +53,9 @@ protected:
 
     std::string leaf_link_;
 
-    KDL::Chain kdl_chain_;
-
-    KDL::ChainJntToJacSolver* jnt_to_jac_solver_;
-
     Eigen::VectorXd end_effector_torque_;
 
-
+    */
 
 };
 

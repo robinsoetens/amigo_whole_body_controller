@@ -8,7 +8,7 @@ ChainParser::~ChainParser() {
 
 }
 
-bool ChainParser::parse(std::vector<Chain*>& chains, std::vector<Component*>& components, unsigned int& num_joints) {
+bool ChainParser::parse(std::vector<Chain*>& chains, std::map<std::string, unsigned int>& joint_name_to_index, std::vector<std::string>& index_to_joint_name) {
     ros::NodeHandle n("~");
     std::string ns = n.getNamespace();
 
@@ -92,10 +92,27 @@ Chain* ChainParser::parseChain(const XmlRpc::XmlRpcValue& chain_description) {
     ros::NodeHandle n("~");
     std::string ns = n.getNamespace();
 
-    if (!chain_description.getType() == XmlRpc::XmlRpcValue::TypeArray) {
-        ROS_ERROR("Chain description should be an array. (namespace: %s)", n.getNamespace().c_str());
+    if (!chain_description.getType() == XmlRpc::XmlRpcValue::TypeStruct) {
+        ROS_ERROR("Chain description should be a struct containing 'root' and 'tip'. (namespace: %s)", n.getNamespace().c_str());
         return false;
     }
+
+    XmlRpc::XmlRpcValue& v_root_link = chain_description["root_link"];
+    if (v_root_link.getType() != XmlRpc::XmlRpcValue::TypeString) {
+        ROS_ERROR("Chain description for does not contain 'root_link'. (namespace: %s)", n.getNamespace().c_str());
+        return 0;
+    }
+    std::string root_link_name = (std::string)v_root_link;
+
+    XmlRpc::XmlRpcValue& v_tip_link = chain_description["tip_link"];
+    if (v_tip_link.getType() != XmlRpc::XmlRpcValue::TypeString) {
+        ROS_ERROR("Chain description for does not contain 'tip_link'. (namespace: %s)", n.getNamespace().c_str());
+        return 0;
+    }
+    std::string tip_link_name = (std::string)v_tip_link;
+
+
+
 
     Chain* chain = new Chain();
 
@@ -180,20 +197,45 @@ Component* ChainParser::parseComponent(const XmlRpc::XmlRpcValue& component_stru
     return component;
 }
 
-bool ChainParser::readJoints(urdf::Model &robot_model, const Chain& chain, std::map<std::string, uint>& joint_name_index_map) {
+bool ChainParser::readJoints(urdf::Model &robot_model, const std::string& root_link_name, const std::string& tip_link_name) {
 
-    // get joint maxs and mins
-    ///boost::shared_ptr<const urdf::Link> link = robot_model.getLink(chain_description_vector[0]);
 
-    //std::string tip_name = component_description_map[chain_description_vector[0]].tip_names[0];
-    std::string tip_name = chain.components_[0]->tip_names_[0];
-    //ROS_INFO("Tip name is %s", tip_name.c_str());
-    boost::shared_ptr<const urdf::Link> link = robot_model.getLink(tip_name);
+    boost::shared_ptr<const urdf::Link> link = robot_model.getLink(tip_link_name);
     boost::shared_ptr<const urdf::Joint> joint;
 
     if (!link) {
-        ROS_ERROR("Could not get link for joint %s\n", tip_name.c_str());
+        ROS_ERROR("Could not find link '%s'' in robot model.", tip_link_name.c_str());
         return false;
+    }
+
+    while (link && link->name != root_link_name) {
+        if (!link->parent_joint) {
+            ROS_ERROR("Reached end of chain and root link '%s' was not found.", root_link_name.c_str());
+            return false;
+        }
+
+        joint = robot_model.getJoint(link->parent_joint->name);
+        if (!joint) {
+            ROS_ERROR("Could not find joint: %s", link->parent_joint->name.c_str());
+            return false;
+        }
+
+        // Only count joints if they're not fixed or unknown
+        if (joint->type != urdf::Joint::UNKNOWN && joint->type != urdf::Joint::FIXED) {
+            current_num_joints++;
+            current_joint_names.push_back(joint->name);
+            if (joint->type != urdf::Joint::CONTINUOUS) {
+                current_temp_joint_min.push_back(joint->limits->lower);
+                current_temp_joint_max.push_back(joint->limits->upper);
+            }
+            else {
+                ROS_WARN("This is not yet nicely implemented");
+                current_temp_joint_min.push_back(-1000000);
+                current_temp_joint_max.push_back(1000000);
+            }
+        }
+
+        link = robot_model.getLink(link->getParent()->name);
     }
 
     //Loop over every 'component' in the chain

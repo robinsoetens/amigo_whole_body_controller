@@ -20,7 +20,8 @@ bool WholeBodyController::initialize() {
     // ToDo: Parameterize
     Ts = 0.1;
 
-    ChainParser::parse(chains_, components_, num_joints_);
+    ChainParser::parse(chains_, joint_name_to_index_, index_to_joint_name_);
+    num_joints_ = joint_name_to_index_.size();
 
     q_current_.resize(num_joints_);
     for(unsigned int i = 0; i < q_current_.rows(); ++i) {
@@ -98,6 +99,10 @@ bool WholeBodyController::addConstraint(Constraint* constraint) {
     return true;
 }
 
+void WholeBodyController::setMeasuredJointPosition(const std::string& joint_name, double pos) {
+    q_current_(joint_name_to_index_[joint_name]) = pos;
+}
+
 bool WholeBodyController::update() {
 
     // Set some variables to zero
@@ -113,7 +118,7 @@ bool WholeBodyController::update() {
 
     for(std::vector<Chain*>::iterator it_chain = chains_.begin(); it_chain != chains_.end(); ++it_chain) {
         Chain* chain = *it_chain;
-        chain->removeEndEffectorTorque();
+        chain->removeCartesianTorques();
     }
 
     for(std::vector<Constraint*>::iterator it_constr = constraints_.begin(); it_constr != constraints_.end(); ++it_constr) {
@@ -129,23 +134,9 @@ bool WholeBodyController::update() {
 
     for(unsigned int i_chain = 0; i_chain < chains_.size(); ++i_chain) {
         Chain* chain = chains_[i_chain];
-
-        const Eigen::VectorXd& torque = chain->getEndEffectorTorque();
-        for(unsigned int i = 0; i < torque.rows(); ++i) {
-            torque_full(i_chain * 6 + i) = torque(i);
-        }
-
-        KDL::Jacobian chain_jacobian = chain->getJacobian();
-
-        unsigned int current_index = chain->getNumJoints(); // TODO: get rid of current_index (see also Chain::getJacobian)
-
-        const std::vector<Component*>& chain_components = chain->getComponents();
-        for(unsigned i_comp = 0; i_comp < chain_components.size(); ++i_comp) {
-            Component* component = chain_components[i_comp];
-            current_index -= component->getNumJoints();
-            jacobian_full.block(6 * i_chain, component->start_index, 6, component->getNumJoints()) =
-                    chain_jacobian.data.block(0, current_index, 6, component->getNumJoints());
-        }
+        chain->addToCartesianTorque(torque_full);
+        chain->addToJacobian(jacobian_full);
+        chain->setMeasuredJointPositions(q_current_);
     }
 
     tau_ = jacobian_full.transpose() * torque_full;
