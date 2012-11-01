@@ -1,4 +1,5 @@
 #include "WholeBodyController.h"
+#include "ChainParser.h"
 
 using namespace std;
 
@@ -11,105 +12,20 @@ WholeBodyController::~WholeBodyController() {
 }
 
 bool WholeBodyController::initialize() {
-
-    // ToDo: Parameterize
-    Ts = 0.1;
-
-    // Get node handle
     ros::NodeHandle n("~");
     std::string ns = n.getNamespace();
     //ROS_INFO("Nodehandle %s",n.getNamespace().c_str());
     ROS_INFO("Initializing whole body controller");
 
-    // Fill in component description map
+    // ToDo: Parameterize
+    Ts = 0.1;
 
-    num_joints_ = 0;
+    ChainParser::parse(chains_, components_, num_joints_);
 
-    XmlRpc::XmlRpcValue component_params;
-    if (!n.getParam(ns + "/component_description", component_params)) {
-        ROS_ERROR("No component description given. (namespace: %s)", n.getNamespace().c_str());
-        return false;
+    q_current_.resize(num_joints_);
+    for(unsigned int i = 0; i < q_current_.rows(); ++i) {
+        q_current_(i) = 0;
     }
-
-    if (component_params.getType() != XmlRpc::XmlRpcValue::TypeArray) {
-        ROS_ERROR("Component description list should be an array.  (namespace: %s)", n.getNamespace().c_str());
-        return false;
-    }
-
-    for(int i = 0; i < component_params.size(); ++i) {
-        XmlRpc::XmlRpcValue& component_struct = component_params[i];
-        if (!component_struct.getType() == XmlRpc::XmlRpcValue::TypeStruct) {
-            ROS_ERROR("Component description should be an struct. (namespace: %s)", n.getNamespace().c_str());
-            return false;
-        }
-
-        if (component_struct.size() != 1) {
-            ROS_ERROR("Malformed component description. (namespace: %s)", n.getNamespace().c_str());
-            return false;
-        }
-
-        std::string component_name = component_struct.begin()->first;
-        Component* component = new Component(component_name);
-
-        XmlRpc::XmlRpcValue& component_param = component_struct.begin()->second;
-
-        XmlRpc::XmlRpcValue& v_root_name = component_param["root_name"];
-        if (v_root_name.getType() == XmlRpc::XmlRpcValue::TypeString) {
-            component->setRootLinkName((std::string)v_root_name);
-        } else {
-            ROS_ERROR("Component description for '%s' does not contain 'root_name'. (namespace: %s)", component->getName().c_str(), n.getNamespace().c_str());
-            return false;
-        }
-
-        XmlRpc::XmlRpcValue& v_leaf_names = component_param["leaf_names"];
-        if (v_leaf_names.getType() != XmlRpc::XmlRpcValue::TypeArray) {
-            ROS_ERROR("Component description for '%s' doesn not contain 'leaf_names'. (namespace: %s)", component->getName().c_str(), n.getNamespace().c_str());
-            return false;
-        }
-
-        for(int j = 0 ; j < v_leaf_names.size(); ++j) {
-            component->addLeafLinkName((std::string)v_leaf_names[j]);
-        }
-
-        XmlRpc::XmlRpcValue& v_meas_topic = component_param["measurement_topic"];
-        if (v_meas_topic.getType() == XmlRpc::XmlRpcValue::TypeString) {
-            component->setMeasurementTopic((std::string)v_meas_topic);
-        } else {
-            ROS_ERROR("Component description for '%s' does not contain 'measurement_topic'. (namespace: %s)", component->getName().c_str(), n.getNamespace().c_str());
-            return false;
-        }
-
-        XmlRpc::XmlRpcValue& v_ref_topic = component_param["reference_topic"];
-        if (v_meas_topic.getType() == XmlRpc::XmlRpcValue::TypeString) {
-            component->setReferenceTopic((std::string)v_ref_topic);
-        } else {
-            ROS_ERROR("Component description for '%s' does not contain 'reference_topic'. (namespace: %s)", component->getName().c_str(), n.getNamespace().c_str());
-            return false;
-        }
-
-        component->start_index = num_joints_;
-
-        component_map_[component->getName()] = component;
-
-        //num_joints_ +=
-    }
-
-    // Implement Jacobian matrix
-    // Needs to be done before defining the subscribers, since the callback functions depend on
-    // the mapping that results from this initialization
-    ComputeJacobian_.Initialize(component_map_, joint_name_index_map_);
-    ///ROS_INFO("Number of torso joints equals %i", component_description_map_["torso"].number_of_joints);
-    ///ROS_INFO("Number of left arm joints equals %i", component_description_map_["left_arm"].number_of_joints);
-    ///ROS_INFO("Number of right arm joints equals %i", component_description_map_["right_arm"].number_of_joints);
-    num_joints_ = ComputeJacobian_.num_joints;
-
-    // Implement left Cartesian Impedance
-    CIleft_.initialize(std::string("/grippoint_left"), 0);
-
-    // Implement right Cartesian Impedance
-    CIright_.initialize(std::string("/grippoint_right"), 6);
-
-    obstacle_avoidance_.initialize("/grippoint_left", 0);
 
     // Read parameters
     std::vector<double> JLA_gain(num_joints_);      // Gain for the joint limit avoidance
@@ -174,82 +90,69 @@ bool WholeBodyController::initialize() {
 
 }
 
+bool WholeBodyController::addConstraint(Constraint* constraint) {
+    if (!constraint->initialize(chains_, components_)) {
+        return false;
+    }
+    constraints_.push_back(constraint);
+    return true;
+}
+
 bool WholeBodyController::update() {
 
     // Set some variables to zero
-    ///for (int i = 0; i<F_task_.rows(); i++) F_task_(i) = 0
     tau_.setZero();
-    tau_nullspace_.setZero();
-    uint force_vector_index = 0;
-    uint num_active_tasks = 0;
-
-    // Checking the number of active chains
-    // ToDo: make variable
-    if (CIleft_.is_active_) {
-        isactive_vector_[0] = true;
-        num_active_tasks++;
-    }
-    else isactive_vector_[0] = false;
-    if (CIright_.is_active_) {
-        isactive_vector_[1] = true;
-        num_active_tasks++;
-    }
-    else isactive_vector_[1] = false;
-
-    // Only resize F_task_ when number of active tasks has chaned
-    /*if (num_active_tasks != previous_num_active_tasks_) {
-        F_task_.resize(6*num_active_tasks);        
-    }
-    */
+    tau_nullspace_.setZero();   
     F_task_.setZero();
-
-    // Compute new Jacobian matrix
-    ///ROS_INFO("Updating wholebodycontroller");
-
-    if (isactive_vector_[0] || isactive_vector_[1]) {
-        ///uint show_column = 6;
-        ///uint show_row = 0;
-        ///ROS_INFO("Row %i, column %i of computed Jacobian is \n%f\n%f\n%f\n%f\n%f\n%f",show_row+1,show_column+1,Jacobian_(6*show_row+0,show_column),Jacobian_(6*show_row+1,show_column),Jacobian_(6*show_row+2,show_column),Jacobian_(6*show_row+3,show_column),Jacobian_(6*show_row+4,show_column),Jacobian_(6*show_row+5,show_column));
-        ///ROS_INFO("Jacobian (x,q4) = %f, (y,q4) = %f, (z,q4) = %f, (z,torso) = %f", Jacobian_(0,3), Jacobian_(1,3), Jacobian_(2,3), Jacobian_(2,7));
-    }
-    //ROS_INFO("Jacobian updated");
 
     // Update the torque output
     // Currently only one torque 'source', when multiple ones a smarter solution has to be found
     // Plan of attack: set tau to zero --> add in every update loop.
     // Note that nullspace solution should be included in various subproblems
     // Not sure if this is the right approach: summing the taus up and then doing nullspace projection may result in smoother transitions and is probably quicker
-    CIleft_.update(F_task_, force_vector_index);
-    CIright_.update(F_task_, force_vector_index);
 
-    //obstacle_avoidance_.update(F_task_, force_vector_index);
-
-    if (F_task_.size() > 0) {
-        //std::cout << F_task_ << std::endl;
+    for(std::vector<Chain*>::iterator it_chain = chains_.begin(); it_chain != chains_.end(); ++it_chain) {
+        Chain* chain = *it_chain;
+        chain->removeEndEffectorTorque();
     }
 
-    for(unsigned int i = 0; i < 2; ++i) {
-        isactive_vector_[i] = false;
-        for(unsigned int j = 0; j < 6; ++j) {
-            if (F_task_[i*6 + j] != 0) {
-                isactive_vector_[i] = true;
-            }
+    for(std::vector<Constraint*>::iterator it_constr = constraints_.begin(); it_constr != constraints_.end(); ++it_constr) {
+        Constraint* constraint = *it_constr;
+        if (constraint->isActive()) {
+            constraint->apply();
         }
     }
 
-    ComputeJacobian_.Update(component_map_, Jacobian_);
+    Eigen::VectorXd torque_full(chains_.size() * 6);
+    Eigen::VectorXd jacobian_full(chains_.size() * 6, num_joints_);
+    jacobian_full.setZero();
 
-    //for (uint i = 0; i < F_task_.rows(); i++) ROS_INFO("F(%i) = %f",i,F_task_(i));
+    for(unsigned int i_chain = 0; i_chain < chains_.size(); ++i_chain) {
+        Chain* chain = chains_[i_chain];
 
-    // Compute torques (only compute tau_ if there is a task active)
-    // ToDo: include this somehow in class
-    if (isactive_vector_[0] || isactive_vector_[1]) {
-        ///ROS_INFO("Update tau: Jacobian = [%i,%i], F_task = [%i,%i]",Jacobian_.rows(),Jacobian_.cols(),F_task_.rows(),F_task_.cols());
-        tau_ = Jacobian_.transpose() * F_task_;
+        const Eigen::VectorXd& torque = chain->getEndEffectorTorque();
+        for(unsigned int i = 0; i < torque.rows(); ++i) {
+            torque_full(i_chain * 6 + i) = torque(i);
+        }
+
+        KDL::Jacobian chain_jacobian = chain->getJacobian();
+
+        unsigned int current_index = chain->getNumJoints(); // TODO: get rid of current_index (see also Chain::getJacobian)
+
+        const std::vector<Component*>& chain_components = chain->getComponents();
+        for(unsigned i_comp = 0; i_comp < chain_components.size(); ++i_comp) {
+            Component* component = chain_components[i_comp];
+            current_index -= component->getNumJoints();
+            jacobian_full.block(6 * i_chain, component->start_index, 6, component->getNumJoints()) =
+                    chain_jacobian.data.block(0, current_index, 6, component->getNumJoints());
+        }
     }
+
+    tau_ = jacobian_full.transpose() * torque_full;
+
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
 
-    ComputeNullspace_.update(Jacobian_, N_);
+    ComputeNullspace_.update(jacobian_full, N_);
     //ROS_INFO("Nullspace updated");
 
     JointLimitAvoidance_.update(q_current_, tau_nullspace_);
@@ -268,14 +171,18 @@ bool WholeBodyController::update() {
     //for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));
     publishReferences();
 
-    previous_num_active_tasks_ = num_active_tasks;
-
     return true;
 
 }
 
 void WholeBodyController::publishReferences() {
 
+    for(std::vector<Component*>::iterator it_comp = components_.begin(); it_comp != components_.end(); ++it_comp) {
+        Component* comp = *it_comp;
+        comp->publishReferences();
+    }
+
+    /*
     // Base
 
     // Torso
@@ -303,5 +210,6 @@ void WholeBodyController::publishReferences() {
     //ROS_WARN("Right arm message not published");
 
     // Head
+    */
 
 }

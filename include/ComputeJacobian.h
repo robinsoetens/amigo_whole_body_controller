@@ -45,7 +45,7 @@ public:
 
     //void Update(std::map<std::string, std::vector<double> >);
     // Why can't I make the update const &?
-    void Update(const std::map<std::string, Component*> component_map, Eigen::MatrixXd& Jacobian);
+    void Update(const KDL::JntArray& q_current, const std::map<std::string, Component*> component_map, Eigen::MatrixXd& Jacobian);
 
     //! Map contains a string to describe which component this concerns and a vector with eventually two integers to describe the start and end-index of this component
     std::map<std::string, std::vector<int> > index_map;

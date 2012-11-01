@@ -49,10 +49,26 @@ public:
      */
     bool update();
 
+    bool addConstraint(Constraint* constraint);
+
 protected:
 
-    CartesianImpedance CIleft_;
-    CartesianImpedance CIright_;
+    std::vector<Chain*> chains_;
+
+    std::vector<Component*> components_;
+
+    // The total measured joint array
+    KDL::JntArray q_current_;
+
+    //! Unsigned integer containing the total number of joints
+    uint num_joints_;
+
+    std::vector<Constraint*> constraints_;
+
+    /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+    //CartesianImpedance CIleft_;
+    //CartesianImpedance CIright_;
     ComputeJacobian ComputeJacobian_;
     AdmittanceController AdmitCont_;
     ComputeNullspace ComputeNullspace_;
@@ -66,7 +82,6 @@ protected:
     std::map<std::string, Component*> component_map_;
     std::map<std::string, uint> joint_name_index_map_;
 
-   // KDL::JntArray q_current_;
     ///KDL::Jacobian Jacobian_;
     Eigen::MatrixXd Jacobian_;
 
@@ -93,8 +108,7 @@ protected:
     //! Vector containing the number of active tasks during previous loop
     uint previous_num_active_tasks_;
 
-    //! Unsigned integer containing the total number of joints
-    uint num_joints_;
+
 
     //! Sampling time
     double Ts;

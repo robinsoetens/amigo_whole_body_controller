@@ -27,13 +27,11 @@ public:
 
     virtual ~ChainParser();
 
-    bool parse();
+    static bool parse(std::vector<Chain*>& chains, std::vector<Component*>& components, unsigned int& num_joints);
 
-    bool parse(std::map<std::string, Component*>& component_map, std::map<std::string, uint>& joint_name_index_map);
+    static Chain* parseChain(const XmlRpc::XmlRpcValue& chain_params);
 
-    Chain* parseChain(const XmlRpc::XmlRpcValue& chain_params);
-
-    Component* parseComponent(const XmlRpc::XmlRpcValue& component_params);
+    static Component* parseComponent(const XmlRpc::XmlRpcValue& component_params);
 
 protected:
 
@@ -41,7 +39,7 @@ protected:
      * Function reads the number of joints in a certain chain and puts the desired values in the index_map
      *
      */
-    bool readJoints(urdf::Model &robot_model, const Chain& chain, std::map<std::string, uint>& joint_name_index_map);
+    static bool readJoints(urdf::Model &robot_model, const Chain& chain, std::map<std::string, uint>& joint_name_index_map);
 
 
 };

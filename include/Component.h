@@ -2,6 +2,9 @@
 #define WBC_COMPONENT_H_
 
 #include <ros/ros.h>
+#include <sensor_msgs/JointState.h>
+
+#include <kdl/jntarray.hpp>
 
 #include <string>
 
@@ -13,13 +16,19 @@ public:
 
     virtual ~Component();
 
+    std::string getName() const;
+
     void setRootLinkName(const std::string& joint_name);
 
-    std::string getName() const;
+    std::string getRootLinkName() const;
 
     void addLeafLinkName(const std::string& leaf_name);
 
+    const std::vector<std::string>& getLeafLinkNames();
+
     void addJoint(int index, const std::string& joint);
+
+    unsigned int getNumJoints() const;
 
     const KDL::JntArray& getJointArray() const;
 
@@ -28,6 +37,8 @@ public:
     void setReferenceTopic(const std::string& topic_name);
 
     void measurementCallback(const sensor_msgs::JointState::ConstPtr& msg);
+
+    void publishReferences();
 
     int start_index;
 
@@ -39,7 +50,7 @@ protected:
 
     std::vector<std::string> leaf_link_names_;
 
-    std::vector<std::string> joint_names;
+    std::vector<std::string> joint_names_;
 
     std::map<std::string, int> joint_name_map_;
 

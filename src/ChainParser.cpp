@@ -8,9 +8,123 @@ ChainParser::~ChainParser() {
 
 }
 
+bool ChainParser::parse(std::vector<Chain*>& chains, std::vector<Component*>& components, unsigned int& num_joints) {
+    ros::NodeHandle n("~");
+    std::string ns = n.getNamespace();
 
-Chain* ChainParser::parseChain(const XmlRpc::XmlRpcValue& chain_params) {
+    /* * * * * * * * PARSE COMPONENTS * * * * * * * * */
 
+    num_joints = 0;
+    std::map<std::string, Component*> component_map;
+
+    XmlRpc::XmlRpcValue component_params;
+    if (!n.getParam(ns + "/component_description", component_params)) {
+        ROS_ERROR("No component description given. (namespace: %s)", n.getNamespace().c_str());
+        return false;
+    }
+
+    if (component_params.getType() != XmlRpc::XmlRpcValue::TypeArray) {
+        ROS_ERROR("Component description list should be an array.  (namespace: %s)", n.getNamespace().c_str());
+        return false;
+    }
+
+    for(int i = 0; i < component_params.size(); ++i) {
+        Component* component = parseComponent(component_params[i]);
+        if (component) {
+            components.push_back(component);
+            component_map[component->getName()] = component;
+        }
+    }
+
+    /* * * * * * * * PARSE URDF * * * * * * * * */
+
+    std::string urdf_xml, full_urdf_xml;
+    n.param("urdf_xml",urdf_xml,std::string("robot_description"));
+    n.searchParam(urdf_xml,full_urdf_xml);
+    ROS_DEBUG("Reading xml file from parameter server");
+    std::string result_string;
+    if (!n.getParam(full_urdf_xml, result_string)) {
+        ROS_FATAL("Could not load the xml from parameter server: %s", urdf_xml.c_str());
+        //error = true;
+        return false;
+    }
+
+    urdf::Model robot_model;
+    KDL::Tree tree;
+
+    // Is this necessary?
+    if (!robot_model.initString(result_string)) {
+        ROS_FATAL("Could not initialize robot model");
+        //error = true;
+        return -1;
+    }
+    ROS_INFO("Robot model initialized");
+
+    if (!kdl_parser::treeFromString(result_string, tree)) {
+        ROS_ERROR("Could not initialize tree object");
+        //error = true;
+        return false;
+    }
+    ROS_INFO("Tree object initialized");
+
+    /* * * * * * * * PARSE CHAINS * * * * * * * * */
+
+    XmlRpc::XmlRpcValue chain_params;
+    if (!n.getParam(ns + "/chain_description", chain_params)) {
+        ROS_ERROR("No chain description given. (namespace: %s)", n.getNamespace().c_str());
+        return false;
+    }
+
+    if (chain_params.getType() != XmlRpc::XmlRpcValue::TypeArray) {
+        ROS_ERROR("Chain description list should be an array.  (namespace: %s)", n.getNamespace().c_str());
+        return false;
+    }
+
+    for(int i = 0; i < chain_params.size(); ++i) {
+        Chain* chain = parseChain(chain_params[i]);
+        if (chain) {
+            chains.push_back(chain);
+        }
+    }
+}
+
+Chain* ChainParser::parseChain(const XmlRpc::XmlRpcValue& chain_description) {
+    ros::NodeHandle n("~");
+    std::string ns = n.getNamespace();
+
+    if (!chain_description.getType() == XmlRpc::XmlRpcValue::TypeArray) {
+        ROS_ERROR("Chain description should be an array. (namespace: %s)", n.getNamespace().c_str());
+        return false;
+    }
+
+    Chain* chain = new Chain();
+
+    for(int j = 0; j < chain_description.size(); ++j) {
+        if (chain_description[j].getType() == XmlRpc::XmlRpcValue::TypeString) {
+            std::string component_name = (std::string)chain_description[j];
+            std::map<std::string, Component*>::iterator it_comp = component_map.find(component_name);
+            if (it_comp != component_map.end()) {
+                chain->addComponent(it_comp->second);
+            } else {
+                ROS_ERROR("Invalid chain description. (namespace: %s)", n.getNamespace().c_str());
+            }
+        }
+    }
+
+    if (!tree.getChain(chain->getRootComponent()->getRootLinkName(),
+                       chain->getLeafComponent()->getLeafLinkNames().front(),   // is there always only one leaf link in the leaf component?
+                       chain->kdl_chain_)) {
+        ROS_FATAL("Could not initialize chain object");
+        return false;
+    }
+
+    // Read joints and make index map of joints
+    if (!readJoints(robot_model, component_map, chains_[i], joint_name_index_map)) {
+        ROS_FATAL("Could not read information about the joints");
+        return false;
+    }
+
+    chain->jnt_to_jac_solver_ = new KDL::ChainJntToJacSolver(chain->kdl_chain_);
 }
 
 Component* ChainParser::parseComponent(const XmlRpc::XmlRpcValue& component_struct) {
@@ -64,146 +178,6 @@ Component* ChainParser::parseComponent(const XmlRpc::XmlRpcValue& component_stru
     }
 
     return component;
-}
-
-bool ChainParser::parse() {
-    ros::NodeHandle n("~");
-    std::string ns = n.getNamespace();
-
-    unsigned int num_joints = 0;
-    std::map<std::string, Component*> component_map;
-
-    XmlRpc::XmlRpcValue component_params;
-    if (!n.getParam(ns + "/component_description", component_params)) {
-        ROS_ERROR("No component description given. (namespace: %s)", n.getNamespace().c_str());
-        return false;
-    }
-
-    if (component_params.getType() != XmlRpc::XmlRpcValue::TypeArray) {
-        ROS_ERROR("Component description list should be an array.  (namespace: %s)", n.getNamespace().c_str());
-        return false;
-    }
-
-    for(int i = 0; i < component_params.size(); ++i) {
-        Component* component = parseComponent(component_params[i]);
-        if (component) {
-            component_map[component->getName()] = component;
-        }
-    }
-
-    /* * * * * * * * PARSE CHAINS * * * * * * * * */
-
-    XmlRpc::XmlRpcValue chain_params;
-    if (!n.getParam(ns + "/chain_description", chain_params)) {
-        ROS_ERROR("No chain description given. (namespace: %s)", n.getNamespace().c_str());
-        return false;
-    }
-
-    if (chain_params.getType() != XmlRpc::XmlRpcValue::TypeArray) {
-        ROS_ERROR("Chain description list should be an array.  (namespace: %s)", n.getNamespace().c_str());
-        return false;
-    }
-
-    //chain_description_array.resize(chain_params.size());
-    chains_.resize(chain_params.size());
-    for(int i = 0; i < chain_params.size(); ++i) {
-        XmlRpc::XmlRpcValue& chain_description = chain_params[i];
-        if (!chain_description.getType() == XmlRpc::XmlRpcValue::TypeArray) {
-            ROS_ERROR("Chain description should be an array. (namespace: %s)", n.getNamespace().c_str());
-            return false;
-        }
-
-        printf("Chain size: %i\n", chain_description.size());
-
-        for(int j = 0; j < chain_description.size(); ++j) {
-            if (chain_description[j].getType() == XmlRpc::XmlRpcValue::TypeString) {
-                std::string component_name = (std::string)chain_description[j];
-                std::map<std::string, Component*>::iteratot it_comp = component_map.find(component_name);
-                if (it_comp != component_map.end()) {
-                    chains_[i].addComponent(it_comp->second);
-                } else {
-                    ROS_ERROR("Invalid chain description. (namespace: %s)", n.getNamespace().c_str());
-                }
-            }
-        }
-    }
-}
-
-void ChainParser::parse(std::map<std::string, Component*>& component_map, std::map<std::string, uint>& joint_name_index_map) {
-
-    // Get URDF
-    std::string urdf_xml, full_urdf_xml;
-    n.param("urdf_xml",urdf_xml,std::string("robot_description"));
-    n.searchParam(urdf_xml,full_urdf_xml);
-    ROS_DEBUG("Reading xml file from parameter server");
-    std::string result_string;
-    if (!n.getParam(full_urdf_xml, result_string)) {
-        ROS_FATAL("Could not load the xml from parameter server: %s", urdf_xml.c_str());
-        //error = true;
-        return false;
-    }
-
-    urdf::Model robot_model;
-    KDL::Tree tree;
-
-    // Is this necessary?
-    if (!robot_model.initString(result_string)) {
-        ROS_FATAL("Could not initialize robot model");
-        //error = true;
-        return -1;
-    }
-    ROS_INFO("Robot model initialized");
-
-    if (!kdl_parser::treeFromString(result_string, tree)) {
-        ROS_ERROR("Could not initialize tree object");
-        //error = true;
-        return false;
-    }
-    ROS_INFO("Tree object initialized");
-    //(Display results)
-
-    // For every entry in array:
-    //          Make kinematic chain
-    //          Resize joint arrays
-    //          Do bookkeeping
-
-    // Resize jnt_to_jac_solver_array (OBSOLETE IF ARRAY IS USED INSTEAD OF VECTOR)
-    //jnt_to_jac_solver_array.resize(2);
-
-    ///ROS_INFO("Chain description array %s", chain_description_array[0][0].c_str());
-    ///ROS_INFO("First tooltip = %s", component_description_map[chain_description_array[0][0].c_str()].tip_names[0].c_str());
-
-    // Number of joints starts with zero, will increase when adding chain objects. Eventually, everything will be resized
-    num_joints = 0;
-    for (uint i = 0; i < chains_.size(); i++) {
-
-        std::string chain_name = chains_[i].components_[0]->name_;
-        ///ROS_INFO("Object chain %i concerns %s", i+1, chain_name.c_str());
-        std::string tip_name = component_map[chain_name].tip_names[0];
-        ///ROS_INFO("Tip name %i = %s", i+1, tip_name.c_str());
-        //TODO: Make "base" variable
-
-        if (!tree.getChain("base", tip_name, chains_[i].kdl_chain_)) {
-            ROS_FATAL("Could not initialize chain object");
-            return false;
-        }
-        //ROS_INFO("Number of joints = %i", chains_[i].kdl_chain_.getNrOfJoints());
-
-        // Read joints and make index map of joints
-        if (!readJoints(robot_model, component_map, chains_[i], joint_name_index_map)) {
-            ROS_FATAL("Could not read information about the joints");
-            return false;
-        }
-
-        chains_[i].jnt_to_jac_solver_ = new KDL::ChainJntToJacSolver(chains_[i].kdl_chain_);
-
-    }
-
-    //for (uint i = 0; i < num_joints; i++) ROS_INFO("Joint limits joint %i are %f %f",i,q_min_[i],q_max_[i]);
-
-    num_active_chains_ = 0;
-
-    return true;
 }
 
 bool ChainParser::readJoints(urdf::Model &robot_model, const Chain& chain, std::map<std::string, uint>& joint_name_index_map) {

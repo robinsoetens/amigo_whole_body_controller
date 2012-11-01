@@ -7,6 +7,8 @@
 #ifndef CARTESIANIMPEDANCE_H_
 #define CARTESIANIMPEDANCE_H_
 
+#include "Constraint.h"
+
 // ROS
 #include "ros/ros.h"
 
@@ -15,9 +17,6 @@
 
 // tf
 #include <tf/transform_listener.h>
-
-// Eigen
-#include <Eigen/Core>
 
 /////
 // Action server
@@ -29,7 +28,7 @@
 
 /////
 
-class CartesianImpedance {
+class CartesianImpedance : Constraint {
 
 public:
 
@@ -38,53 +37,50 @@ public:
     /**
      * Constructor
      */
-    CartesianImpedance();
+    CartesianImpedance(const std::string& end_effector_frame, tf::TransformListener* tf_listener);
 
     /**
      * Deconstructor
      */
     virtual ~CartesianImpedance();
 
-    /**
-     * Initialize function
-     */
-    bool initialize(const std::string&, uint);
+    bool initialize(const std::vector<Chain*> chains, const std::vector<Component*> components);
 
-    /**
-     * Update
-     */
-    void update(Eigen::VectorXd&, uint& force_vector_index);
+    bool isActive();
+
+    void apply();
+
+
+protected:
 
     //! Bool indicating whether this is active
     bool is_active_;
 
-    /////
+    Chain* chain_;
 
-    /////
+    std::string end_effector_frame_;
 
-protected:
+    geometry_msgs::PoseStamped goal_pose_;
 
-    /**
-     * Subscriber to target position
-     */
-    ros::Subscriber target_sub_;
-
-    void callbackTarget(const geometry_msgs::PoseStamped::ConstPtr& msg);
-
-    tf::TransformListener listener;
-
-    /////geometry_msgs::PoseStamped transformPose(const tf::TransformListener& listener, geometry_msgs::PoseStamped poseMsg);
-    geometry_msgs::PoseStamped transformPose(geometry_msgs::PoseStamped poseMsg);
-
-    geometry_msgs::PoseStamped errorPose;
-    Eigen::VectorXd error_vector_;
+    tf::TransformListener* tf_listener_;
 
     // Cartesian Impedance matrix
     Eigen::MatrixXd K_;
 
-    std::string end_effector_frame_;
+    geometry_msgs::PoseStamped error_pose_;
 
-    uint F_start_index_;
+    Eigen::VectorXd error_vector_;
+
+    /* * * * * * * * * * * * * * * * * * * * * * * * * */
+
+    //ros::Subscriber target_sub_;
+
+    //void callbackTarget(const geometry_msgs::PoseStamped::ConstPtr& msg);
+
+    /////geometry_msgs::PoseStamped transformPose(const tf::TransformListener& listener, geometry_msgs::PoseStamped poseMsg);
+    geometry_msgs::PoseStamped transformPose(geometry_msgs::PoseStamped poseMsg);
+
+    //uint F_start_index_;
 
     /////
     typedef actionlib::SimpleActionServer<amigo_arm_navigation::grasp_precomputeAction> action_server;
@@ -94,8 +90,6 @@ protected:
     //action_server action_server_;
     action_server* server_;//(node_, "/grasp_precompute_left", boost::bind(&execute, _1, &server, &client), false);
     //GoalHandle active_goal_;
-
-    geometry_msgs::PoseStamped goal_pose_;
 
     /**
       * Callback function for Cartesian goal

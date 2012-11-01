@@ -39,7 +39,6 @@ add_definitions(${EIGEN_DEFINITIONS})
 rosbuild_add_library(wholebodycontroller 
 					src/WholeBodyController.cpp
 					src/CartesianImpedance.cpp
-					src/ComputeJacobian.cpp
 					src/AdmittanceController.cpp
 					src/ComputeNullspace.cpp
 					src/ObstacleAvoidance.cpp
@@ -48,6 +47,7 @@ rosbuild_add_library(wholebodycontroller
                                         src/Component.cpp
                                         src/Chain.cpp
                                         src/ChainParser.cpp
+                                        src/Constraint.cpp
 )
 #                                        src/JointTrajectoryAction.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
