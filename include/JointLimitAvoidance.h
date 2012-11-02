@@ -21,7 +21,7 @@ public:
     virtual ~JointLimitAvoidance();
 
     //! Initialize();
-    void initialize(const std::vector<double>& q_min, const std::vector<double>& q_max, const std::vector<double>& gain, const std::vector<double>& workspace);
+    void initialize(const KDL::JntArray& q_min, const KDL::JntArray& q_max, const std::vector<double>& gain, const std::vector<double>& workspace);
 
     //! Update
     void update(const KDL::JntArray& q_in, Eigen::VectorXd& tau_out);

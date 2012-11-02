@@ -12,29 +12,8 @@ bool ChainParser::parse(std::vector<Chain*>& chains, std::map<std::string, unsig
     ros::NodeHandle n("~");
     std::string ns = n.getNamespace();
 
-    /* * * * * * * * PARSE COMPONENTS * * * * * * * * */
+    /* * * * * * * * PARSE JOINT TOPICS * * * * * * * * */
 
-    num_joints = 0;
-    std::map<std::string, Component*> component_map;
-
-    XmlRpc::XmlRpcValue component_params;
-    if (!n.getParam(ns + "/component_description", component_params)) {
-        ROS_ERROR("No component description given. (namespace: %s)", n.getNamespace().c_str());
-        return false;
-    }
-
-    if (component_params.getType() != XmlRpc::XmlRpcValue::TypeArray) {
-        ROS_ERROR("Component description list should be an array.  (namespace: %s)", n.getNamespace().c_str());
-        return false;
-    }
-
-    for(int i = 0; i < component_params.size(); ++i) {
-        Component* component = parseComponent(component_params[i]);
-        if (component) {
-            components.push_back(component);
-            component_map[component->getName()] = component;
-        }
-    }
 
     /* * * * * * * * PARSE URDF * * * * * * * * */
 
@@ -81,14 +60,18 @@ bool ChainParser::parse(std::vector<Chain*>& chains, std::map<std::string, unsig
     }
 
     for(int i = 0; i < chain_params.size(); ++i) {
-        Chain* chain = parseChain(chain_params[i]);
+        Chain* chain = parseChain(chain_params[i], tree, robot_model, joint_name_to_index, index_to_joint_name);
         if (chain) {
             chains.push_back(chain);
         }
     }
+
+    return true;
 }
 
-Chain* ChainParser::parseChain(const XmlRpc::XmlRpcValue& chain_description) {
+Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, const KDL::Tree& tree, urdf::Model& robot_model,
+                               std::map<std::string, unsigned int>& joint_name_to_index,
+                               std::vector<std::string>& index_to_joint_name) {
     ros::NodeHandle n("~");
     std::string ns = n.getNamespace();
 
@@ -111,94 +94,30 @@ Chain* ChainParser::parseChain(const XmlRpc::XmlRpcValue& chain_description) {
     }
     std::string tip_link_name = (std::string)v_tip_link;
 
-
-
-
     Chain* chain = new Chain();
 
-    for(int j = 0; j < chain_description.size(); ++j) {
-        if (chain_description[j].getType() == XmlRpc::XmlRpcValue::TypeString) {
-            std::string component_name = (std::string)chain_description[j];
-            std::map<std::string, Component*>::iterator it_comp = component_map.find(component_name);
-            if (it_comp != component_map.end()) {
-                chain->addComponent(it_comp->second);
-            } else {
-                ROS_ERROR("Invalid chain description. (namespace: %s)", n.getNamespace().c_str());
-            }
-        }
-    }
-
-    if (!tree.getChain(chain->getRootComponent()->getRootLinkName(),
-                       chain->getLeafComponent()->getLeafLinkNames().front(),   // is there always only one leaf link in the leaf component?
-                       chain->kdl_chain_)) {
+    if (!tree.getChain(root_link_name, tip_link_name, chain->kdl_chain_)) {
         ROS_FATAL("Could not initialize chain object");
         return false;
     }
 
     // Read joints and make index map of joints
-    if (!readJoints(robot_model, component_map, chains_[i], joint_name_index_map)) {
+    if (!readJoints(robot_model, root_link_name, tip_link_name, joint_name_to_index, index_to_joint_name, *chain)) {
         ROS_FATAL("Could not read information about the joints");
         return false;
     }
 
     chain->jnt_to_jac_solver_ = new KDL::ChainJntToJacSolver(chain->kdl_chain_);
+
+    return chain;
 }
 
-Component* ChainParser::parseComponent(const XmlRpc::XmlRpcValue& component_struct) {
-    if (!component_struct.getType() == XmlRpc::XmlRpcValue::TypeStruct) {
-        ROS_ERROR("Component description should be an struct. (namespace: %s)", n.getNamespace().c_str());
-        return 0;
-    }
-
-    if (component_struct.size() != 1) {
-        ROS_ERROR("Malformed component description. (namespace: %s)", n.getNamespace().c_str());
-        return 0;
-    }
-
-    std::string component_name = component_struct.begin()->first;
-    Component* component = new Component(component_name);
-
-    XmlRpc::XmlRpcValue& component_param = component_struct.begin()->second;
-
-    XmlRpc::XmlRpcValue& v_root_name = component_param["root_name"];
-    if (v_root_name.getType() == XmlRpc::XmlRpcValue::TypeString) {
-        component->setRootLinkName((std::string)v_root_name);
-    } else {
-        ROS_ERROR("Component description for '%s' does not contain 'root_name'. (namespace: %s)", component->getName().c_str(), n.getNamespace().c_str());
-        return 0;
-    }
-
-    XmlRpc::XmlRpcValue& v_leaf_names = component_param["leaf_names"];
-    if (v_leaf_names.getType() != XmlRpc::XmlRpcValue::TypeArray) {
-        ROS_ERROR("Component description for '%s' doesn not contain 'leaf_names'. (namespace: %s)", component->getName().c_str(), n.getNamespace().c_str());
-        return 0;
-    }
-
-    for(int j = 0 ; j < v_leaf_names.size(); ++j) {
-        component->addLeafLinkName((std::string)v_leaf_names[j]);
-    }
-
-    XmlRpc::XmlRpcValue& v_meas_topic = component_param["measurement_topic"];
-    if (v_meas_topic.getType() == XmlRpc::XmlRpcValue::TypeString) {
-        component->setMeasurementTopic((std::string)v_meas_topic);
-    } else {
-        ROS_ERROR("Component description for '%s' does not contain 'measurement_topic'. (namespace: %s)", component->getName().c_str(), n.getNamespace().c_str());
-        return 0;
-    }
-
-    XmlRpc::XmlRpcValue& v_ref_topic = component_param["reference_topic"];
-    if (v_meas_topic.getType() == XmlRpc::XmlRpcValue::TypeString) {
-        component->setReferenceTopic((std::string)v_ref_topic);
-    } else {
-        ROS_ERROR("Component description for '%s' does not contain 'reference_topic'. (namespace: %s)", component->getName().c_str(), n.getNamespace().c_str());
-        return 0;
-    }
-
-    return component;
-}
-
-bool ChainParser::readJoints(urdf::Model &robot_model, const std::string& root_link_name, const std::string& tip_link_name) {
-
+bool ChainParser::readJoints(urdf::Model &robot_model,
+                             const std::string& root_link_name,
+                             const std::string& tip_link_name,
+                             std::map<std::string, unsigned int>& joint_name_to_index,
+                             std::vector<std::string>& index_to_joint_name,
+                             Chain& chain) {
 
     boost::shared_ptr<const urdf::Link> link = robot_model.getLink(tip_link_name);
     boost::shared_ptr<const urdf::Joint> joint;
@@ -222,7 +141,17 @@ bool ChainParser::readJoints(urdf::Model &robot_model, const std::string& root_l
 
         // Only count joints if they're not fixed or unknown
         if (joint->type != urdf::Joint::UNKNOWN && joint->type != urdf::Joint::FIXED) {
-            current_num_joints++;
+            unsigned int full_joint_index = index_to_joint_name.size();
+
+            chain.addJoint(joint->name, link->name, full_joint_index);
+
+            if (joint_name_to_index.find(joint->name) == joint_name_to_index.end()) {
+                // joint not yet known, so add to map
+                joint_name_to_index[joint->name] = full_joint_index;
+                index_to_joint_name.push_back(joint->name);
+            }
+
+            /*
             current_joint_names.push_back(joint->name);
             if (joint->type != urdf::Joint::CONTINUOUS) {
                 current_temp_joint_min.push_back(joint->limits->lower);
@@ -233,84 +162,10 @@ bool ChainParser::readJoints(urdf::Model &robot_model, const std::string& root_l
                 current_temp_joint_min.push_back(-1000000);
                 current_temp_joint_max.push_back(1000000);
             }
+            */
         }
 
         link = robot_model.getLink(link->getParent()->name);
     }
-
-    //Loop over every 'component' in the chain
-    for (uint i = 0; i < chain_description_vector.size(); i++) {
-
-        // Integer to count the number of joints of this component
-        int current_num_joints = 0;
-
-        // Vector containing joint limits of this component
-        std::vector<double> current_temp_joint_min, current_temp_joint_max;
-
-        std::string root_name = component_description_map[chain_description_vector[i]].root_name;
-
-        // Vector containing the joint names
-        std::vector<std::string> current_joint_names;
-
-        //ROS_INFO("Root name = %s", root_name.c_str());
-        while (link && link->name != root_name) {
-
-            if (!link->parent_joint) {
-                ROS_ERROR("Reached end of chain and link '%s' was not found.", root_name.c_str());
-                return false;
-            }
-
-            joint = robot_model.getJoint(link->parent_joint->name);
-            if (!joint) {
-                ROS_ERROR("Could not find joint: %s",link->parent_joint->name.c_str());
-
-                ROS_INFO("ComputeJacobian::readJoints - FALSE");
-                return false;
-            }
-
-            // Only count joints if they're not fixed or unknown
-            if (joint->type != urdf::Joint::UNKNOWN && joint->type != urdf::Joint::FIXED) {
-                current_num_joints++;
-                current_joint_names.push_back(joint->name);
-                if (joint->type != urdf::Joint::CONTINUOUS) {
-                    current_temp_joint_min.push_back(joint->limits->lower);
-                    current_temp_joint_max.push_back(joint->limits->upper);
-                }
-                else {
-                    ROS_WARN("This is not yet nicely implemented");
-                    current_temp_joint_min.push_back(-1000000);
-                    current_temp_joint_max.push_back(1000000);
-                }
-            }
-
-            link = robot_model.getLink(link->getParent()->name);
-        }
-
-        // Only add info to component description map if this has not been done yet
-        if (component_description_map[chain_description_vector[i]].number_of_joints == 0) {
-            num_joints += current_num_joints;
-            component_description_map[chain_description_vector[i]].start_index = num_joints-current_num_joints;
-            component_description_map[chain_description_vector[i]].end_index = num_joints-1;
-            component_description_map[chain_description_vector[i]].number_of_joints = current_num_joints;
-            ///component_description_map[chain_description_vector[i]].q.resize(current_num_joints);
-            ROS_INFO("Component %s gets startindex %i and endindex %i", chain_description_vector[i].c_str(), component_description_map[chain_description_vector[i]].start_index, component_description_map[chain_description_vector[i]].end_index);
-
-            for (int k = 0; k < current_num_joints; k++) {
-                //temp_joint_min.push_back(current_temp_joint_min[i]);
-                //temp_joint_max.push_back(current_temp_joint_max[i]);
-                // The joints are read from tip to root but appear in the joint vectors from root to tip so have to be 'used' in reverse order.
-                std::string joint_name(current_joint_names[current_num_joints-1-k]);
-                component_description_map[chain_description_vector[i]].joint_names.push_back(current_joint_names[current_num_joints-1-k]);
-                q_min_.push_back(current_temp_joint_min[current_num_joints-1-k]);
-                q_max_.push_back(current_temp_joint_max[current_num_joints-1-k]);
-                ///ROS_INFO("Insert joint %s in map",joint_name.c_str());
-                joint_name_index_map[joint_name] = k+num_joints-current_num_joints;
-            }
-
-        }
-
-    }
-
     return true;
-
 }

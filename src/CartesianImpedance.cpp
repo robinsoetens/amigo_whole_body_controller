@@ -5,7 +5,7 @@
 #include <actionlib/server/simple_action_server.h>
 
 CartesianImpedance::CartesianImpedance(const std::string& end_effector_frame, tf::TransformListener* tf_listener) :
-    chain_(0), end_effector_frame_(end_effector_frame), tf_listener_(tf_listener), is_active_(false) {
+    is_active_(false), chain_(0), end_effector_frame_(end_effector_frame), tf_listener_(tf_listener) {
 
     ROS_INFO("Initializing Cartesian Impedance");
 
@@ -49,11 +49,11 @@ CartesianImpedance::CartesianImpedance(const std::string& end_effector_frame, tf
     ROS_INFO("Initialized Cartesian Impedance");
 }
 
-bool CartesianImpedance::initialize(const std::vector<Chain*> chains, const std::vector<Component*> components) {
+bool CartesianImpedance::initialize(const std::vector<Chain*>& chains) {
     chain_ = 0;
     for(std::vector<Chain*>::const_iterator it_chain = chains.begin(); it_chain != chains.end(); ++it_chain) {
         Chain* chain = *it_chain;
-        if (chain->getLeafComponent()->getLeafLinkNames().front() == end_effector_frame_) {
+        if (chain->hasLink(end_effector_frame_)) {
             chain_ = chain;
         }
     }
@@ -66,21 +66,10 @@ bool CartesianImpedance::isActive() {
 }
 
 CartesianImpedance::~CartesianImpedance() {
-    delete server_;
 }
 
-/////geometry_msgs::PoseStamped CartesianImpedance::transformPose(const tf::TransformListener& listener, geometry_msgs::PoseStamped poseMsg){
-geometry_msgs::PoseStamped CartesianImpedance::transformPose(geometry_msgs::PoseStamped poseMsg){
-
-    //OBSOLETE??//
-
-    geometry_msgs::PoseStamped poseInGripperFrame;
-    /*
-    // Wait for transform??
-    listener.transformPose(end_effector_frame_,poseMsg,poseInGripperFrame);
-*/
-    return poseInGripperFrame;
-
+void CartesianImpedance::setGoal(tf::Stamped<tf::Pose>& goal_pose) {
+    goal_pose_ = goal_pose;
 }
 
 void CartesianImpedance::apply() {
@@ -104,7 +93,7 @@ void CartesianImpedance::apply() {
     //ros::Time now = ros::Time::now();
     //bool wait_for_transform = listener.waitForTransform(end_effector_frame_,goal_pose_.header.frame_id, now, ros::Duration(1.0));
 
-    goal_pose_.header.stamp = ros::Time();
+    goal_pose_.stamp_ = ros::Time();
     try {
         tf_listener_->transformPose(end_effector_frame_, goal_pose_, error_pose_);
     } catch (tf::TransformException& e) {
@@ -115,19 +104,17 @@ void CartesianImpedance::apply() {
     //listener.transformPose(end_effector_frame_,now,goal_pose_,goal_pose_.header.frame_id,errorPose);
 
     // ToDo: Check orientations as well
-    tf::Quaternion orientation;
-    tf::quaternionMsgToTF(error_pose_.pose.orientation, orientation);
     double roll, pitch, yaw;
 
 #if ROS_VERSION_MINIMUM(1, 8, 0)
-    tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
+    tf::Matrix3x3(error_pose_.getRotation()).getRPY(roll, pitch, yaw);
 #else
-    btMatrix3x3(orientation).getRPY(roll, pitch, yaw);
+    btMatrix3x3(error_pose_.getRotation()).getRPY(roll, pitch, yaw);
 #endif
 
-    error_vector_(0) = error_pose_.pose.position.x;
-    error_vector_(1) = error_pose_.pose.position.y;
-    error_vector_(2) = error_pose_.pose.position.z;
+    error_vector_(0) = error_pose_.getOrigin().getX();
+    error_vector_(1) = error_pose_.getOrigin().getY();
+    error_vector_(2) = error_pose_.getOrigin().getZ();
     error_vector_(3) = roll;
     error_vector_(4) = pitch;
     error_vector_(5) = yaw;
@@ -138,94 +125,6 @@ void CartesianImpedance::apply() {
     ///ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
 
     F_task = K_ * error_vector_;
-    //force_vector_index += 6;
 
-    // ToDo: Include boundaries in action message
-    int num_converged_dof = 0;
-    for (uint i = 0; i < 3; i++) {
-        if (fabs(error_vector_(i)) < 0.035) ++num_converged_dof;
-    }
-    for (uint i = 0; i < 3; i++) {
-        if (fabs(error_vector_(i+3)) < 0.3) ++num_converged_dof;
-    }
-    if (num_converged_dof == 6 && pre_grasp_) {
-        pre_grasp_ = false;
-        ROS_INFO("pre_grasp_ = %d",pre_grasp_);
-    }
-    else if (num_converged_dof == 6 && server_->isActive() && !pre_grasp_) {
-        server_->setSucceeded();
-        ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
-    }
-
-    chain_->addEndEffectorTorque(F_task);
+    chain_->addCartesianTorque(end_effector_frame_, F_task);
 }
-
-/////
-void CartesianImpedance::goalCB() {
-
-    const amigo_arm_navigation::grasp_precomputeGoal& goal = *server_->acceptNewGoal();
-
-    ROS_WARN("Received new goal");
-
-    /*
-    // Cancels the currently active goal.
-    if (active_goal_.getGoalStatus().status == 1) {
-        // Stop something???
-
-        // Marks the current goal as canceled.
-        active_goal_.setCanceled();
-        is_active_ = false;
-        ROS_WARN("Canceling previous goal");
-    }
-    */
-
-    // ToDo: Check whether the received goal meets it requirements
-    /*if (gh.getGoal()->PERFORM_PRE_GRASP) {
-        ROS_ERROR("Pre-grasp not yet implemented, rejecting goal");
-        gh.setRejected();
-    }*/
-    //else {
-
-    // Put the goal data in the right datatype
-    goal_pose_.header = goal.goal.header;
-    goal_pose_.pose.position.x = goal.goal.x;
-    goal_pose_.pose.position.y = goal.goal.y;
-    goal_pose_.pose.position.z = goal.goal.z;
-    double roll = goal.goal.roll;
-    double pitch = goal.goal.pitch;
-    double yaw = goal.goal.yaw;
-    geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
-    goal_pose_.pose.orientation = orientation;
-
-    // Pre-grasp
-    if (goal.PERFORM_PRE_GRASP) {
-        pre_grasp_ = true;
-        ROS_INFO("pre_grasp_ = %d",pre_grasp_);
-    }
-
-    // Set goal to accepted etc;
-    //gh.setAccepted();
-    //active_goal_ = gh;
-    is_active_ = true;
-    //}
-
-
-
-}
-
-void CartesianImpedance::cancelCB() {
-
-    /*
-    if (active_goal_ == gh)
-    {
-        // Marks the current goal as canceled.
-        active_goal_.setCanceled();
-        is_active_ = false;
-    }
-    */
-
-    is_active_ = false;
-    server_->setPreempted();
-}
-
-/////

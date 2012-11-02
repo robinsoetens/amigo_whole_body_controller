@@ -9,17 +9,17 @@ PostureControl::~PostureControl() {
 
 }
 
-void PostureControl::initialize(const std::vector<double>& q_min, const std::vector<double>& q_max, const std::vector<double>& q0, const std::vector<double>& gain) {
+void PostureControl::initialize(const KDL::JntArray& q_min, const KDL::JntArray& q_max, const std::vector<double>& q0, const std::vector<double>& gain) {
 
-    num_joints_ = q_min.size();
+    num_joints_ = q_min.rows();
     q0_.resize(num_joints_);
     K_.resize(num_joints_);
     for (uint i = 0; i < num_joints_; i++) q0_[i] = q0[i];
 
     ROS_INFO("Length joint array = %i",num_joints_);
     for (uint i = 0; i < num_joints_; i++) {
-        K_[i] = 2*gain[i] / ((q_max[i] - q_min[i])*(q_max[i] - q_min[i]));
-        ROS_INFO("qmin = %f, qmax = %f, q0 = %f, K = %f",q_min[i],q_max[i],q0_[i], K_[i]);
+        K_[i] = 2*gain[i] / ((q_max(i) - q_min(i))*(q_max(i) - q_min(i)));
+        ROS_INFO("qmin = %f, qmax = %f, q0 = %f, K = %f",q_min(i),q_max(i),q0_[i], K_[i]);
     }
     //ROS_INFO("Length joint array = %i",num_joints_);
 

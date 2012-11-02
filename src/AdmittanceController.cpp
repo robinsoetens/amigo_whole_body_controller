@@ -11,7 +11,7 @@ AdmittanceController::~AdmittanceController() {
 
 }
 
-void AdmittanceController::initialize(const std::vector<double>& q_min, const std::vector<double>& q_max, const std::vector<double>& mass, const std::vector<double>& damping) {
+void AdmittanceController::initialize(const KDL::JntArray& q_min, const KDL::JntArray& q_max, const std::vector<double>& mass, const std::vector<double>& damping) {
 
     // Resize relevant parameters
     uint num_joints = 15;
@@ -66,8 +66,8 @@ void AdmittanceController::initialize(const std::vector<double>& q_min, const st
         qdot_reference_previous_(i) = 0;
 
         // Set joint limits
-        q_min_(i) = q_min[i];
-        q_max_(i) = q_max[i];
+        q_min_(i) = q_min(i);
+        q_max_(i) = q_max(i);
 
     }
 

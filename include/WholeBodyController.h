@@ -51,6 +51,10 @@ public:
 
     void setMeasuredJointPosition(const std::string& joint_name, double pos);
 
+    const Eigen::VectorXd& getJointReferences() const;
+
+    const std::vector<std::string>& getJointNames() const;
+
     bool addConstraint(Constraint* constraint);
 
 protected:
@@ -64,6 +68,10 @@ protected:
     // The total measured joint array
     KDL::JntArray q_current_;
 
+    KDL::JntArray q_min_;
+
+    KDL::JntArray q_max_;
+
     //! Unsigned integer containing the total number of joints
     uint num_joints_;
 
@@ -71,9 +79,6 @@ protected:
 
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-    //CartesianImpedance CIleft_;
-    //CartesianImpedance CIright_;
-    ComputeJacobian ComputeJacobian_;
     AdmittanceController AdmitCont_;
     ComputeNullspace ComputeNullspace_;
     JointLimitAvoidance JointLimitAvoidance_;

@@ -33,7 +33,7 @@ public:
     /**
      * Initialize
      */
-    void initialize(const std::vector<double>& q_min, const std::vector<double>& q_max, const std::vector<double>& mass, const std::vector<double>& damping);
+    void initialize(const KDL::JntArray& q_min, const KDL::JntArray& q_max, const std::vector<double>& mass, const std::vector<double>& damping);
 
     /**
      * Update

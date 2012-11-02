@@ -2,6 +2,7 @@
 #define WBC_CHAIN_H_
 
 #include <vector>
+#include <map>
 
 #include <kdl/chainjnttojacsolver.hpp>
 
@@ -15,13 +16,13 @@ public:
 
     virtual ~Chain();
 
-    void addComponent(Component* component);
+    void addJoint(const std::string& joint_name, const std::string& link_name, unsigned int full_joint_index);
 
-    const std::vector<Component*>& getComponents() const;
+    bool hasLink(const std::string& link_name) const;
 
-    void setMeasuredJointPositions(const Eigen::VectorXd& all_joint_measurements);
+    void setMeasuredJointPositions(const KDL::JntArray& all_joint_measurements);
 
-    void addToJacobian(Eigen::VectorXd& jacobian) const;
+    void addToJacobian(Eigen::MatrixXd& jacobian) const;
 
     void addToCartesianTorque(Eigen::VectorXd& torque);
 
@@ -31,18 +32,21 @@ public:
 
     void removeCartesianTorques();
 
+    KDL::ChainJntToJacSolver* jnt_to_jac_solver_;
+
+    KDL::Chain kdl_chain_;
+
 protected:
 
     KDL::JntArray joint_positions_;
 
     std::vector<std::string> joint_names_;
 
+    std::vector<std::string> link_names_;
+
     std::vector<unsigned int> joint_chain_index_to_full_index_;
 
     std::map<std::string, Eigen::VectorXd> cartesian_torques_;
-
-    KDL::ChainJntToJacSolver* jnt_to_jac_solver_;
-
 
     /*
     std::vector<Component*> components_;

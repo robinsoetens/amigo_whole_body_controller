@@ -15,7 +15,7 @@ public:
 
     virtual ~Constraint();
 
-    virtual bool initialize(const std::vector<Chain*> chains, const std::vector<Component*> components) = 0;
+    virtual bool initialize(const std::vector<Chain*>& chains) = 0;
 
     virtual bool isActive() = 0;
 

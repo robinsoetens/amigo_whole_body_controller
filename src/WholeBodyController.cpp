@@ -48,7 +48,7 @@ bool WholeBodyController::initialize() {
     }
 
     // Initialize admittance controller
-    AdmitCont_.initialize(ComputeJacobian_.q_min_, ComputeJacobian_.q_max_, admittance_mass, admittance_damping);
+    AdmitCont_.initialize(q_min_, q_max_, admittance_mass, admittance_damping);
 
     // Initialize nullspace calculator
     // ToDo: Make this variable
@@ -66,12 +66,12 @@ bool WholeBodyController::initialize() {
 
     // Initialize Joint Limit Avoidance
     for (uint i = 0; i < 15; i++) ROS_INFO("JLA gain of joint %i is %f",i,JLA_gain[i]);
-    JointLimitAvoidance_.initialize(ComputeJacobian_.q_min_, ComputeJacobian_.q_max_, JLA_gain, JLA_workspace);
+    JointLimitAvoidance_.initialize(q_min_, q_max_, JLA_gain, JLA_workspace);
     ROS_INFO("Joint limit avoidance initialized");
 
     // Initialize Posture Controller
     for (uint i = 0; i < num_joints_; i++) posture_gain[i] = 1;
-    PostureControl_.initialize(ComputeJacobian_.q_min_, ComputeJacobian_.q_max_, posture_q0, posture_gain);
+    PostureControl_.initialize(q_min_, q_max_, posture_q0, posture_gain);
     ROS_INFO("Posture Control initialized");
 
     // Resize additional variables
@@ -92,7 +92,7 @@ bool WholeBodyController::initialize() {
 }
 
 bool WholeBodyController::addConstraint(Constraint* constraint) {
-    if (!constraint->initialize(chains_, components_)) {
+    if (!constraint->initialize(chains_)) {
         return false;
     }
     constraints_.push_back(constraint);
@@ -119,6 +119,7 @@ bool WholeBodyController::update() {
     for(std::vector<Chain*>::iterator it_chain = chains_.begin(); it_chain != chains_.end(); ++it_chain) {
         Chain* chain = *it_chain;
         chain->removeCartesianTorques();
+        chain->setMeasuredJointPositions(q_current_);
     }
 
     for(std::vector<Constraint*>::iterator it_constr = constraints_.begin(); it_constr != constraints_.end(); ++it_constr) {
@@ -129,14 +130,13 @@ bool WholeBodyController::update() {
     }
 
     Eigen::VectorXd torque_full(chains_.size() * 6);
-    Eigen::VectorXd jacobian_full(chains_.size() * 6, num_joints_);
+    Eigen::MatrixXd jacobian_full(chains_.size() * 6, num_joints_);
     jacobian_full.setZero();
 
     for(unsigned int i_chain = 0; i_chain < chains_.size(); ++i_chain) {
         Chain* chain = chains_[i_chain];
         chain->addToCartesianTorque(torque_full);
         chain->addToJacobian(jacobian_full);
-        chain->setMeasuredJointPositions(q_current_);
     }
 
     tau_ = jacobian_full.transpose() * torque_full;
@@ -160,47 +160,15 @@ bool WholeBodyController::update() {
     //for (uint i = 0; i < qdot_reference_.rows(); i++) ROS_INFO("qd joint %i = %f",i,qdot_reference_(i));
     //for (uint i = 0; i < q_current_.rows(); i++) ROS_INFO("Position joint %i = %f",i,q_current_(i));
     //for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));
-    publishReferences();
 
     return true;
 
 }
 
-void WholeBodyController::publishReferences() {
+const Eigen::VectorXd& WholeBodyController::getJointReferences() const {
+    return q_reference_;
+}
 
-    for(std::vector<Component*>::iterator it_comp = components_.begin(); it_comp != components_.end(); ++it_comp) {
-        Component* comp = *it_comp;
-        comp->publishReferences();
-    }
-
-    /*
-    // Base
-
-    // Torso
-    ///torso_msg.stop = 0;
-    std::string component_name("torso");
-    for (int i = 0; i<component_map_[component_name].number_of_joints; i++) {
-        torso_msg_.position[i] = q_reference_(component_map_[component_name].start_index + i);
-    }
-    torso_pub_.publish(torso_msg_);
-    ///ROS_INFO("Torso position = %f, reference = %f",component_description_map_[component_name].q[0],torso_msg.pos);
-
-    // Left Arm
-    component_name = "left_arm";
-    for (int i = 0; i<component_map_[component_name].number_of_joints; i++) {
-        left_arm_msg_.position[i] = q_reference_(component_map_[component_name].start_index + i);
-    }
-    left_arm_pub_.publish(left_arm_msg_);
-
-    // Right Arm
-    component_name = "right_arm";
-    for (int i = 0; i<component_map_[component_name].number_of_joints; i++) {
-        right_arm_msg_.position[i] = q_reference_(component_map_[component_name].start_index + i);
-    }
-    right_arm_pub_.publish(right_arm_msg_);
-    //ROS_WARN("Right arm message not published");
-
-    // Head
-    */
-
+const std::vector<std::string>& WholeBodyController::getJointNames() const {
+    return index_to_joint_name_;
 }
