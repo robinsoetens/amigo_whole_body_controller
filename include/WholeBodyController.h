@@ -88,8 +88,8 @@ protected:
 
     //! Map contains a string to describe the (root joint of the component) this concerns and a vector (is sufficient) with the current joint values
     //std::map<std::string, std::vector<double> > q_current_map_;
-    std::map<std::string, Component*> component_map_;
-    std::map<std::string, uint> joint_name_index_map_;
+    //std::map<std::string, Component*> component_map_;
+    //std::map<std::string, uint> joint_name_index_map_;
 
     ///KDL::Jacobian Jacobian_;
     Eigen::MatrixXd Jacobian_;
@@ -112,10 +112,10 @@ protected:
     Eigen::MatrixXd N_;
 
     //! Vector containing bools to indicate the previous 'active' chains (an update is provided as function of the update hook)
-    std::vector<bool> isactive_vector_;
+    //std::vector<bool> isactive_vector_;
 
     //! Vector containing the number of active tasks during previous loop
-    uint previous_num_active_tasks_;
+    //uint previous_num_active_tasks_;
 
 
 

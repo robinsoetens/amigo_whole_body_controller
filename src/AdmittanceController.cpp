@@ -76,7 +76,7 @@ void AdmittanceController::initialize(const KDL::JntArray& q_min, const KDL::Jnt
 
 }
 
-void AdmittanceController::update(const Eigen::VectorXd tau, Eigen::VectorXd& qdot_reference, const KDL::JntArray& q_current, Eigen::VectorXd& q_reference) {
+void AdmittanceController::update(const Eigen::VectorXd& tau, Eigen::VectorXd& qdot_reference, const KDL::JntArray& q_current, Eigen::VectorXd& q_reference) {
 
     // Update filters --> as a result desired velocities are known
     for (int i = 0; i<tau.size(); i++) {

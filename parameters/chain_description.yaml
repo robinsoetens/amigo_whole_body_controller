@@ -1,4 +1,5 @@
 whole_body_controller:
     chain_description:
-        - ["left_arm", "torso"]
-        - ["right_arm", "torso"]
+        - {root: "base", tip: "grippoint_left"}
+        - {root: "base", tip: "grippoint_right"}
+

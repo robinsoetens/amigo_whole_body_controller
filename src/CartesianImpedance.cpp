@@ -7,7 +7,7 @@
 CartesianImpedance::CartesianImpedance(const std::string& end_effector_frame, tf::TransformListener* tf_listener) :
     is_active_(false), chain_(0), end_effector_frame_(end_effector_frame), tf_listener_(tf_listener) {
 
-    ROS_INFO("Initializing Cartesian Impedance");
+    ROS_INFO("Initializing Cartesian Impedance for %s", end_effector_frame_.c_str());
 
     // Get node handle
     ros::NodeHandle n("~");
@@ -42,7 +42,7 @@ CartesianImpedance::CartesianImpedance(const std::string& end_effector_frame, tf
 
     // Pre-grasping
     pre_grasp_ = false;
-    n.param<double> (ns+"/pre_grasp_delta", pre_grasp_delta_, 0.1);
+    n.param<double> (ns+"/pre_grasp_delta", pre_grasp_delta_, 0.0);
     /////
     ROS_WARN("force_vector_index in update hook is now obsolete");
 
@@ -70,15 +70,20 @@ CartesianImpedance::~CartesianImpedance() {
 
 void CartesianImpedance::setGoal(tf::Stamped<tf::Pose>& goal_pose) {
     goal_pose_ = goal_pose;
+    is_active_ = true;
 }
 
 void CartesianImpedance::apply() {
+
+    ROS_INFO("CartesianImpedance::apply");
 
     Eigen::VectorXd F_task(6);
 
     if (!is_active_) {
         return;
     }
+
+    ROS_INFO("    is active");
 
     //Transform message into tooltip frame. This directly implies e = x_d - x
     /////errorPose = CartesianImpedance::transformPose(listener, goal_pose_);
@@ -95,7 +100,7 @@ void CartesianImpedance::apply() {
 
     goal_pose_.stamp_ = ros::Time();
     try {
-        tf_listener_->transformPose(end_effector_frame_, goal_pose_, error_pose_);
+        tf_listener_->transformPose("/grippoint_left", goal_pose_, error_pose_); // end_effector_frame_
     } catch (tf::TransformException& e) {
         ROS_ERROR("CartesianImpedance: %s", e.what());
         return;
@@ -119,8 +124,12 @@ void CartesianImpedance::apply() {
     error_vector_(4) = pitch;
     error_vector_(5) = yaw;
 
+    std::cout << "goal_pose = " << goal_pose_.getOrigin().getX() << " , " << goal_pose_.getOrigin().getY() << " , " << goal_pose_.getOrigin().getZ() << std::endl;
+
+    std::cout << "error_vector = " << error_vector_ << std::endl;
+
     // If pre-grasping, an offset is added to the errorpose in x-direction
-    if (pre_grasp_) error_vector_(0) -= pre_grasp_delta_;
+    //if (pre_grasp_) error_vector_(0) -= pre_grasp_delta_;
 
     ///ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
 

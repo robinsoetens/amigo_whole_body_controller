@@ -20,13 +20,17 @@ bool WholeBodyController::initialize() {
     // ToDo: Parameterize
     Ts = 0.1;
 
-    ChainParser::parse(chains_, joint_name_to_index_, index_to_joint_name_);
+    ChainParser::parse(chains_, joint_name_to_index_, index_to_joint_name_, q_min_, q_max_);
     num_joints_ = joint_name_to_index_.size();
+
+    cout << "Number of joints: " << num_joints_ << endl;
 
     q_current_.resize(num_joints_);
     for(unsigned int i = 0; i < q_current_.rows(); ++i) {
         q_current_(i) = 0;
     }
+
+    cout << "A" << endl;
 
     // Read parameters
     std::vector<double> JLA_gain(num_joints_);      // Gain for the joint limit avoidance
@@ -37,7 +41,7 @@ bool WholeBodyController::initialize() {
 
     std::vector<double> admittance_mass(num_joints_);
     std::vector<double> admittance_damping(num_joints_);
-    for (std::map<std::string, uint>::iterator iter = joint_name_index_map_.begin(); iter != joint_name_index_map_.end(); ++iter) {
+    for (std::map<std::string, unsigned int>::iterator iter = joint_name_to_index_.begin(); iter != joint_name_to_index_.end(); ++iter) {
         n.param<double> (ns+"/joint_limit_avoidance/gain/"+iter->first, JLA_gain[iter->second], 1.0);
         n.param<double> (ns+"/joint_limit_avoidance/workspace/"+iter->first, JLA_workspace[iter->second], 0.9);
         n.param<double> (ns+"/posture_control/home_position/"+iter->first, posture_q0[iter->second], 0);
@@ -47,8 +51,12 @@ bool WholeBodyController::initialize() {
         ROS_INFO("Damping joint %s = %f",iter->first.c_str(),admittance_damping[iter->second]);
     }
 
+    cout << "B" << endl;
+
     // Initialize admittance controller
     AdmitCont_.initialize(q_min_, q_max_, admittance_mass, admittance_damping);
+
+    cout << "C" << endl;
 
     // Initialize nullspace calculator
     // ToDo: Make this variable
@@ -60,19 +68,29 @@ bool WholeBodyController::initialize() {
             else A(i,j) = 0;
         }
     }*/
+
     A.setIdentity(num_joints_,num_joints_);
+
+    cout << "D" << endl;
+
     ComputeNullspace_.initialize(num_joints_, A);
     N_.resize(num_joints_,num_joints_);
 
+    cout << "E" << endl;
+
     // Initialize Joint Limit Avoidance
-    for (uint i = 0; i < 15; i++) ROS_INFO("JLA gain of joint %i is %f",i,JLA_gain[i]);
+    for (uint i = 0; i < num_joints_; i++) ROS_INFO("JLA gain of joint %i is %f",i,JLA_gain[i]);
     JointLimitAvoidance_.initialize(q_min_, q_max_, JLA_gain, JLA_workspace);
     ROS_INFO("Joint limit avoidance initialized");
+
+    cout << "F" << endl;
 
     // Initialize Posture Controller
     for (uint i = 0; i < num_joints_; i++) posture_gain[i] = 1;
     PostureControl_.initialize(q_min_, q_max_, posture_q0, posture_gain);
     ROS_INFO("Posture Control initialized");
+
+    cout << "G" << endl;
 
     // Resize additional variables
     F_task_.resize(0);
@@ -81,9 +99,7 @@ bool WholeBodyController::initialize() {
     Jacobian_.resize(12,num_joints_);                // Jacobian is resized to zero rows, number of rows depends on number of tasks
     tau_.resize(num_joints_);
     tau_nullspace_.resize(num_joints_);
-    isactive_vector_.resize(2);
     F_task_.resize(12);
-    previous_num_active_tasks_ = 0;
 
     ROS_INFO("Whole Body Controller Initialized");
 
@@ -105,6 +121,8 @@ void WholeBodyController::setMeasuredJointPosition(const std::string& joint_name
 
 bool WholeBodyController::update() {
 
+    ROS_INFO("WholeBodyController::update()");
+
     // Set some variables to zero
     tau_.setZero();
     tau_nullspace_.setZero();   
@@ -124,20 +142,27 @@ bool WholeBodyController::update() {
 
     for(std::vector<Constraint*>::iterator it_constr = constraints_.begin(); it_constr != constraints_.end(); ++it_constr) {
         Constraint* constraint = *it_constr;
+        ROS_INFO("Constraint: %p", constraint);
         if (constraint->isActive()) {
             constraint->apply();
         }
     }
 
-    Eigen::VectorXd torque_full(chains_.size() * 6);
-    Eigen::MatrixXd jacobian_full(chains_.size() * 6, num_joints_);
+    Eigen::VectorXd torque_full;
+    Eigen::MatrixXd jacobian_full(0, num_joints_);
     jacobian_full.setZero();
 
     for(unsigned int i_chain = 0; i_chain < chains_.size(); ++i_chain) {
         Chain* chain = chains_[i_chain];
+
         chain->addToCartesianTorque(torque_full);
+
         chain->addToJacobian(jacobian_full);
+
     }
+
+    cout << "jacobian = " << endl << jacobian_full << endl;
+    cout << "torque_full = " << endl << torque_full << endl;
 
     tau_ = jacobian_full.transpose() * torque_full;
 
@@ -155,11 +180,15 @@ bool WholeBodyController::update() {
     tau_ += N_ * tau_nullspace_;
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Total torques (%i) = %f",i,tau_(i));
 
+    cout << "tau_ = " << endl << tau_ << endl;
+
     AdmitCont_.update(tau_, qdot_reference_, q_current_, q_reference_);
 
     //for (uint i = 0; i < qdot_reference_.rows(); i++) ROS_INFO("qd joint %i = %f",i,qdot_reference_(i));
     //for (uint i = 0; i < q_current_.rows(); i++) ROS_INFO("Position joint %i = %f",i,q_current_(i));
     //for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));
+
+    ROS_INFO("WholeBodyController::update() - end");
 
     return true;
 

@@ -38,7 +38,7 @@ public:
     /**
      * Update
      */
-    void update(const Eigen::VectorXd tau, Eigen::VectorXd& qdot_reference, const KDL::JntArray& q_current, Eigen::VectorXd& q_reference);
+    void update(const Eigen::VectorXd& tau, Eigen::VectorXd& qdot_reference, const KDL::JntArray& q_current, Eigen::VectorXd& q_reference);
 
 private:
 

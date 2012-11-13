@@ -27,13 +27,14 @@ public:
 
     virtual ~ChainParser();
 
-    static bool parse(std::vector<Chain*>& chains, std::map<std::string, unsigned int>& joint_name_to_index, std::vector<std::string>& index_to_joint_name);
+    static bool parse(std::vector<Chain*>& chains,
+                      std::map<std::string, unsigned int>& joint_name_to_index,
+                      std::vector<std::string>& index_to_joint_name,
+                      KDL::JntArray& q_min, KDL::JntArray& q_max);
 
     static Chain* parseChain(XmlRpc::XmlRpcValue& chain_params, const KDL::Tree& tree, urdf::Model& robot_model,
                              std::map<std::string, unsigned int>& joint_name_to_index,
-                             std::vector<std::string>& index_to_joint_name);
-
-    static Component* parseComponent(const XmlRpc::XmlRpcValue& component_params);
+                             std::vector<std::string>& index_to_joint_name, std::vector<double>& q_min, std::vector<double>& q_max);
 
 protected:
 
@@ -46,6 +47,7 @@ protected:
                            const std::string& tip_link_name,
                            std::map<std::string, unsigned int>& joint_name_to_index,
                            std::vector<std::string>& index_to_joint_name,
+                           std::vector<double>& q_min, std::vector<double>& q_max,
                            Chain& chain);
 
 
