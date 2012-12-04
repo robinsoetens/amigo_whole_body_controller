@@ -103,7 +103,6 @@ int main(int argc, char **argv) {
     left_goal.setRotation(tf::Quaternion(0, 0, 0, 1));
     left_goal.frame_id_ = "/base_link";
     cart_imp_left->setGoal(left_goal);
-    cart_imp_right->setGoal(left_goal);
 
     while(ros::ok()) {
 

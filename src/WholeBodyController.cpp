@@ -136,7 +136,7 @@ bool WholeBodyController::update() {
 
     for(std::vector<Chain*>::iterator it_chain = chains_.begin(); it_chain != chains_.end(); ++it_chain) {
         Chain* chain = *it_chain;
-        chain->removeCartesianTorques();
+        chain->removeCartesianWrenches();
         chain->setMeasuredJointPositions(q_current_);
     }
 
@@ -148,23 +148,23 @@ bool WholeBodyController::update() {
         }
     }
 
-    Eigen::VectorXd torque_full;
+    Eigen::VectorXd all_wrenches;
     Eigen::MatrixXd jacobian_full(0, num_joints_);
     jacobian_full.setZero();
 
     for(unsigned int i_chain = 0; i_chain < chains_.size(); ++i_chain) {
         Chain* chain = chains_[i_chain];
 
-        chain->addToCartesianTorque(torque_full);
+        chain->fillCartesianWrench(all_wrenches);
 
-        chain->addToJacobian(jacobian_full);
+        chain->fillJacobian(jacobian_full);
 
     }
 
     cout << "jacobian = " << endl << jacobian_full << endl;
-    cout << "torque_full = " << endl << torque_full << endl;
+    cout << "torque_full = " << endl << all_wrenches << endl;
 
-    tau_ = jacobian_full.transpose() * torque_full;
+    tau_ = jacobian_full.transpose() * all_wrenches;
 
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
 

@@ -135,5 +135,6 @@ void CartesianImpedance::apply() {
 
     F_task = K_ * error_vector_;
 
-    chain_->addCartesianTorque(end_effector_frame_, F_task);
+    // add the wrench to the end effector of the kinematic chain
+    chain_->addCartesianWrench(end_effector_frame_, F_task);
 }

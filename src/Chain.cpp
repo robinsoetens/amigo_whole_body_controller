@@ -37,8 +37,8 @@ void Chain::setMeasuredJointPositions(const KDL::JntArray &all_joint_measurement
     }
 }
 
-void Chain::addToJacobian(Eigen::MatrixXd& jacobian) const {
-    if (cartesian_torques_.empty()) {
+void Chain::fillJacobian(Eigen::MatrixXd& jacobian) const {
+    if (cartesian_wrenches_.empty()) {
         return;
     }
 
@@ -66,7 +66,7 @@ void Chain::addToJacobian(Eigen::MatrixXd& jacobian) const {
 
     unsigned int link_start_index = jacobian.rows();
 
-    // The following could be much more efficient:
+    // Add 6 new rows to the current whole body jacobian (TODO: could be much more efficient)
 
     Eigen::MatrixXd jacobian_new(jacobian.rows() + 6, jacobian.cols());
     jacobian_new.setZero();
@@ -82,8 +82,7 @@ void Chain::addToJacobian(Eigen::MatrixXd& jacobian) const {
 
     //ROS_INFO("3");
 
-    // TODO: deal with multiple cartesian torques
-
+    // TODO: deal with multiple cartesian wrenches
     for(unsigned int i = 0; i < joint_names_.size(); ++i) {
         unsigned int joint_index = joint_chain_index_to_full_index_[i];
 
@@ -103,21 +102,25 @@ void Chain::addToJacobian(Eigen::MatrixXd& jacobian) const {
     // link_start_index += 6;
 }
 
-void Chain::addToCartesianTorque(Eigen::VectorXd& torque) {
-    unsigned int link_start_index = torque.rows();
+void Chain::fillCartesianWrench(Eigen::VectorXd& all_wrenches) {
+    unsigned int link_start_index = all_wrenches.rows();
 
-    Eigen::VectorXd torque_new(torque.rows() + 6 * cartesian_torques_.size());
-    torque_new.setZero();
+    // Add 6 new values to current whole body wrench vector (TODO: could be much more efficient)
 
-    for(unsigned int i = 0; i < torque.rows(); ++i) {
-        torque_new(i) = torque(i);
+    Eigen::VectorXd wrench_new(all_wrenches.rows() + 6 * cartesian_wrenches_.size());
+    wrench_new.setZero();
+
+    for(unsigned int i = 0; i < all_wrenches.rows(); ++i) {
+        wrench_new(i) = all_wrenches(i);
     }
-    torque = torque_new;
+    all_wrenches = wrench_new;
 
-    for(std::map<std::string, Eigen::VectorXd>::iterator it_torque = cartesian_torques_.begin(); it_torque != cartesian_torques_.end(); ++it_torque) {
+    // Fill all_wrenches with the wrenches added to this chain
+
+    for(std::map<std::string, Eigen::VectorXd>::iterator it_wrench = cartesian_wrenches_.begin(); it_wrench != cartesian_wrenches_.end(); ++it_wrench) {
         //cout << "torque part = " << endl << it_torque->second << endl;
         for(unsigned int i = 0; i < 6; ++i) {
-            torque(i + link_start_index) = it_torque->second(i);
+            all_wrenches(i + link_start_index) = it_wrench->second(i);
         }
         link_start_index += 6;
     }
@@ -126,15 +129,15 @@ void Chain::addToCartesianTorque(Eigen::VectorXd& torque) {
     //cout << torque << endl;
 }
 
-void Chain::addCartesianTorque(const std::string& link_name, const Eigen::VectorXd& torque) {
-    std::map<std::string, Eigen::VectorXd>::iterator it_torque = cartesian_torques_.find(link_name);
-    if (it_torque == cartesian_torques_.end()) {
-        cartesian_torques_[link_name] = torque;
+void Chain::addCartesianWrench(const std::string& link_name, const Eigen::VectorXd& wrench) {
+    std::map<std::string, Eigen::VectorXd>::iterator it_wrench = cartesian_wrenches_.find(link_name);
+    if (it_wrench == cartesian_wrenches_.end()) {
+        cartesian_wrenches_[link_name] = wrench;
     } else {
-        it_torque->second += torque;
+        it_wrench->second += wrench;
     }
 }
 
-void Chain::removeCartesianTorques() {
-    cartesian_torques_.clear();
+void Chain::removeCartesianWrenches() {
+    cartesian_wrenches_.clear();
 }
