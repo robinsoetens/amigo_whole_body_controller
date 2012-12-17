@@ -86,13 +86,13 @@ int main(int argc, char **argv) {
 
     tf::TransformListener tf_listener;
 
-    CartesianImpedance* cart_imp_left = new CartesianImpedance("hand_left", &tf_listener);
+    CartesianImpedance* cart_imp_left = new CartesianImpedance("grippoint_left", &tf_listener);
     if (!wbc->addConstraint(cart_imp_left)) {
         ROS_ERROR("Could not initialize cartesian impedance for left arm");
         exit(-1);
     }
 
-    CartesianImpedance* cart_imp_right = new CartesianImpedance("hand_right", &tf_listener);
+    CartesianImpedance* cart_imp_right = new CartesianImpedance("grippoint_right", &tf_listener);
     if (!wbc->addConstraint(cart_imp_right)) {
         ROS_ERROR("Could not initialize cartesian impedance for right arm");
         exit(-1);
