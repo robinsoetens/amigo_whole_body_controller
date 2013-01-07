@@ -18,9 +18,8 @@ void Chain::addJoint(const std::string& joint_name, const std::string& link_name
 }
 
 bool Chain::hasLink(const std::string& link_name) const {
-    for(std::vector<std::string>::const_iterator it_link = link_names_.begin(); it_link != link_names_.end(); ++it_link) {
-        cout << *it_link << endl;
-        if (*it_link == link_name) {
+    for(unsigned int i = 0; i < kdl_chain_.getNrOfSegments(); i++){
+        if (kdl_chain_.getSegment(i).getName().data() == link_name) {
             return true;
         }
     }

@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
 
     JointRefPublisher* pub_left_arm = new JointRefPublisher("/arm_left_controller/references");
     JointRefPublisher* pub_right_arm = new JointRefPublisher("/arm_right_controller/references");
-    JointRefPublisher* pub_torso= new JointRefPublisher("/torso_controller/references");
+    JointRefPublisher* pub_torso = new JointRefPublisher("/torso_controller/references");
 
     JOINT_NAME_TO_PUB["wrist_yaw_joint_left"] = pub_left_arm;
     JOINT_NAME_TO_PUB["wrist_pitch_joint_left"] = pub_left_arm;
@@ -103,6 +103,7 @@ int main(int argc, char **argv) {
     left_goal.setRotation(tf::Quaternion(0, 0, 0, 1));
     left_goal.frame_id_ = "/base_link";
     cart_imp_left->setGoal(left_goal);
+    //cart_imp_right->setGoal(left_goal);
 
     while(ros::ok()) {
 

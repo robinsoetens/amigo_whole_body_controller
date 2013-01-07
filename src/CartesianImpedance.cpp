@@ -53,7 +53,9 @@ bool CartesianImpedance::initialize(const std::vector<Chain*>& chains) {
     chain_ = 0;
     for(std::vector<Chain*>::const_iterator it_chain = chains.begin(); it_chain != chains.end(); ++it_chain) {
         Chain* chain = *it_chain;
+
         if (chain->hasLink(end_effector_frame_)) {
+            std::cout << "CHAIN HAS END EFFECTOR FRAME: " << end_effector_frame_ << std::endl;
             chain_ = chain;
         }
     }
@@ -100,7 +102,7 @@ void CartesianImpedance::apply() {
 
     goal_pose_.stamp_ = ros::Time();
     try {
-        tf_listener_->transformPose("/grippoint_left", goal_pose_, error_pose_); // end_effector_frame_
+        tf_listener_->transformPose(end_effector_frame_, goal_pose_, error_pose_);
     } catch (tf::TransformException& e) {
         ROS_ERROR("CartesianImpedance: %s", e.what());
         return;
