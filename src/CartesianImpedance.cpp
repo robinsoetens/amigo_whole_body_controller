@@ -30,7 +30,7 @@ CartesianImpedance::CartesianImpedance(const std::string& end_effector_frame, tf
     n.param<double> (ns+"/krx", K_(3,3), 26);
     n.param<double> (ns+"/kry", K_(4,4), 26);
     n.param<double> (ns+"/krz", K_(5,5), 26);
-    ///ROS_INFO("K = %f, %f, %f, %f, %f, %f",K_(0,0),K_(1,1),K_(2,2),K_(3,3),K_(4,4),K_(5,5));
+    //ROS_INFO("K = %f, %f, %f, %f, %f, %f",K_(0,0),K_(1,1),K_(2,2),K_(3,3),K_(4,4),K_(5,5));
 
     error_vector_.resize(6);
     for (uint i = 0; i<6; i++) error_vector_(i) = 0;
@@ -55,7 +55,7 @@ bool CartesianImpedance::initialize(const std::vector<Chain*>& chains) {
         Chain* chain = *it_chain;
 
         if (chain->hasLink(end_effector_frame_)) {
-            std::cout << "CHAIN HAS END EFFECTOR FRAME: " << end_effector_frame_ << std::endl;
+            //std::cout << "Chain has end-effector frame: " << end_effector_frame_ << std::endl;
             chain_ = chain;
         }
     }
@@ -77,7 +77,7 @@ void CartesianImpedance::setGoal(tf::Stamped<tf::Pose>& goal_pose) {
 
 void CartesianImpedance::apply() {
 
-    ROS_INFO("CartesianImpedance::apply");
+    //ROS_INFO("CartesianImpedance::apply");
 
     Eigen::VectorXd F_task(6);
 
@@ -85,7 +85,7 @@ void CartesianImpedance::apply() {
         return;
     }
 
-    ROS_INFO("    is active");
+    //ROS_INFO("    is active");
 
     //Transform message into tooltip frame. This directly implies e = x_d - x
     /////errorPose = CartesianImpedance::transformPose(listener, goal_pose_);
@@ -105,6 +105,7 @@ void CartesianImpedance::apply() {
         tf_listener_->transformPose(end_effector_frame_, goal_pose_, error_pose_);
     } catch (tf::TransformException& e) {
         ROS_ERROR("CartesianImpedance: %s", e.what());
+        //std::cout << error_pose_.getOrigin() << std::endl;
         return;
     }
 
@@ -126,16 +127,18 @@ void CartesianImpedance::apply() {
     error_vector_(4) = pitch;
     error_vector_(5) = yaw;
 
-    std::cout << "goal_pose = " << goal_pose_.getOrigin().getX() << " , " << goal_pose_.getOrigin().getY() << " , " << goal_pose_.getOrigin().getZ() << std::endl;
-
-    std::cout << "error_vector = " << error_vector_ << std::endl;
+    //std::cout << "goal_pose = " << goal_pose_.getOrigin().getX() << " , " << goal_pose_.getOrigin().getY() << " , " << goal_pose_.getOrigin().getZ() << std::endl;
+    //std::cout << "error_vector = " << error_vector_ << std::endl;
 
     // If pre-grasping, an offset is added to the errorpose in x-direction
     //if (pre_grasp_) error_vector_(0) -= pre_grasp_delta_;
 
-    ///ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+    ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
 
     F_task = K_ * error_vector_;
+
+    //std::cout << "F_task = " << F_task << std::endl;
+
 
     // add the wrench to the end effector of the kinematic chain
     chain_->addCartesianWrench(end_effector_frame_, F_task);

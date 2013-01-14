@@ -34,7 +34,7 @@ void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg) {
 }
 
 void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std::string>& joint_names) {
-    for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
+    /*for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
         it_pub->second->msg_ = sensor_msgs::JointState();
     }
 
@@ -47,7 +47,7 @@ void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std:
 
     for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
         it_pub->second->pub_.publish(it_pub->second->msg_);
-    }
+    }*/
 }
 
 int main(int argc, char **argv) {
@@ -98,12 +98,14 @@ int main(int argc, char **argv) {
         exit(-1);
     }
 
+
     tf::Stamped<tf::Pose> left_goal;
-    left_goal.setOrigin(tf::Vector3(0.5, 0, 0.7));
+    left_goal.setOrigin(tf::Vector3(0.5, 0.3, 0.7));
     left_goal.setRotation(tf::Quaternion(0, 0, 0, 1));
     left_goal.frame_id_ = "/base_link";
     cart_imp_left->setGoal(left_goal);
     //cart_imp_right->setGoal(left_goal);
+
 
     while(ros::ok()) {
 

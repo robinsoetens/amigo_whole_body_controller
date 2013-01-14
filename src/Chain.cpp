@@ -85,7 +85,7 @@ void Chain::fillJacobian(Eigen::MatrixXd& jacobian) const {
     for(unsigned int i = 0; i < joint_names_.size(); ++i) {
         unsigned int joint_index = joint_chain_index_to_full_index_[i];
 
-        ROS_INFO("Chain joint index = %d, total joint index = %d", i, joint_index);
+        //ROS_INFO("Chain joint index = %d, total joint index = %d", i, joint_index);
 
         for(unsigned int j = 0; j < 6; ++j) {
             jacobian(link_start_index + j, joint_index) = chain_jacobian(j, i);

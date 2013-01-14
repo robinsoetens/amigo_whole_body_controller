@@ -2,7 +2,7 @@
 
     <arg name="launch_prefix" default="" />
 
-<!--	<include file="$(find amigo_joint_interface_converter)/launch/start.launch"/> -->
+<include file="$(find amigo_joint_interface_converter)/launch/start.launch"/>
 	
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/parameters.yaml" command="load"/>
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/joint_limit_avoidance.yaml" command="load"/>
@@ -12,5 +12,6 @@
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/chain_description.yaml" command="load"/>
 	
 	<node pkg="amigo_whole_body_controller" type="whole_body_controller" name="whole_body_controller" respawn="false" output="screen"/> launch-prefix="${arg launch_prefix}"/>
-	
+
+
 </launch>
