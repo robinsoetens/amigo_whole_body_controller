@@ -36,21 +36,6 @@ public:
                              std::map<std::string, unsigned int>& joint_name_to_index,
                              std::vector<std::string>& index_to_joint_name, std::vector<double>& q_min, std::vector<double>& q_max);
 
-protected:
-
-    /*
-     * Function reads the number of joints in a certain chain and puts the desired values in the index_map
-     *
-     */
-    static bool readJoints(urdf::Model &robot_model,
-                           const std::string& root_link_name,
-                           const std::string& tip_link_name,
-                           std::map<std::string, unsigned int>& joint_name_to_index,
-                           std::vector<std::string>& index_to_joint_name,
-                           std::vector<double>& q_min, std::vector<double>& q_max,
-                           Chain& chain);
-
-
 };
 
 #endif

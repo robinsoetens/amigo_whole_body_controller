@@ -129,80 +129,56 @@ Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, const KDL
         return 0;
     }
 
+    for(unsigned int i = 0; i < chain->kdl_chain_.getNrOfSegments(); ++i) {
+        const KDL::Segment& segment = chain->kdl_chain_.getSegment(i);
+        const KDL::Joint& joint = segment.getJoint();
+
+        if (joint.getType() != KDL::Joint::None) {
+            cout << "Segment: " << segment.getName() << endl;
+            cout << "Joint:   " << joint.getName() << endl;
+
+            unsigned int full_joint_index = 0;
+
+            map<string, unsigned int>::iterator it_joint = joint_name_to_index.find(joint.getName());
+
+            if (it_joint == joint_name_to_index.end()) {
+                // joint name is not yet in map, so give it a new fresh index and add it to the map
+                full_joint_index = joint_name_to_index.size();
+
+                cout << "    new joint, gets index " << full_joint_index << endl;
+                cout << "    type: " << joint.getTypeName() << endl;
+
+                joint_name_to_index[joint.getName()] = full_joint_index;
+                index_to_joint_name.push_back(joint.getName());
+
+                cout << "    Lower limit: " << robot_model.getJoint(joint.getName())->limits->lower << endl;
+                cout << "    Upper limit: " << robot_model.getJoint(joint.getName())->limits->upper << endl;
+
+                // determine joint limits from URDF
+                q_min.push_back(robot_model.getJoint(joint.getName())->limits->lower);
+                q_max.push_back(robot_model.getJoint(joint.getName())->limits->upper);
+
+            } else {
+                // joint name already in the map, so look-up its index
+                full_joint_index = it_joint->second;
+
+                cout << "    existing joint, has index: " << full_joint_index << endl;
+            }
+
+            chain->addJoint(joint.getName(), segment.getName(), full_joint_index);
+        }
+
+    }
+
     // Read joints and make index map of joints
+    /*
     if (!readJoints(robot_model, root_link_name, tip_link_name, joint_name_to_index, index_to_joint_name, q_min, q_max, *chain)) {
         ROS_FATAL("Could not read information about the joints");
         return 0;
     }
+    */
 
     chain->jnt_to_jac_solver_ = new KDL::ChainJntToJacSolver(chain->kdl_chain_);
 
     return chain;
-}
-
-bool ChainParser::readJoints(urdf::Model &robot_model,
-                             const std::string& root_link_name,
-                             const std::string& tip_link_name,
-                             std::map<std::string, unsigned int>& joint_name_to_index,
-                             std::vector<std::string>& index_to_joint_name, vector<double>& q_min, vector<double>& q_max,
-                             Chain& chain) {
-
-    boost::shared_ptr<const urdf::Link> link = robot_model.getLink(tip_link_name);
-    boost::shared_ptr<const urdf::Joint> joint;
-
-    if (!link) {
-        ROS_ERROR("Could not find link '%s'' in robot model.", tip_link_name.c_str());
-        return false;
-    }
-
-    while (link && link->name != root_link_name) {
-
-        cout << " - " << link->name << endl;
-
-        if (!link->parent_joint) {
-            ROS_ERROR("Reached end of chain and root link '%s' was not found.", root_link_name.c_str());
-            return false;
-        }
-
-        joint = robot_model.getJoint(link->parent_joint->name);
-        if (!joint) {
-            ROS_ERROR("Could not find joint: %s", link->parent_joint->name.c_str());
-            return false;
-        }
-
-        // Only count joints if they're not fixed or unknown
-        if (joint->type != urdf::Joint::UNKNOWN && joint->type != urdf::Joint::FIXED) {
-            unsigned int full_joint_index = index_to_joint_name.size();
-
-            map<string, unsigned int>::iterator it_joint = joint_name_to_index.find(joint->name);
-
-            if (it_joint == joint_name_to_index.end()) {
-                // joint not yet known, so add to map
-                joint_name_to_index[joint->name] = full_joint_index;
-                index_to_joint_name.push_back(joint->name);
-
-                if (joint->type != urdf::Joint::CONTINUOUS) {
-                    q_min.push_back(joint->limits->lower);
-                    q_max.push_back(joint->limits->upper);
-
-
-                    cout << joint->limits->lower << " - " << joint->limits->upper << endl;
-                    cout << q_min[0] << " - " << q_max[0] << endl;
-                }
-                else {
-                    ROS_WARN("Continuous joint: this is not yet nicely implemented");
-                    q_min.push_back(-1000000);
-                    q_max.push_back(1000000);
-                }
-
-            } else {
-                full_joint_index = it_joint->second;
-            }
-
-            chain.addJoint(joint->name, link->name, full_joint_index);
-        }
-
-        link = robot_model.getLink(link->getParent()->name);
-    }
-    return true;
 }

@@ -133,7 +133,7 @@ void CartesianImpedance::apply() {
     // If pre-grasping, an offset is added to the errorpose in x-direction
     //if (pre_grasp_) error_vector_(0) -= pre_grasp_delta_;
 
-    ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+    //ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
 
     F_task = K_ * error_vector_;
 

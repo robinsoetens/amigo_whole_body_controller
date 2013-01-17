@@ -117,6 +117,7 @@ bool WholeBodyController::addConstraint(Constraint* constraint) {
 
 void WholeBodyController::setMeasuredJointPosition(const std::string& joint_name, double pos) {
     q_current_(joint_name_to_index_[joint_name]) = pos;
+    //std::cout << joint_name << q_current_(joint_name_to_index_[joint_name]) <<  std::endl;
 }
 
 bool WholeBodyController::update() {
@@ -133,6 +134,9 @@ bool WholeBodyController::update() {
     // Plan of attack: set tau to zero --> add in every update loop.
     // Note that nullspace solution should be included in various subproblems
     // Not sure if this is the right approach: summing the taus up and then doing nullspace projection may result in smoother transitions and is probably quicker
+
+    //std::cout << "q_current_ = " << std::endl;
+    //std::cout << q_current_(joint_name_to_index_[wrist_yaw_joint_left]).data << std::endl;
 
     for(std::vector<Chain*>::iterator it_chain = chains_.begin(); it_chain != chains_.end(); ++it_chain) {
         Chain* chain = *it_chain;
@@ -166,8 +170,9 @@ bool WholeBodyController::update() {
 
     tau_ = jacobian_full.transpose() * all_wrenches;
 
-
+/*
     Eigen::VectorXd tau_new(tau_.size());
+
 
     tau_new(0) = tau_(1);
     tau_new(1) = tau_(2);
@@ -184,12 +189,14 @@ bool WholeBodyController::update() {
     tau_new(12) = tau_(12);
     tau_new(13) = tau_(13);
     tau_new(14) = tau_(14);
+*/
 
-
-    for (uint i = 0; i < tau_new.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_new(i));
+    //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
 
     ComputeNullspace_.update(jacobian_full, N_);
     //ROS_INFO("Nullspace updated");
+
+    //cout << "nullspace = " << endl << N_ << endl;
 
     JointLimitAvoidance_.update(q_current_, tau_nullspace_);
     ///ROS_INFO("Joint limit avoidance updated");
@@ -197,18 +204,18 @@ bool WholeBodyController::update() {
     PostureControl_.update(q_current_, tau_nullspace_);
     ///ROS_INFO("Posture control updated");
 
-    tau_new += N_ * tau_nullspace_;
+    tau_ += N_ * tau_nullspace_;
 
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Total torques (%i) = %f",i,tau_(i));
     //cout << "tau_ = " << endl << tau_ << endl;
 
-    AdmitCont_.update(tau_new, qdot_reference_, q_current_, q_reference_);
+    AdmitCont_.update(tau_, qdot_reference_, q_current_, q_reference_);
 
-    /*
-    for (uint i = 0; i < qdot_reference_.rows(); i++) ROS_INFO("qd joint %i = %f",i,qdot_reference_(i));
+
+    //for (uint i = 0; i < qdot_reference_.rows(); i++) ROS_INFO("qd joint %i = %f",i,qdot_reference_(i));
     for (uint i = 0; i < q_current_.rows(); i++) ROS_INFO("Position joint %i = %f",i,q_current_(i));
-    for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));
-    */
+    //for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));
+
 
     //ROS_INFO("WholeBodyController::update() - end");
 

@@ -32,7 +32,8 @@ unsigned int Chain::getNumJoints() const {
 
 void Chain::setMeasuredJointPositions(const KDL::JntArray &all_joint_measurements) {
     for(unsigned int i = 0; i < joint_names_.size(); ++i) {
-        joint_positions_(i) = all_joint_measurements(joint_chain_index_to_full_index_[i]);
+        joint_positions_(joint_names_.size()-i) = all_joint_measurements(joint_chain_index_to_full_index_[i]);
+        //std::cout << i << " : " << joint_positions_(i) << std::endl;
     }
 }
 
@@ -42,8 +43,6 @@ void Chain::fillJacobian(Eigen::MatrixXd& jacobian) const {
     }
 
     // Solve Chain Jacobian
-
-    //ROS_INFO("1");
 
     KDL::Jacobian chain_jacobian;
     chain_jacobian.resize(kdl_chain_.getNrOfJoints());
