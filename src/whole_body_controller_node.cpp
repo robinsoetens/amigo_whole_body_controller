@@ -34,7 +34,7 @@ void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg) {
 }
 
 void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std::string>& joint_names) {
-    /*for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
+    for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
         it_pub->second->msg_ = sensor_msgs::JointState();
     }
 
@@ -47,7 +47,7 @@ void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std:
 
     for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
         it_pub->second->pub_.publish(it_pub->second->msg_);
-    }*/
+    }
 }
 
 int main(int argc, char **argv) {
