@@ -98,6 +98,17 @@ int main(int argc, char **argv) {
         exit(-1);
     }
 
+    ObstacleAvoidance* obstacle_avoidance_left = new ObstacleAvoidance("grippoint_left", &tf_listener);
+    if (!wbc->addConstraint(obstacle_avoidance_left)) {
+        ROS_ERROR("Could not initialize obstacle avoidance");
+        exit(-1);
+    }
+
+    ObstacleAvoidance* obstacle_avoidance_right = new ObstacleAvoidance("grippoint_right", &tf_listener);
+    if (!wbc->addConstraint(obstacle_avoidance_right)) {
+        ROS_ERROR("Could not initialize obstacle avoidance");
+        exit(-1);
+    }
 
     tf::Stamped<tf::Pose> left_goal;
     left_goal.setOrigin(tf::Vector3(0.5, 0.3, 0.7));

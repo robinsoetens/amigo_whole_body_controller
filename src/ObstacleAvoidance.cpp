@@ -5,8 +5,8 @@
 
 using namespace std;
 
-ObstacleAvoidance::ObstacleAvoidance() {
-
+ObstacleAvoidance::ObstacleAvoidance(const string &end_effector_frame, tf::TransformListener *tf_listener) : listener_(*tf_listener) {
+    end_effector_frame_ = end_effector_frame;
 }
 
 ObstacleAvoidance::~ObstacleAvoidance() {
@@ -15,21 +15,33 @@ ObstacleAvoidance::~ObstacleAvoidance() {
     }
 }
 
-bool ObstacleAvoidance::initialize(const std::string& end_effector_frame, uint F_start_index) {
+bool ObstacleAvoidance::initialize(const std::vector<Chain*>& chains) {
 
     ROS_INFO("Initializing Obstacle Avoidance");
 
+    chain_ = 0;
+    for(std::vector<Chain*>::const_iterator it_chain = chains.begin(); it_chain != chains.end(); ++it_chain) {
+        Chain* chain = *it_chain;
+
+        if (chain->hasLink(end_effector_frame_)) {
+            //std::cout << "Chain has end-effector frame: " << end_effector_frame_ << std::endl;
+            chain_ = chain;
+        }
+    }
+
+    if (!chain_) {
+        ROS_ERROR("Could not find chain with link %s", end_effector_frame_.c_str());
+        return false;
+    }
+
     // Get node handle
     ros::NodeHandle n("~");
-    std::string ns = ros::this_node::getName();    
+    std::string ns = ros::this_node::getName();
 
-    end_effector_frame_ = end_effector_frame;
-    F_start_index_ = F_start_index;
+    pub_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/environment_markers/"+end_effector_frame_, 10);
 
-    bool wait_for_transform = listener_.waitForTransform(end_effector_frame_,"/map", ros::Time::now(), ros::Duration(1.0));
-    if (!wait_for_transform) ROS_WARN("Transform between %s and /map is not available",end_effector_frame.c_str());
-
-    pub_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/environment_markers", 10);
+    bool wait_for_transform = listener_.waitForTransform(end_effector_frame_, "/map", ros::Time::now(), ros::Duration(1.0));
+    if (!wait_for_transform) ROS_WARN("Transform between %s and /map is not available", end_effector_frame_.c_str());
 
     // initialize environment
     boxes_.push_back(new Box(Eigen::Vector3d(-0.127, 0.730, 0), Eigen::Vector3d(1.151, 1.139, 0.7)));
@@ -40,13 +52,19 @@ bool ObstacleAvoidance::initialize(const std::string& end_effector_frame, uint F
     return true;
 }
 
-void ObstacleAvoidance::update(Eigen::VectorXd& F_task, uint& force_vector_index) {
+bool ObstacleAvoidance::isActive() {
+    return true;
+}
 
+void ObstacleAvoidance::apply() {
+
+    /*
     for(unsigned int i = 0; i < 3; ++i) {
         double sign = 1;
         if (F_task[i] < 0) sign = -1;
         F_task[i] = min(abs(F_task[i]), 1.0) * sign;
     }
+    */
 
     tf::Stamped<tf::Pose> end_effector_pose;
     end_effector_pose.setIdentity();
@@ -66,8 +84,8 @@ void ObstacleAvoidance::update(Eigen::VectorXd& F_task, uint& force_vector_index
 
     Eigen::Vector3d end_effector_pos(end_effector_pose_MAP.getOrigin().getX(), end_effector_pose_MAP.getOrigin().getY(), end_effector_pose_MAP.getOrigin().getZ());
 
-    Eigen::Vector3d total_force;
-    total_force.setZero();
+    Eigen::VectorXd wrench(6);
+    wrench.setZero();
 
     for(vector<Box*>::iterator it = boxes_.begin(); it != boxes_.end(); ++it) {
         const Box& box = **it;
@@ -94,29 +112,42 @@ void ObstacleAvoidance::update(Eigen::VectorXd& F_task, uint& force_vector_index
 
             double weight = 0;
             /*
-            if (distance < 0.2) {
-                double x = distance;
-                weight = 10 / (x * x);
-            } else if (distance < 0.3) {
-                weight = 0;//0.1 - (distance - 0.2) / 10;
-            }
-            */
+                if (distance < 0.2) {
+                    double x = distance;
+                    weight = 10 / (x * x);
+                } else if (distance < 0.3) {
+                    weight = 0;//0.1 - (distance - 0.2) / 10;
+                }
+                */
             if (distance < 0.1) {
                 weight = (1 - (distance / 0.1)) * 10;
             }
 
-            total_force += diff_normalized * weight;
+            for(unsigned int i = 0; i < 3; i++) {
+                wrench(i) +=  diff_normalized(i) * weight;
+            }
+
         }
     }
 
-    visualize(end_effector_pos + (total_force / 10));
+    visualize(end_effector_pos, wrench); // + (total_force / 10));
 
-    F_task.segment(0, 3) += total_force;
+    chain_->addCartesianWrench(end_effector_frame_, wrench);
+
+    //F_task.segment(0, 3) += total_force;
 
     // cout << F_task << endl;
+
+
 }
 
-void ObstacleAvoidance::visualize(const Eigen::Vector3d& dir_position) const {
+void ObstacleAvoidance::visualize(const Eigen::Vector3d& end_effector_pos, const Eigen::VectorXd& wrench) const {
+
+    Eigen::Vector3d marker_pos;
+    for(unsigned int i = 0; i < 3; ++i) {
+        marker_pos(i) = end_effector_pos(i) + wrench(i) / 10;
+    }
+
     visualization_msgs::MarkerArray marker_array;
 
     int id = 0;
@@ -159,9 +190,9 @@ void ObstacleAvoidance::visualize(const Eigen::Vector3d& dir_position) const {
     dir.scale.y = 0.1;
     dir.scale.z = 0.1;
 
-    dir.pose.position.x = dir_position[0];
-    dir.pose.position.y = dir_position[1];
-    dir.pose.position.z = dir_position[2];
+    dir.pose.position.x = marker_pos[0];
+    dir.pose.position.y = marker_pos[1];
+    dir.pose.position.z = marker_pos[2];
     dir.pose.orientation.x = 0;
     dir.pose.orientation.y = 0;
     dir.pose.orientation.z = 0;

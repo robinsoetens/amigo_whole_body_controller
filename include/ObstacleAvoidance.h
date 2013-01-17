@@ -16,9 +16,11 @@
 // Eigen
 #include <Eigen/Core>
 
+#include "Constraint.h"
+
 /////
 
-class ObstacleAvoidance {
+class ObstacleAvoidance : public Constraint {
 
     struct Box {
 
@@ -37,7 +39,7 @@ public:
     /**
      * Constructor
      */
-    ObstacleAvoidance();
+    ObstacleAvoidance(const std::string& end_effector_frame, tf::TransformListener* tf_listener);
 
     /**
      * Deconstructor
@@ -47,24 +49,24 @@ public:
     /**
      * Initialize function
      */
-    bool initialize(const std::string&, uint);
+    bool initialize(const std::vector<Chain*>& chains);
 
-    /**
-     * Update
-     */
-    void update(Eigen::VectorXd&, uint& force_vector_index);
 
-    void visualize(const Eigen::Vector3d& dir_position) const;
+    bool isActive();
+
+    void apply();
+
+    void visualize(const Eigen::Vector3d& end_effector_pos, const Eigen::VectorXd& wrench) const;
 
 protected:
 
+    Chain* chain_;
+
+    std::string end_effector_frame_;
+
     std::vector<Box*> boxes_;
 
-    tf::TransformListener listener_;
-
-    std::string end_effector_frame_;  
-
-    uint F_start_index_;
+    tf::TransformListener& listener_;
 
     ros::Publisher pub_marker_;
 

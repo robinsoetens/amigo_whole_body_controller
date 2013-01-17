@@ -84,8 +84,6 @@ protected:
     JointLimitAvoidance JointLimitAvoidance_;
     PostureControl PostureControl_;
 
-    ObstacleAvoidance obstacle_avoidance_;
-
     //! Map contains a string to describe the (root joint of the component) this concerns and a vector (is sufficient) with the current joint values
     //std::map<std::string, std::vector<double> > q_current_map_;
     //std::map<std::string, Component*> component_map_;
