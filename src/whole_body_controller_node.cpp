@@ -7,8 +7,12 @@ using namespace std;
 
 const double loop_rate_ = 50;
 
-Constraint* cart_imp_left;
-Constraint* cart_imp_right;
+CartesianImpedance* cart_imp_left_;
+CartesianImpedance* cart_imp_right_;
+
+typedef actionlib::SimpleActionServer<amigo_arm_navigation::grasp_precomputeAction> action_server;
+action_server* server_left_;
+action_server* server_right_;
 
 WholeBodyController* wbc;
 
@@ -50,6 +54,69 @@ void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std:
     }
 }
 
+void setTarget(const amigo_arm_navigation::grasp_precomputeGoal& goal, const std::string& end_effector_frame) {
+
+    geometry_msgs::PoseStamped goal_pose;
+
+    goal_pose.header = goal.goal.header;
+    goal_pose.pose.position.x = goal.goal.x;
+    goal_pose.pose.position.y = goal.goal.y;
+    goal_pose.pose.position.z = goal.goal.z;
+    double roll = goal.goal.roll;
+    double pitch = goal.goal.pitch;
+    double yaw = goal.goal.yaw;
+    geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
+    goal_pose.pose.orientation = orientation;
+
+    tf::Stamped<tf::Pose> tf_goal;
+    poseStampedMsgToTF(goal_pose, tf_goal);
+    tf_goal.frame_id_ = "/base_link";
+
+    ROS_INFO("Pointer: %i", cart_imp_left_);
+    if (end_effector_frame == "/grippoint_left") {
+        cart_imp_left_->setGoal(tf_goal);
+    }
+    else if (end_effector_frame == "/grippoint_right") {
+        cart_imp_right_->setGoal(tf_goal);
+    }
+    else ROS_WARN("Cannot process this goal");
+}
+
+void cancelTarget(const std::string& end_effector_frame) {
+    if (end_effector_frame == "/grippoint_left") {
+        cart_imp_left_->cancelGoal();
+    }
+    else if (end_effector_frame == "/grippoint_right") {
+        cart_imp_right_->cancelGoal();
+    }
+    else ROS_WARN("Not clear what to cancel");
+}
+
+
+void leftCancelCB() {
+    //is_active_ = false;
+    server_left_->setPreempted();
+}
+
+void rightCancelCB() {
+    //is_active_ = false;
+    server_left_->setPreempted();
+}
+
+void leftGoalCB() {
+    ROS_INFO("Received left goal");
+    std::string end_effector_frame = "/grippoint_left";
+    const amigo_arm_navigation::grasp_precomputeGoal& goal = *server_left_->acceptNewGoal();
+    setTarget(goal, end_effector_frame);
+}
+
+void rightGoalCB() {
+    ROS_INFO("Received right goal");
+    std::string end_effector_frame = "/grippoint_right";
+    const amigo_arm_navigation::grasp_precomputeGoal& goal = *server_right_->acceptNewGoal();
+    setTarget(goal, end_effector_frame);
+}
+
 int main(int argc, char **argv) {
 
     // Initialize node
@@ -84,16 +151,27 @@ int main(int argc, char **argv) {
 
     ros::Rate r(loop_rate_);
 
+    server_left_ = new action_server(nh_private, "/grasp_precompute_left", false);
+    server_left_->registerGoalCallback(boost::bind(&leftGoalCB));
+    server_left_->registerPreemptCallback(boost::bind(&leftCancelCB));
+
+    server_right_ = new action_server(nh_private, "/grasp_precompute_right", false);
+    server_right_->registerGoalCallback(boost::bind(&rightGoalCB));
+    server_right_->registerPreemptCallback(boost::bind(&rightCancelCB));
+
+    server_left_->start();
+    server_right_->start();
+
     tf::TransformListener tf_listener;
 
-    CartesianImpedance* cart_imp_left = new CartesianImpedance("grippoint_left", &tf_listener);
-    if (!wbc->addConstraint(cart_imp_left)) {
+    cart_imp_left_ = new CartesianImpedance("grippoint_left", &tf_listener);
+    if (!wbc->addConstraint(cart_imp_left_)) {
         ROS_ERROR("Could not initialize cartesian impedance for left arm");
         exit(-1);
     }
 
-    CartesianImpedance* cart_imp_right = new CartesianImpedance("grippoint_right", &tf_listener);
-    if (!wbc->addConstraint(cart_imp_right)) {
+    cart_imp_right_ = new CartesianImpedance("grippoint_right", &tf_listener);
+    if (!wbc->addConstraint(cart_imp_right_)) {
         ROS_ERROR("Could not initialize cartesian impedance for right arm");
         exit(-1);
     }
@@ -110,13 +188,14 @@ int main(int argc, char **argv) {
         exit(-1);
     }
 
+    /*
     tf::Stamped<tf::Pose> left_goal;
     left_goal.setOrigin(tf::Vector3(0.5, 0.3, 0.7));
     left_goal.setRotation(tf::Quaternion(0, 0, 0, 1));
     left_goal.frame_id_ = "/base_link";
     cart_imp_left->setGoal(left_goal);
     //cart_imp_right->setGoal(left_goal);
-
+    */
 
     while(ros::ok()) {
 
@@ -124,11 +203,19 @@ int main(int argc, char **argv) {
 
         wbc->update();
 
+        if (cart_imp_left_->status_ == 1 && server_left_->isActive()) server_left_->setSucceeded();
+        if (cart_imp_left_->status_ == 1 && server_right_->isActive()) server_right_->setSucceeded();
+
         publishJointReferences(wbc->getJointReferences(), wbc->getJointNames());
 
         r.sleep();
     }
 
+    delete cart_imp_right_;
+    delete cart_imp_left_;
+
+    delete server_left_;
+    delete server_right_;
     delete wbc;
 
     return 0;

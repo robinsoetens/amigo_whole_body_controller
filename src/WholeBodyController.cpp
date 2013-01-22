@@ -170,27 +170,6 @@ bool WholeBodyController::update() {
 
     tau_ = jacobian_full.transpose() * all_wrenches;
 
-/*
-    Eigen::VectorXd tau_new(tau_.size());
-
-
-    tau_new(0) = tau_(1);
-    tau_new(1) = tau_(2);
-    tau_new(2) = tau_(3);
-    tau_new(3) = tau_(4);
-    tau_new(4) = tau_(5);
-    tau_new(5) = tau_(6);
-    tau_new(6) = tau_(7);
-    tau_new(7) = tau_(0);
-    tau_new(8) = tau_(8);
-    tau_new(9) = tau_(9);
-    tau_new(10) = tau_(10);
-    tau_new(11) = tau_(11);
-    tau_new(12) = tau_(12);
-    tau_new(13) = tau_(13);
-    tau_new(14) = tau_(14);
-*/
-
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
 
     ComputeNullspace_.update(jacobian_full, N_);
@@ -213,7 +192,7 @@ bool WholeBodyController::update() {
 
 
     //for (uint i = 0; i < qdot_reference_.rows(); i++) ROS_INFO("qd joint %i = %f",i,qdot_reference_(i));
-    for (uint i = 0; i < q_current_.rows(); i++) ROS_INFO("Position joint %i = %f",i,q_current_(i));
+    //for (uint i = 0; i < q_current_.rows(); i++) ROS_INFO("Position joint %i = %f",i,q_current_(i));
     //for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));
 
 

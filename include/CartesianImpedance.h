@@ -50,6 +50,14 @@ public:
 
     void setGoal(tf::Stamped<tf::Pose>& goal_pose);
 
+    void cancelGoal();
+
+    // Status for the Cartesian Impedance
+    // IDLE=0
+    // AT_GOAL_POSE=1
+    // MOVING_TO_GOAL_POSE=2
+    unsigned int status_;
+
 
 protected:
 
@@ -73,6 +81,7 @@ protected:
     double pre_grasp_delta_;
 
     tf::TransformListener* tf_listener_;
+
 
 };
 

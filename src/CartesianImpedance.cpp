@@ -71,8 +71,17 @@ CartesianImpedance::~CartesianImpedance() {
 }
 
 void CartesianImpedance::setGoal(tf::Stamped<tf::Pose>& goal_pose) {
+    std::cout << "TEST1" << std::endl;
     goal_pose_ = goal_pose;
+    std::cout << "TEST2" << std::endl;
     is_active_ = true;
+    std::cout << "TEST3" << std::endl;
+    status_ = 2;
+}
+
+void CartesianImpedance::cancelGoal() {
+    is_active_ = false;
+    status_ = 0;
 }
 
 void CartesianImpedance::apply() {
@@ -142,4 +151,28 @@ void CartesianImpedance::apply() {
 
     // add the wrench to the end effector of the kinematic chain
     chain_->addCartesianWrench(end_effector_frame_, F_task);
+
+
+    // ToDo: Include boundaries in action message
+    int num_converged_dof = 0;
+    for (uint i = 0; i < 3; i++) {
+        if (fabs(error_vector_(i)) < 0.035) ++num_converged_dof;
+    }
+    for (uint i = 0; i < 3; i++) {
+        if (fabs(error_vector_(i+3)) < 0.3) ++num_converged_dof;
+    }
+    if (num_converged_dof == 6 && pre_grasp_) {
+        pre_grasp_ = false;
+        ROS_INFO("pre_grasp_ = %d",pre_grasp_);
+    }
+    //////////else if (num_converged_dof == 6 && server_->isActive() && !pre_grasp_) {
+        //////////server_->setSucceeded();
+        //////////ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+    //////////}
+    else if (num_converged_dof == 6 && status_ == 2 && !pre_grasp_) {
+        status_ = 1;
+        ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+    }
+
+
 }
