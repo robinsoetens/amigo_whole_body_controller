@@ -30,6 +30,11 @@
 // Vector
 #include <vector>
 
+// KDL
+#include <kdl/chain.hpp>
+#include <kdl/chainfksolverpos_recursive.hpp>
+#include <kdl/frames.hpp>
+
 class WholeBodyController {
 
 public:
@@ -55,9 +60,19 @@ public:
 
     const std::vector<std::string>& getJointNames() const;
 
-    bool addConstraint(Constraint* constraint);
+    bool addMotionObjective(MotionObjective* motionobjective);
+
+    /**
+      * Returns the current FK solution
+      *
+      */
+    void getFKsolution(KDL::Frame &FK_end_effector_pose, const std::string& end_effector_frame, geometry_msgs::PoseStamped& pose);
 
 protected:
+
+    Chain* chain_left_;
+    Chain* chain_right_;
+    RobotState robot_state_;
 
     std::vector<Chain*> chains_;
 
@@ -75,7 +90,7 @@ protected:
     //! Unsigned integer containing the total number of joints
     uint num_joints_;
 
-    std::vector<Constraint*> constraints_;
+    std::vector<MotionObjective*> motionobjectives_;
 
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -129,6 +144,31 @@ protected:
      * Publish reference positions
      */
     void publishReferences();
+
+    /**
+      * computeForwardKinematics
+      */
+    void computeForwardKinematics(KDL::Frame &FK_end_effector_pose, const std::string &end_effector_frame);
+
+    /**
+      * Forward Kinematics Solver
+      */
+    KDL::ChainFkSolverPos_recursive* fk_solver;
+    KDL::ChainFkSolverPos_recursive* fk_solver_left;
+    KDL::ChainFkSolverPos_recursive* fk_solver_right;
+
+    /**
+      * End-effector pose based on forward kinematics computation
+      */
+    KDL::Frame end_effector_pose_;
+    KDL::Frame FK_end_effector_pose_;
+
+    /**
+     * Create the forward kinematics solvers for both chains
+     */
+    void createFKsolvers(const std::vector<Chain *> &chains);
+
+
 
 };
 

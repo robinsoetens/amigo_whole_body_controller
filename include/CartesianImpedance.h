@@ -7,7 +7,7 @@
 #ifndef CARTESIANIMPEDANCE_H_
 #define CARTESIANIMPEDANCE_H_
 
-#include "Constraint.h"
+#include "MotionObjective.h"
 
 // ROS
 #include "ros/ros.h"
@@ -18,7 +18,6 @@
 // tf
 #include <tf/transform_listener.h>
 
-/////
 // Action server
 #include <actionlib/server/action_server.h>
 #include <actionlib/server/simple_action_server.h>
@@ -26,9 +25,14 @@
 // Action definition
 #include <amigo_arm_navigation/grasp_precomputeAction.h>
 
+// KDL
+#include <kdl/chain.hpp>
+#include <kdl/chainfksolverpos_recursive.hpp>
+#include <kdl/frames.hpp>
+
 /////
 
-class CartesianImpedance : public Constraint {
+class CartesianImpedance : public MotionObjective {
 
 public:
 
@@ -46,7 +50,7 @@ public:
 
     bool isActive();
 
-    void apply();
+    void apply(const RobotState& robotstate);
 
     void setGoal(tf::Stamped<tf::Pose>& goal_pose);
 

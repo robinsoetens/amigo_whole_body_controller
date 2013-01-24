@@ -71,11 +71,8 @@ CartesianImpedance::~CartesianImpedance() {
 }
 
 void CartesianImpedance::setGoal(tf::Stamped<tf::Pose>& goal_pose) {
-    std::cout << "TEST1" << std::endl;
     goal_pose_ = goal_pose;
-    std::cout << "TEST2" << std::endl;
     is_active_ = true;
-    std::cout << "TEST3" << std::endl;
     status_ = 2;
 }
 
@@ -84,7 +81,7 @@ void CartesianImpedance::cancelGoal() {
     status_ = 0;
 }
 
-void CartesianImpedance::apply() {
+void CartesianImpedance::apply(const RobotState &robotstate) {
 
     //ROS_INFO("CartesianImpedance::apply");
 

@@ -72,7 +72,7 @@ void setTarget(const amigo_arm_navigation::grasp_precomputeGoal& goal, const std
     poseStampedMsgToTF(goal_pose, tf_goal);
     tf_goal.frame_id_ = "/base_link";
 
-    ROS_INFO("Pointer: %i", cart_imp_left_);
+    ROS_INFO("Pointer: %p", &cart_imp_left_);
     if (end_effector_frame == "/grippoint_left") {
         cart_imp_left_->setGoal(tf_goal);
     }
@@ -165,37 +165,28 @@ int main(int argc, char **argv) {
     tf::TransformListener tf_listener;
 
     cart_imp_left_ = new CartesianImpedance("grippoint_left", &tf_listener);
-    if (!wbc->addConstraint(cart_imp_left_)) {
+    if (!wbc->addMotionObjective(cart_imp_left_)) {
         ROS_ERROR("Could not initialize cartesian impedance for left arm");
         exit(-1);
     }
 
     cart_imp_right_ = new CartesianImpedance("grippoint_right", &tf_listener);
-    if (!wbc->addConstraint(cart_imp_right_)) {
+    if (!wbc->addMotionObjective(cart_imp_right_)) {
         ROS_ERROR("Could not initialize cartesian impedance for right arm");
         exit(-1);
     }
 
     ObstacleAvoidance* obstacle_avoidance_left = new ObstacleAvoidance("grippoint_left", &tf_listener);
-    if (!wbc->addConstraint(obstacle_avoidance_left)) {
+    if (!wbc->addMotionObjective(obstacle_avoidance_left)) {
         ROS_ERROR("Could not initialize obstacle avoidance");
         exit(-1);
     }
 
     ObstacleAvoidance* obstacle_avoidance_right = new ObstacleAvoidance("grippoint_right", &tf_listener);
-    if (!wbc->addConstraint(obstacle_avoidance_right)) {
+    if (!wbc->addMotionObjective(obstacle_avoidance_right)) {
         ROS_ERROR("Could not initialize obstacle avoidance");
         exit(-1);
     }
-
-    /*
-    tf::Stamped<tf::Pose> left_goal;
-    left_goal.setOrigin(tf::Vector3(0.5, 0.3, 0.7));
-    left_goal.setRotation(tf::Quaternion(0, 0, 0, 1));
-    left_goal.frame_id_ = "/base_link";
-    cart_imp_left->setGoal(left_goal);
-    //cart_imp_right->setGoal(left_goal);
-    */
 
     while(ros::ok()) {
 

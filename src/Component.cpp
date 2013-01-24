@@ -26,7 +26,7 @@ const std::vector<std::string>& Component::getLeafLinkNames() {
     return leaf_link_names_;
 }
 
-void Component::addJoint(int index, const std::string& joint_name) {
+void Component::addJoint(uint index, const std::string& joint_name) {
     if (index >= joint_names_.size()) {
         joint_names_.resize(index + 1);
     }
@@ -62,7 +62,7 @@ void Component::setReferenceTopic(const std::string& topic_name) {
 }
 
 void Component::measurementCallback(const sensor_msgs::JointState::ConstPtr& msg) {
-    for (int i = 0; i < msg->name.size(); ++i) {
+    for (uint i = 0; i < msg->name.size(); ++i) {
         setJointPosition(msg->name[i], msg->position[i]);
     }
 }

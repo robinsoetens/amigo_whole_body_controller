@@ -57,8 +57,6 @@ public:
 
     KDL::Chain kdl_chain_;
 
-protected:
-
     /**
      * @brief Current positions of the joints in this chain
      */
@@ -68,6 +66,8 @@ protected:
      * @brief Names of the joints in this chain
      */
     std::vector<std::string> joint_names_;
+
+protected:
 
     /**
      * @brief Names of the links in this chain

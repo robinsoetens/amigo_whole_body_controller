@@ -26,7 +26,7 @@ public:
 
     const std::vector<std::string>& getLeafLinkNames();
 
-    void addJoint(int index, const std::string& joint);
+    void addJoint(uint index, const std::string& joint);
 
     unsigned int getNumJoints() const;
 

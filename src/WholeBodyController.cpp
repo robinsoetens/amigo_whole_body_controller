@@ -30,8 +30,6 @@ bool WholeBodyController::initialize() {
         q_current_(i) = 0;
     }
 
-    cout << "A" << endl;
-
     // Read parameters
     std::vector<double> JLA_gain(num_joints_);      // Gain for the joint limit avoidance
     std::vector<double> JLA_workspace(num_joints_); // Workspace: joint gets 'pushed' back when it's outside of this part of the center of the workspace
@@ -51,12 +49,13 @@ bool WholeBodyController::initialize() {
         ROS_INFO("Damping joint %s = %f",iter->first.c_str(),admittance_damping[iter->second]);
     }
 
-    cout << "B" << endl;
+    createFKsolvers(chains_);
+
+    fk_solver_left = new KDL::ChainFkSolverPos_recursive(chain_left_->kdl_chain_);
+    fk_solver_right = new KDL::ChainFkSolverPos_recursive(chain_right_->kdl_chain_);
 
     // Initialize admittance controller
     AdmitCont_.initialize(q_min_, q_max_, admittance_mass, admittance_damping);
-
-    cout << "C" << endl;
 
     // Initialize nullspace calculator
     // ToDo: Make this variable
@@ -71,26 +70,18 @@ bool WholeBodyController::initialize() {
 
     A.setIdentity(num_joints_,num_joints_);
 
-    cout << "D" << endl;
-
     ComputeNullspace_.initialize(num_joints_, A);
     N_.resize(num_joints_,num_joints_);
-
-    cout << "E" << endl;
 
     // Initialize Joint Limit Avoidance
     for (uint i = 0; i < num_joints_; i++) ROS_INFO("JLA gain of joint %i is %f",i,JLA_gain[i]);
     JointLimitAvoidance_.initialize(q_min_, q_max_, JLA_gain, JLA_workspace);
     ROS_INFO("Joint limit avoidance initialized");
 
-    cout << "F" << endl;
-
     // Initialize Posture Controller
     for (uint i = 0; i < num_joints_; i++) posture_gain[i] = 1;
     PostureControl_.initialize(q_min_, q_max_, posture_q0, posture_gain);
     ROS_INFO("Posture Control initialized");
-
-    cout << "G" << endl;
 
     // Resize additional variables
     F_task_.resize(0);
@@ -107,11 +98,11 @@ bool WholeBodyController::initialize() {
 
 }
 
-bool WholeBodyController::addConstraint(Constraint* constraint) {
-    if (!constraint->initialize(chains_)) {
+bool WholeBodyController::addMotionObjective(MotionObjective* motionobjective) {
+    if (!motionobjective->initialize(chains_)) {
         return false;
     }
-    constraints_.push_back(constraint);
+    motionobjectives_.push_back(motionobjective);
     return true;
 }
 
@@ -144,11 +135,19 @@ bool WholeBodyController::update() {
         chain->setMeasuredJointPositions(q_current_);
     }
 
-    for(std::vector<Constraint*>::iterator it_constr = constraints_.begin(); it_constr != constraints_.end(); ++it_constr) {
-        Constraint* constraint = *it_constr;
-        //ROS_INFO("Constraint: %p", constraint);
-        if (constraint->isActive()) {
-            constraint->apply();
+    KDL::Frame end_effector_pose_left;
+    KDL::Frame end_effector_pose_right;
+    computeForwardKinematics(end_effector_pose_left, "/grippoint_left");
+    getFKsolution(end_effector_pose_left,"/grippoint_left", robot_state_.endEffectorPoseLeft);
+    computeForwardKinematics(end_effector_pose_right, "/grippoint_right");
+    getFKsolution(end_effector_pose_right,"/grippoint_right", robot_state_.endEffectorPoseRight);
+
+
+    for(std::vector<MotionObjective*>::iterator it_motionobjective = motionobjectives_.begin(); it_motionobjective != motionobjectives_.end(); ++it_motionobjective) {
+        MotionObjective* motionobjective = *it_motionobjective;
+        //ROS_INFO("Motion Objective: %p", motionobjective);
+        if (motionobjective->isActive()) {
+            motionobjective->apply(robot_state_);
         }
     }
 
@@ -208,4 +207,58 @@ const Eigen::VectorXd& WholeBodyController::getJointReferences() const {
 
 const std::vector<std::string>& WholeBodyController::getJointNames() const {
     return index_to_joint_name_;
+}
+
+void WholeBodyController::computeForwardKinematics(KDL::Frame& FK_end_effector_pose,
+                                                   const std::string& end_effector_frame) {
+
+    // Compute forward kinematics
+    if (end_effector_frame == "/grippoint_left") {
+        if (fk_solver_left->JntToCart(chain_left_->joint_positions_, FK_end_effector_pose) < 0 ) ROS_WARN("Problems with FK computation for the LEFT chain");
+    }
+    else if (end_effector_frame == "/grippoint_right") {
+        if (fk_solver_right->JntToCart(chain_right_->joint_positions_, FK_end_effector_pose) < 0 ) ROS_WARN("Problems with FK computation for the RIGHT chain");
+    }
+    // Add 0.055 since base and base_link frame are not at exactly the same pose
+    FK_end_effector_pose.p.z(FK_end_effector_pose.p.z()+0.055);
+    ///ROS_INFO("Return value = %i",ret);
+    //if (is_active_) ROS_INFO("end_effector_pose_.p = [%f\t%f\t%f]",end_effector_pose_.p.x(),end_effector_pose_.p.y(),end_effector_pose_.p.z());
+
+}
+
+void WholeBodyController::getFKsolution(KDL::Frame& FK_end_effector_pose,
+                                        const std::string& end_effector_frame,
+                                        geometry_msgs::PoseStamped& pose) {
+
+    // ToDo: get rid of hardcoding
+    pose.header.frame_id = "/base_link";
+    // Position
+    pose.pose.position.x = FK_end_effector_pose.p.x();
+    pose.pose.position.y = FK_end_effector_pose.p.y();
+    pose.pose.position.z = FK_end_effector_pose.p.z();
+    // Orientation
+    FK_end_effector_pose.M.GetQuaternion(pose.pose.orientation.x,
+                                         pose.pose.orientation.y,
+                                         pose.pose.orientation.z,
+                                         pose.pose.orientation.w);
+
+}
+
+void WholeBodyController::createFKsolvers(const std::vector<Chain*>& chains) {
+    //chain_left_ = 0;
+    //chain_right_ = 0;
+    for(std::vector<Chain*>::const_iterator it_chain = chains.begin(); it_chain != chains.end(); ++it_chain) {
+        Chain* chain = *it_chain;
+
+        if (chain->hasLink("grippoint_left")) {
+            //std::cout << "Chain has end-effector frame: " << end_effector_frame_ << std::endl;
+            chain_left_ = chain;
+        }
+        else if (chain->hasLink("grippoint_right")) {
+            //std::cout << "Chain has end-effector frame: " << end_effector_frame_ << std::endl;
+            chain_right_ = chain;
+        }
+    }
+
+    //return (chain_left_ != 0 && chain_right_ != 0) ;
 }

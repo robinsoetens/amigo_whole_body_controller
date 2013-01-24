@@ -1,6 +1,6 @@
 /*!
- * \author Janno Lunenburg
- * \date September, 2012
+ * \author Paul Metsemakers
+ * \date January, 2013
  * \version 0.1
  */
 
@@ -16,11 +16,11 @@
 // Eigen
 #include <Eigen/Core>
 
-#include "Constraint.h"
+#include "MotionObjective.h"
 
 /////
 
-class ObstacleAvoidance : public Constraint {
+class ObstacleAvoidance : public MotionObjective {
 
     struct Box {
 
@@ -54,7 +54,7 @@ public:
 
     bool isActive();
 
-    void apply();
+    void apply(const RobotState& robotstate);
 
     void visualize(const Eigen::Vector3d& end_effector_pos, const Eigen::VectorXd& wrench) const;
 

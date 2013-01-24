@@ -56,7 +56,7 @@ bool ObstacleAvoidance::isActive() {
     return true;
 }
 
-void ObstacleAvoidance::apply() {
+void ObstacleAvoidance::apply(const RobotState &robotstate) {
 
     /*
     for(unsigned int i = 0; i < 3; ++i) {
