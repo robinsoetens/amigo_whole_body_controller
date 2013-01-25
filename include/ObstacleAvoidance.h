@@ -49,7 +49,7 @@ public:
     /**
      * Initialize function
      */
-    bool initialize(const std::vector<Chain*>& chains);
+    bool initialize();
 
 
     bool isActive();
@@ -62,13 +62,17 @@ protected:
 
     Chain* chain_;
 
+    tf::TransformListener& listener_;
+
     std::string end_effector_frame_;
 
     std::vector<Box*> boxes_;
 
-    tf::TransformListener& listener_;
-
     ros::Publisher pub_marker_;
+
+    geometry_msgs::PoseStamped end_effector_msg_;
+    tf::Stamped<tf::Pose> tf_end_effector_pose_;
+    tf::Stamped<tf::Pose> tf_end_effector_pose_MAP_;
 
 };
 

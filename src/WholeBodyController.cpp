@@ -99,7 +99,7 @@ bool WholeBodyController::initialize() {
 }
 
 bool WholeBodyController::addMotionObjective(MotionObjective* motionobjective) {
-    if (!motionobjective->initialize(chains_)) {
+    if (!motionobjective->initialize()) {
         return false;
     }
     motionobjectives_.push_back(motionobjective);

@@ -49,18 +49,8 @@ CartesianImpedance::CartesianImpedance(const std::string& end_effector_frame, tf
     ROS_INFO("Initialized Cartesian Impedance");
 }
 
-bool CartesianImpedance::initialize(const std::vector<Chain*>& chains) {
-    chain_ = 0;
-    for(std::vector<Chain*>::const_iterator it_chain = chains.begin(); it_chain != chains.end(); ++it_chain) {
-        Chain* chain = *it_chain;
-
-        if (chain->hasLink(end_effector_frame_)) {
-            //std::cout << "Chain has end-effector frame: " << end_effector_frame_ << std::endl;
-            chain_ = chain;
-        }
-    }
-
-    return (chain_ != 0);
+bool CartesianImpedance::initialize() {
+    return true;
 }
 
 bool CartesianImpedance::isActive() {

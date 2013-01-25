@@ -5,8 +5,8 @@
 
 using namespace std;
 
-ObstacleAvoidance::ObstacleAvoidance(const string &end_effector_frame, tf::TransformListener *tf_listener) : listener_(*tf_listener) {
-    end_effector_frame_ = end_effector_frame;
+ObstacleAvoidance::ObstacleAvoidance(const string &end_effector_frame, tf::TransformListener *tf_listener)
+    : listener_(*tf_listener), end_effector_frame_ (end_effector_frame) {
 }
 
 ObstacleAvoidance::~ObstacleAvoidance() {
@@ -15,24 +15,11 @@ ObstacleAvoidance::~ObstacleAvoidance() {
     }
 }
 
-bool ObstacleAvoidance::initialize(const std::vector<Chain*>& chains) {
+bool ObstacleAvoidance::initialize() {
 
     ROS_INFO("Initializing Obstacle Avoidance");
 
-    chain_ = 0;
-    for(std::vector<Chain*>::const_iterator it_chain = chains.begin(); it_chain != chains.end(); ++it_chain) {
-        Chain* chain = *it_chain;
 
-        if (chain->hasLink(end_effector_frame_)) {
-            //std::cout << "Chain has end-effector frame: " << end_effector_frame_ << std::endl;
-            chain_ = chain;
-        }
-    }
-
-    if (!chain_) {
-        ROS_ERROR("Could not find chain with link %s", end_effector_frame_.c_str());
-        return false;
-    }
 
     // Get node handle
     ros::NodeHandle n("~");
@@ -58,13 +45,22 @@ bool ObstacleAvoidance::isActive() {
 
 void ObstacleAvoidance::apply(const RobotState &robotstate) {
 
+    if (end_effector_frame_ == "grippoint_left") {
+        end_effector_msg_ = robotstate.endEffectorPoseLeft;
+    }
+    else if (end_effector_frame_ == "grippoint_right") {
+        end_effector_msg_ = robotstate.endEffectorPoseRight;
+    }
+
+    poseStampedMsgToTF(end_effector_msg_, tf_end_effector_pose_);
+
     /*
     for(unsigned int i = 0; i < 3; ++i) {
         double sign = 1;
         if (F_task[i] < 0) sign = -1;
         F_task[i] = min(abs(F_task[i]), 1.0) * sign;
     }
-    */
+
 
     tf::Stamped<tf::Pose> end_effector_pose;
     end_effector_pose.setIdentity();
@@ -72,9 +68,10 @@ void ObstacleAvoidance::apply(const RobotState &robotstate) {
     end_effector_pose.stamp_ = ros::Time();
 
     tf::Stamped<tf::Pose> end_effector_pose_MAP;
+    */
 
     try {
-        listener_.transformPose("/map", end_effector_pose, end_effector_pose_MAP);
+        listener_.transformPose("/map", tf_end_effector_pose_, tf_end_effector_pose_MAP_);
     } catch (tf::TransformException& e) {
         ROS_ERROR("CartesianImpedance: %s", e.what());
         return;
@@ -82,7 +79,9 @@ void ObstacleAvoidance::apply(const RobotState &robotstate) {
 
     //ROS_INFO("End effector pose: %f, %f, %f", end_effector_pose_MAP.getOrigin().getX(), end_effector_pose_MAP.getOrigin().getY(), end_effector_pose_MAP.getOrigin().getZ());
 
-    Eigen::Vector3d end_effector_pos(end_effector_pose_MAP.getOrigin().getX(), end_effector_pose_MAP.getOrigin().getY(), end_effector_pose_MAP.getOrigin().getZ());
+    Eigen::Vector3d end_effector_pos(tf_end_effector_pose_MAP_.getOrigin().getX(),
+                                     tf_end_effector_pose_MAP_.getOrigin().getY(),
+                                     tf_end_effector_pose_MAP_.getOrigin().getZ());
 
     Eigen::VectorXd wrench(6);
     wrench.setZero();

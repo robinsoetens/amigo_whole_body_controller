@@ -46,7 +46,7 @@ public:
      */
     virtual ~CartesianImpedance();
 
-    bool initialize(const std::vector<Chain*>& chains);
+    bool initialize();
 
     bool isActive();
 
