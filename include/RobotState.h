@@ -10,6 +10,9 @@
 // Messages
 #include <geometry_msgs/PoseStamped.h>
 
+// KDL
+#include "Chain.h"
+
 class RobotState {
 
 public:
@@ -21,8 +24,10 @@ public:
     virtual ~RobotState();
 
     geometry_msgs::PoseStamped endEffectorPoseLeft;
-
     geometry_msgs::PoseStamped endEffectorPoseRight;
+
+    Chain* chain_left_;
+    Chain* chain_right_;
 
 };
 

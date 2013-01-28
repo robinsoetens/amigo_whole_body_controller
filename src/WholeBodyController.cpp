@@ -51,8 +51,8 @@ bool WholeBodyController::initialize() {
 
     createFKsolvers(chains_);
 
-    fk_solver_left = new KDL::ChainFkSolverPos_recursive(chain_left_->kdl_chain_);
-    fk_solver_right = new KDL::ChainFkSolverPos_recursive(chain_right_->kdl_chain_);
+    fk_solver_left = new KDL::ChainFkSolverPos_recursive(robot_state_.chain_left_->kdl_chain_);
+    fk_solver_right = new KDL::ChainFkSolverPos_recursive(robot_state_.chain_right_->kdl_chain_);
 
     // Initialize admittance controller
     AdmitCont_.initialize(q_min_, q_max_, admittance_mass, admittance_damping);
@@ -138,12 +138,12 @@ bool WholeBodyController::update() {
     KDL::Frame end_effector_pose_left;
     KDL::Frame end_effector_pose_right;
     computeForwardKinematics(end_effector_pose_left, "/grippoint_left");
-    getFKsolution(end_effector_pose_left,"/grippoint_left", robot_state_.endEffectorPoseLeft);
+    getFKsolution(end_effector_pose_left, robot_state_.endEffectorPoseLeft);
     computeForwardKinematics(end_effector_pose_right, "/grippoint_right");
-    getFKsolution(end_effector_pose_right,"/grippoint_right", robot_state_.endEffectorPoseRight);
-
+    getFKsolution(end_effector_pose_right, robot_state_.endEffectorPoseRight);
 
     for(std::vector<MotionObjective*>::iterator it_motionobjective = motionobjectives_.begin(); it_motionobjective != motionobjectives_.end(); ++it_motionobjective) {
+
         MotionObjective* motionobjective = *it_motionobjective;
         //ROS_INFO("Motion Objective: %p", motionobjective);
         if (motionobjective->isActive()) {
@@ -214,10 +214,10 @@ void WholeBodyController::computeForwardKinematics(KDL::Frame& FK_end_effector_p
 
     // Compute forward kinematics
     if (end_effector_frame == "/grippoint_left") {
-        if (fk_solver_left->JntToCart(chain_left_->joint_positions_, FK_end_effector_pose) < 0 ) ROS_WARN("Problems with FK computation for the LEFT chain");
+        if (fk_solver_left->JntToCart(robot_state_.chain_left_->joint_positions_, FK_end_effector_pose) < 0 ) ROS_WARN("Problems with FK computation for the LEFT chain");
     }
     else if (end_effector_frame == "/grippoint_right") {
-        if (fk_solver_right->JntToCart(chain_right_->joint_positions_, FK_end_effector_pose) < 0 ) ROS_WARN("Problems with FK computation for the RIGHT chain");
+        if (fk_solver_right->JntToCart(robot_state_.chain_right_->joint_positions_, FK_end_effector_pose) < 0 ) ROS_WARN("Problems with FK computation for the RIGHT chain");
     }
     // Add 0.055 since base and base_link frame are not at exactly the same pose
     FK_end_effector_pose.p.z(FK_end_effector_pose.p.z()+0.055);
@@ -227,7 +227,6 @@ void WholeBodyController::computeForwardKinematics(KDL::Frame& FK_end_effector_p
 }
 
 void WholeBodyController::getFKsolution(KDL::Frame& FK_end_effector_pose,
-                                        const std::string& end_effector_frame,
                                         geometry_msgs::PoseStamped& pose) {
 
     // ToDo: get rid of hardcoding
@@ -252,11 +251,11 @@ void WholeBodyController::createFKsolvers(const std::vector<Chain*>& chains) {
 
         if (chain->hasLink("grippoint_left")) {
             //std::cout << "Chain has end-effector frame: " << end_effector_frame_ << std::endl;
-            chain_left_ = chain;
+            robot_state_.chain_left_ = chain;
         }
         else if (chain->hasLink("grippoint_right")) {
             //std::cout << "Chain has end-effector frame: " << end_effector_frame_ << std::endl;
-            chain_right_ = chain;
+            robot_state_.chain_right_ = chain;
         }
     }
 

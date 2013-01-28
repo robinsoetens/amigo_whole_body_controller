@@ -17,7 +17,7 @@ ObstacleAvoidance::~ObstacleAvoidance() {
 
 bool ObstacleAvoidance::initialize() {
 
-    ROS_INFO("Initializing Obstacle Avoidance");
+    ROS_INFO_STREAM("Initializing Obstacle Avoidance, " << end_effector_frame_);
 
 
 
@@ -34,7 +34,7 @@ bool ObstacleAvoidance::initialize() {
     boxes_.push_back(new Box(Eigen::Vector3d(-0.127, 0.730, 0), Eigen::Vector3d(1.151, 1.139, 0.7)));
     boxes_.push_back(new Box(Eigen::Vector3d( 1.032, -0.942, 0), Eigen::Vector3d(1.590, 0.140, 0.5)));
 
-    ROS_INFO("Initialized Obstacle Avoidance");
+    ROS_INFO_STREAM("Initialized Obstacle Avoidance" << end_effector_frame_);
 
     return true;
 }
@@ -45,11 +45,13 @@ bool ObstacleAvoidance::isActive() {
 
 void ObstacleAvoidance::apply(const RobotState &robotstate) {
 
-    if (end_effector_frame_ == "grippoint_left") {
+        if (end_effector_frame_ == "grippoint_left") {
         end_effector_msg_ = robotstate.endEffectorPoseLeft;
+        chain_ = robotstate.chain_left_;
     }
     else if (end_effector_frame_ == "grippoint_right") {
         end_effector_msg_ = robotstate.endEffectorPoseRight;
+        chain_ = robotstate.chain_right_;
     }
 
     poseStampedMsgToTF(end_effector_msg_, tf_end_effector_pose_);
@@ -85,7 +87,6 @@ void ObstacleAvoidance::apply(const RobotState &robotstate) {
 
     Eigen::VectorXd wrench(6);
     wrench.setZero();
-
     for(vector<Box*>::iterator it = boxes_.begin(); it != boxes_.end(); ++it) {
         const Box& box = **it;
 
@@ -102,13 +103,11 @@ void ObstacleAvoidance::apply(const RobotState &robotstate) {
                 diff[i] = 0;
             }
         }
-
         if (inside_obstacle) {
             ROS_ERROR("Inside obstacle!");
         } else {
             double distance = diff.norm();
             Eigen::Vector3d diff_normalized = diff / distance;
-
             double weight = 0;
             /*
                 if (distance < 0.2) {
@@ -121,7 +120,6 @@ void ObstacleAvoidance::apply(const RobotState &robotstate) {
             if (distance < 0.1) {
                 weight = (1 - (distance / 0.1)) * 10;
             }
-
             for(unsigned int i = 0; i < 3; i++) {
                 wrench(i) +=  diff_normalized(i) * weight;
             }
@@ -130,14 +128,11 @@ void ObstacleAvoidance::apply(const RobotState &robotstate) {
     }
 
     visualize(end_effector_pos, wrench); // + (total_force / 10));
-
     chain_->addCartesianWrench(end_effector_frame_, wrench);
 
     //F_task.segment(0, 3) += total_force;
 
     // cout << F_task << endl;
-
-
 }
 
 void ObstacleAvoidance::visualize(const Eigen::Vector3d& end_effector_pos, const Eigen::VectorXd& wrench) const {

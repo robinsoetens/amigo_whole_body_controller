@@ -4,10 +4,13 @@
 #include <amigo_whole_body_controller/ArmTaskAction.h>
 #include <actionlib/server/simple_action_server.h>
 
-CartesianImpedance::CartesianImpedance(const std::string& end_effector_frame, tf::TransformListener* tf_listener) :
-    is_active_(false), chain_(0), end_effector_frame_(end_effector_frame), tf_listener_(tf_listener) {
+CartesianImpedance::CartesianImpedance(const std::string& end_effector_frame) :
+    is_active_(false), chain_(0), end_effector_frame_(end_effector_frame) {
 
     ROS_INFO("Initializing Cartesian Impedance for %s", end_effector_frame_.c_str());
+
+    // ToDo: Parameterize
+    Ts = 0.1;
 
     // Get node handle
     ros::NodeHandle n("~");
@@ -37,8 +40,8 @@ CartesianImpedance::CartesianImpedance(const std::string& end_effector_frame, tf
 
     // Wait for transform
     //ToDo: make this work!
-    bool wait_for_transform = tf_listener_->waitForTransform(end_effector_frame_,"/map", ros::Time::now(), ros::Duration(1.0));
-    if (!wait_for_transform) ROS_WARN("Transform between %s and /map is not available",end_effector_frame.c_str());
+    //bool wait_for_transform = tf_listener_->waitForTransform(end_effector_frame_,"/map", ros::Time::now(), ros::Duration(1.0));
+    //if (!wait_for_transform) ROS_WARN("Transform between %s and /map is not available",end_effector_frame.c_str());
 
     // Pre-grasping
     pre_grasp_ = false;
@@ -60,7 +63,7 @@ bool CartesianImpedance::isActive() {
 CartesianImpedance::~CartesianImpedance() {
 }
 
-void CartesianImpedance::setGoal(tf::Stamped<tf::Pose>& goal_pose) {
+void CartesianImpedance::setGoal(geometry_msgs::PoseStamped& goal_pose) {
     goal_pose_ = goal_pose;
     is_active_ = true;
     status_ = 2;
@@ -83,45 +86,31 @@ void CartesianImpedance::apply(const RobotState &robotstate) {
 
     //ROS_INFO("    is active");
 
-    //Transform message into tooltip frame. This directly implies e = x_d - x
-    /////errorPose = CartesianImpedance::transformPose(listener, goal_pose_);
-    //errorPose = CartesianImpedance::transformPose(goal_pose_);
-
-    //listener.transformPose(end_effector_frame_,goal_pose_,errorPose);
-
-    // ToDo: why doesn't the state above work? Seems more sensible than below in terms of realtime behavior
-
-    //listener.waitForTransform()
-
-    //ros::Time now = ros::Time::now();
-    //bool wait_for_transform = listener.waitForTransform(end_effector_frame_,goal_pose_.header.frame_id, now, ros::Duration(1.0));
-
-    goal_pose_.stamp_ = ros::Time();
-    try {
-        tf_listener_->transformPose(end_effector_frame_, goal_pose_, error_pose_);
-    } catch (tf::TransformException& e) {
-        ROS_ERROR("CartesianImpedance: %s", e.what());
-        //std::cout << error_pose_.getOrigin() << std::endl;
-        return;
+    if (end_effector_frame_ == "grippoint_left") {
+        end_effector_pose_ = robotstate.endEffectorPoseLeft;
+        chain_ = robotstate.chain_left_;
+    }
+    else if (end_effector_frame_ == "grippoint_right") {
+        end_effector_pose_ = robotstate.endEffectorPoseRight;
+        chain_ = robotstate.chain_right_;
     }
 
-    //listener.transformPose(end_effector_frame_,now,goal_pose_,goal_pose_.header.frame_id,errorPose);
+    KDL::Frame end_effector_kdl_frame;
+    KDL::Frame goal_kdl_frame;
+    stampedPoseToKDLframe(end_effector_pose_, end_effector_kdl_frame);
+    stampedPoseToKDLframe(goal_pose_, goal_kdl_frame);
 
-    // ToDo: Check orientations as well
-    double roll, pitch, yaw;
+    ROS_INFO("goal pose = %f,\t%f,\t%f,\t%f,\t%f,\t%f, ,\t%f", goal_pose_.pose.position.x, goal_pose_.pose.position.y, goal_pose_.pose.position.z, goal_pose_.pose.orientation.x ,goal_pose_.pose.orientation.y, goal_pose_.pose.orientation.z, goal_pose_.pose.orientation.w);
+    ROS_INFO("end-effector pose = %f,\t%f,\t%f,\t%f,\t%f,\t%f, ,\t%f", end_effector_pose_.pose.position.x, end_effector_pose_.pose.position.y, end_effector_pose_.pose.position.z, end_effector_pose_.pose.orientation.x ,end_effector_pose_.pose.orientation.y, end_effector_pose_.pose.orientation.z, end_effector_pose_.pose.orientation.w);
 
-#if ROS_VERSION_MINIMUM(1, 8, 0)
-    tf::Matrix3x3(error_pose_.getRotation()).getRPY(roll, pitch, yaw);
-#else
-    btMatrix3x3(error_pose_.getRotation()).getRPY(roll, pitch, yaw);
-#endif
+    KDL::Twist error_vector_fk = KDL::diff(end_effector_kdl_frame,goal_kdl_frame, Ts);
+    error_vector_(0) = error_vector_fk.vel.x();
+    error_vector_(1) = error_vector_fk.vel.y();
+    error_vector_(2) = error_vector_fk.vel.z();
+    error_vector_(3) = error_vector_fk.rot.x();
+    error_vector_(4) = error_vector_fk.rot.y();
+    error_vector_(5) = error_vector_fk.rot.z();
 
-    error_vector_(0) = error_pose_.getOrigin().getX();
-    error_vector_(1) = error_pose_.getOrigin().getY();
-    error_vector_(2) = error_pose_.getOrigin().getZ();
-    error_vector_(3) = roll;
-    error_vector_(4) = pitch;
-    error_vector_(5) = yaw;
 
     //std::cout << "goal_pose = " << goal_pose_.getOrigin().getX() << " , " << goal_pose_.getOrigin().getY() << " , " << goal_pose_.getOrigin().getZ() << std::endl;
     //std::cout << "error_vector = " << error_vector_ << std::endl;
@@ -129,7 +118,7 @@ void CartesianImpedance::apply(const RobotState &robotstate) {
     // If pre-grasping, an offset is added to the errorpose in x-direction
     //if (pre_grasp_) error_vector_(0) -= pre_grasp_delta_;
 
-    //ROS_INFO("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+    ROS_INFO("error pose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
 
     F_task = K_ * error_vector_;
 
@@ -160,6 +149,24 @@ void CartesianImpedance::apply(const RobotState &robotstate) {
         status_ = 1;
         ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
     }
+
+
+}
+
+
+void CartesianImpedance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame) {
+    // Position
+
+    if (pose.header.frame_id != "/base_link") ROS_WARN("FK computation can now only cope with base_link as input frame");
+    frame.p.x(pose.pose.position.x);
+    frame.p.y(pose.pose.position.y);
+    frame.p.z(pose.pose.position.z);
+
+    // Orientation
+    frame.M.Quaternion(pose.pose.orientation.x,
+                       pose.pose.orientation.y,
+                       pose.pose.orientation.z,
+                       pose.pose.orientation.w);
 
 
 }

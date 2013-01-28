@@ -39,7 +39,7 @@ public:
     /**
      * Constructor
      */
-    CartesianImpedance(const std::string& end_effector_frame, tf::TransformListener* tf_listener);
+    CartesianImpedance(const std::string& end_effector_frame);
 
     /**
      * Deconstructor
@@ -52,7 +52,7 @@ public:
 
     void apply(const RobotState& robotstate);
 
-    void setGoal(tf::Stamped<tf::Pose>& goal_pose);
+    void setGoal(geometry_msgs::PoseStamped &goal_pose);
 
     void cancelGoal();
 
@@ -65,6 +65,9 @@ public:
 
 protected:
 
+    //! Sampling time
+    double Ts;
+
     //! Bool indicating whether this is active
     bool is_active_;
 
@@ -72,19 +75,20 @@ protected:
 
     std::string end_effector_frame_;
 
-    tf::Stamped<tf::Pose> goal_pose_;
+    geometry_msgs::PoseStamped end_effector_pose_;
+    geometry_msgs::PoseStamped goal_pose_;
+    geometry_msgs::PoseStamped error_pose_;
+
+    // Converts Converts geometry_msgs::PoseStamped to KDL::Frame
+    void stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame);
 
     // Cartesian Impedance matrix
     Eigen::MatrixXd K_;
-
-    tf::Stamped<tf::Pose> error_pose_;
 
     Eigen::VectorXd error_vector_;
 
     bool pre_grasp_;
     double pre_grasp_delta_;
-
-    tf::TransformListener* tf_listener_;
 
 
 };

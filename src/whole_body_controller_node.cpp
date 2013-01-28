@@ -68,16 +68,16 @@ void setTarget(const amigo_arm_navigation::grasp_precomputeGoal& goal, const std
     geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
     goal_pose.pose.orientation = orientation;
 
-    tf::Stamped<tf::Pose> tf_goal;
-    poseStampedMsgToTF(goal_pose, tf_goal);
-    tf_goal.frame_id_ = "/base_link";
+    //tf::Stamped<tf::Pose> tf_goal;
+    //poseStampedMsgToTF(goal_pose, tf_goal);
+    //tf_goal.frame_id_ = "/base_link";
 
     ROS_INFO("Pointer: %p", &cart_imp_left_);
     if (end_effector_frame == "/grippoint_left") {
-        cart_imp_left_->setGoal(tf_goal);
+        cart_imp_left_->setGoal(goal_pose);
     }
     else if (end_effector_frame == "/grippoint_right") {
-        cart_imp_right_->setGoal(tf_goal);
+        cart_imp_right_->setGoal(goal_pose);
     }
     else ROS_WARN("Cannot process this goal");
 }
@@ -100,7 +100,7 @@ void leftCancelCB() {
 
 void rightCancelCB() {
     //is_active_ = false;
-    server_left_->setPreempted();
+    server_right_->setPreempted();
 }
 
 void leftGoalCB() {
@@ -164,13 +164,13 @@ int main(int argc, char **argv) {
 
     tf::TransformListener tf_listener;
 
-    cart_imp_left_ = new CartesianImpedance("grippoint_left", &tf_listener);
+    cart_imp_left_ = new CartesianImpedance("grippoint_left");
     if (!wbc->addMotionObjective(cart_imp_left_)) {
         ROS_ERROR("Could not initialize cartesian impedance for left arm");
         exit(-1);
     }
 
-    cart_imp_right_ = new CartesianImpedance("grippoint_right", &tf_listener);
+    cart_imp_right_ = new CartesianImpedance("grippoint_right");
     if (!wbc->addMotionObjective(cart_imp_right_)) {
         ROS_ERROR("Could not initialize cartesian impedance for right arm");
         exit(-1);
@@ -195,7 +195,7 @@ int main(int argc, char **argv) {
         wbc->update();
 
         if (cart_imp_left_->status_ == 1 && server_left_->isActive()) server_left_->setSucceeded();
-        if (cart_imp_left_->status_ == 1 && server_right_->isActive()) server_right_->setSucceeded();
+        if (cart_imp_right_->status_ == 1 && server_right_->isActive()) server_right_->setSucceeded();
 
         publishJointReferences(wbc->getJointReferences(), wbc->getJointNames());
 

@@ -66,12 +66,10 @@ public:
       * Returns the current FK solution
       *
       */
-    void getFKsolution(KDL::Frame &FK_end_effector_pose, const std::string& end_effector_frame, geometry_msgs::PoseStamped& pose);
+    void getFKsolution(KDL::Frame &FK_end_effector_pose, geometry_msgs::PoseStamped& pose);
 
 protected:
 
-    Chain* chain_left_;
-    Chain* chain_right_;
     RobotState robot_state_;
 
     std::vector<Chain*> chains_;
@@ -129,8 +127,6 @@ protected:
 
     //! Vector containing the number of active tasks during previous loop
     //uint previous_num_active_tasks_;
-
-
 
     //! Sampling time
     double Ts;
