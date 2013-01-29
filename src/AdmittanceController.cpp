@@ -11,11 +11,11 @@ AdmittanceController::~AdmittanceController() {
 
 }
 
-void AdmittanceController::initialize(const KDL::JntArray& q_min, const KDL::JntArray& q_max, const std::vector<double>& mass, const std::vector<double>& damping) {
+void AdmittanceController::initialize(const double Ts, const KDL::JntArray& q_min, const KDL::JntArray& q_max, const std::vector<double>& mass, const std::vector<double>& damping) {
 
     // Resize relevant parameters
     uint num_joints = 15;
-    Ts = 0.1;
+    Ts_ = Ts;
     // ToDo: Make variables (use M and D as inputs?)
     m_.resize(num_joints);
     d_.resize(num_joints);
@@ -48,7 +48,7 @@ void AdmittanceController::initialize(const KDL::JntArray& q_min, const KDL::Jnt
         om_(i) = d_(i)/m_(i);
 
         double wp = om_(i) + eps;
-        double alpha = wp/(tan(wp*Ts/2));
+        double alpha = wp/(tan(wp*Ts_/2));
 
         double x1 = alpha/om_(i)+1;
         double x2 = -alpha/om_(i)+1;
@@ -87,7 +87,7 @@ void AdmittanceController::update(const Eigen::VectorXd& tau, Eigen::VectorXd& q
         qdot_reference(i) *= k_(i);
 
         // Integrate desired velocities and limit outputs
-        q_reference(i) = std::min(q_max_(i),std::max(q_min_(i),q_current(i)+Ts*qdot_reference(i)));
+        q_reference(i) = std::min(q_max_(i),std::max(q_min_(i),q_current(i)+Ts_*qdot_reference(i)));
 
     }
     tau_previous_ = tau;

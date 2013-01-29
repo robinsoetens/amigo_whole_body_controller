@@ -3,22 +3,22 @@
 
 using namespace std;
 
-WholeBodyController::WholeBodyController() {
-    initialize();
+WholeBodyController::WholeBodyController(const double Ts) {
+    initialize(Ts);
 }
 
 WholeBodyController::~WholeBodyController() {
     ROS_INFO("Shutting down whole body controller");
 }
 
-bool WholeBodyController::initialize() {
+bool WholeBodyController::initialize(const double Ts) {
     ros::NodeHandle n("~");
     std::string ns = n.getNamespace();
     //ROS_INFO("Nodehandle %s",n.getNamespace().c_str());
     ROS_INFO("Initializing whole body controller");
 
     // ToDo: Parameterize
-    Ts = 0.1;
+    Ts_ = Ts;
 
     ChainParser::parse(chains_, joint_name_to_index_, index_to_joint_name_, q_min_, q_max_);
     num_joints_ = joint_name_to_index_.size();
@@ -55,7 +55,7 @@ bool WholeBodyController::initialize() {
     fk_solver_right = new KDL::ChainFkSolverPos_recursive(robot_state_.chain_right_->kdl_chain_);
 
     // Initialize admittance controller
-    AdmitCont_.initialize(q_min_, q_max_, admittance_mass, admittance_damping);
+    AdmitCont_.initialize(Ts_,q_min_, q_max_, admittance_mass, admittance_damping);
 
     // Initialize nullspace calculator
     // ToDo: Make this variable

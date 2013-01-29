@@ -56,28 +56,17 @@ void ObstacleAvoidance::apply(const RobotState &robotstate) {
 
     poseStampedMsgToTF(end_effector_msg_, tf_end_effector_pose_);
 
-    /*
-    for(unsigned int i = 0; i < 3; ++i) {
-        double sign = 1;
-        if (F_task[i] < 0) sign = -1;
-        F_task[i] = min(abs(F_task[i]), 1.0) * sign;
-    }
-
-
-    tf::Stamped<tf::Pose> end_effector_pose;
-    end_effector_pose.setIdentity();
-    end_effector_pose.frame_id_ = end_effector_frame_;
-    end_effector_pose.stamp_ = ros::Time();
-
-    tf::Stamped<tf::Pose> end_effector_pose_MAP;
-    */
-
-    try {
+   try {
         listener_.transformPose("/map", tf_end_effector_pose_, tf_end_effector_pose_MAP_);
     } catch (tf::TransformException& e) {
         ROS_ERROR("CartesianImpedance: %s", e.what());
         return;
     }
+
+    /*
+    Eigen::Vector3d end_effector_RPY;
+    getposeRPY(end_effector_msg_, end_effector_RPY);
+    */
 
     //ROS_INFO("End effector pose: %f, %f, %f", end_effector_pose_MAP.getOrigin().getX(), end_effector_pose_MAP.getOrigin().getY(), end_effector_pose_MAP.getOrigin().getZ());
 
@@ -130,9 +119,7 @@ void ObstacleAvoidance::apply(const RobotState &robotstate) {
     visualize(end_effector_pos, wrench); // + (total_force / 10));
     chain_->addCartesianWrench(end_effector_frame_, wrench);
 
-    //F_task.segment(0, 3) += total_force;
-
-    // cout << F_task << endl;
+        // cout << F_task << endl;
 }
 
 void ObstacleAvoidance::visualize(const Eigen::Vector3d& end_effector_pos, const Eigen::VectorXd& wrench) const {
@@ -201,3 +188,18 @@ void ObstacleAvoidance::visualize(const Eigen::Vector3d& end_effector_pos, const
 
     pub_marker_.publish(marker_array);
 }
+
+
+/*
+void ObstacleAvoidance::getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY){
+
+    tf::Quaternion q;
+    double roll, pitch, yaw;
+    tf::quaternionMsgToTF(pose.pose.orientation, q);
+    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+    RPY(0) = roll;
+    RPY(1) = pitch;
+    RPY(2) = yaw;
+
+}
+*/

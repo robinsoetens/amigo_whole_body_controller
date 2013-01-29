@@ -97,19 +97,25 @@ void CartesianImpedance::apply(const RobotState &robotstate) {
 
     KDL::Frame end_effector_kdl_frame;
     KDL::Frame goal_kdl_frame;
-    stampedPoseToKDLframe(end_effector_pose_, end_effector_kdl_frame);
-    stampedPoseToKDLframe(goal_pose_, goal_kdl_frame);
+    Eigen::Vector3d end_effector_RPY;
+    Eigen::Vector3d goal_RPY;
+    stampedPoseToKDLframe(end_effector_pose_, end_effector_kdl_frame, end_effector_RPY);
+    stampedPoseToKDLframe(goal_pose_, goal_kdl_frame, goal_RPY);
 
-    ROS_INFO("goal pose = %f,\t%f,\t%f,\t%f,\t%f,\t%f, ,\t%f", goal_pose_.pose.position.x, goal_pose_.pose.position.y, goal_pose_.pose.position.z, goal_pose_.pose.orientation.x ,goal_pose_.pose.orientation.y, goal_pose_.pose.orientation.z, goal_pose_.pose.orientation.w);
-    ROS_INFO("end-effector pose = %f,\t%f,\t%f,\t%f,\t%f,\t%f, ,\t%f", end_effector_pose_.pose.position.x, end_effector_pose_.pose.position.y, end_effector_pose_.pose.position.z, end_effector_pose_.pose.orientation.x ,end_effector_pose_.pose.orientation.y, end_effector_pose_.pose.orientation.z, end_effector_pose_.pose.orientation.w);
+    //ROS_INFO("goal_kdl_frame = %f,\t%f,\t%f,\t%f,\t%f,\t%f", goal_kdl_frame.p.x(), goal_kdl_frame.p.y(), goal_kdl_frame.p.z(), groll, gpitch, gyaw);
+    //ROS_INFO("end_effector_kdl_frame = %f,\t%f,\t%f,\t%f,\t%f,\t%f", end_effector_kdl_frame.p.x(), end_effector_kdl_frame.p.y(), end_effector_kdl_frame.p.z(), eroll, epitch ,eyaw);
 
     KDL::Twist error_vector_fk = KDL::diff(end_effector_kdl_frame,goal_kdl_frame, Ts);
+
+
     error_vector_(0) = error_vector_fk.vel.x();
     error_vector_(1) = error_vector_fk.vel.y();
     error_vector_(2) = error_vector_fk.vel.z();
-    error_vector_(3) = error_vector_fk.rot.x();
-    error_vector_(4) = error_vector_fk.rot.y();
-    error_vector_(5) = error_vector_fk.rot.z();
+    error_vector_(3) = goal_RPY(0) - end_effector_RPY(0)/ Ts;      // error_vector_fk.rot.x();
+    error_vector_(4) = goal_RPY(1) - end_effector_RPY(1)/ Ts;    // error_vector_fk.rot.y();
+    error_vector_(5) = goal_RPY(2) - end_effector_RPY(2)/ Ts;        // error_vector_fk.rot.z();
+
+
 
 
     //std::cout << "goal_pose = " << goal_pose_.getOrigin().getX() << " , " << goal_pose_.getOrigin().getY() << " , " << goal_pose_.getOrigin().getZ() << std::endl;
@@ -123,7 +129,7 @@ void CartesianImpedance::apply(const RobotState &robotstate) {
     F_task = K_ * error_vector_;
 
     //std::cout << "F_task = " << F_task << std::endl;
-
+    ROS_INFO("F_task = %f,\t%f,\t%f,\t%f,\t%f,\t%f",F_task(0),F_task(1),F_task(2),F_task(3),F_task(4),F_task(5));
 
     // add the wrench to the end effector of the kinematic chain
     chain_->addCartesianWrench(end_effector_frame_, F_task);
@@ -154,10 +160,11 @@ void CartesianImpedance::apply(const RobotState &robotstate) {
 }
 
 
-void CartesianImpedance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame) {
-    // Position
+void CartesianImpedance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame, Eigen::Vector3d& RPY) {
 
     if (pose.header.frame_id != "/base_link") ROS_WARN("FK computation can now only cope with base_link as input frame");
+
+    // Position
     frame.p.x(pose.pose.position.x);
     frame.p.y(pose.pose.position.y);
     frame.p.z(pose.pose.position.z);
@@ -168,5 +175,12 @@ void CartesianImpedance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose,
                        pose.pose.orientation.z,
                        pose.pose.orientation.w);
 
+    tf::Quaternion q;
+    double roll, pitch, yaw;
+    tf::quaternionMsgToTF(pose.pose.orientation, q);
+    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+    RPY(0) = roll;
+    RPY(1) = pitch;
+    RPY(2) = yaw;
 
 }

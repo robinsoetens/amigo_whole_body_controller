@@ -42,7 +42,7 @@ public:
     /**
      * Constructor
      */
-    WholeBodyController();
+    WholeBodyController(const double Ts);
 
     /**
      * Deconstructor
@@ -129,12 +129,12 @@ protected:
     //uint previous_num_active_tasks_;
 
     //! Sampling time
-    double Ts;
+    double Ts_;
 
     /**
      * Initialize function
      */
-    bool initialize();
+    bool initialize(const double Ts);
 
     /**
      * Publish reference positions

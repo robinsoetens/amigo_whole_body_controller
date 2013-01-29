@@ -15,6 +15,9 @@
 // Messages
 #include <geometry_msgs/PoseStamped.h>
 
+// Eigen
+#include <Eigen/Core>
+
 // tf
 #include <tf/transform_listener.h>
 
@@ -80,7 +83,7 @@ protected:
     geometry_msgs::PoseStamped error_pose_;
 
     // Converts Converts geometry_msgs::PoseStamped to KDL::Frame
-    void stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame);
+    void stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame, Eigen::Vector3d& RPY);
 
     // Cartesian Impedance matrix
     Eigen::MatrixXd K_;

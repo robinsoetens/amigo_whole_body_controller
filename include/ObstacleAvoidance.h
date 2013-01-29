@@ -74,6 +74,8 @@ protected:
     tf::Stamped<tf::Pose> tf_end_effector_pose_;
     tf::Stamped<tf::Pose> tf_end_effector_pose_MAP_;
 
+    //void getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY) ;
+
 };
 
 #endif

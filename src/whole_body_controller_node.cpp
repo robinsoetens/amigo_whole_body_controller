@@ -147,7 +147,7 @@ int main(int argc, char **argv) {
     JOINT_NAME_TO_PUB["shoulder_pitch_joint_right"] = pub_right_arm;
     JOINT_NAME_TO_PUB["shoulder_yaw_joint_right"] = pub_right_arm;
 
-    wbc = new WholeBodyController();
+    wbc = new WholeBodyController(1/loop_rate_);
 
     ros::Rate r(loop_rate_);
 
