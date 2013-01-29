@@ -26,6 +26,11 @@ public:
     //! Update
     void update(const KDL::JntArray& q_in, Eigen::VectorXd& tau_out);
 
+    /**
+      * Returns cost, i.e., the absolute value of the torque of every single plugin
+      */
+    double getCost();
+
 protected:
 
     //! Vector that hold the multiplication factor
@@ -40,6 +45,11 @@ protected:
 
     //! Number of joints
     uint num_joints_;
+
+    /**
+      * Current cost
+      */
+    double current_cost_;
 
 };
 

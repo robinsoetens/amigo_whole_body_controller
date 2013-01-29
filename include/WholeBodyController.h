@@ -52,7 +52,7 @@ public:
     /*
      * Updatehook
      */
-    bool update();
+    bool update(KDL::JntArray q_current, Eigen::VectorXd &q_reference, Eigen::VectorXd &qdot_reference);
 
     void setMeasuredJointPosition(const std::string& joint_name, double pos);
 
@@ -68,9 +68,37 @@ public:
       */
     void getFKsolution(KDL::Frame &FK_end_effector_pose, geometry_msgs::PoseStamped& pose);
 
-protected:
+    /**
+      * Function to set a target in Cartesian space
+      */
+    void setTarget(const amigo_arm_navigation::grasp_precomputeGoal& goal, const std::string& end_effector_frame);
+
+    /**
+      * Function to cancel a target in Cartesian space
+      */
+    void cancelTarget(const std::string& end_effector_frame);
+
+    /**
+      * Function returns the positions of the end-effectors
+      */
+    void getFK(std::vector<geometry_msgs::PoseStamped>& poses);
+
+    /**
+      * Returns the current "cost", i.e., the absolute value of the torque of every single plugin
+      */
+    double getCost();
+
+    /**
+      * Returns the status of the Cartesian Impedance modules
+      */
+    std::vector<uint> getCIstatus ();
 
     RobotState robot_state_;
+
+protected:
+
+    CartesianImpedance* cart_imp_left_;
+    CartesianImpedance* cart_imp_right_;
 
     std::vector<Chain*> chains_;
 

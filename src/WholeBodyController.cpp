@@ -111,7 +111,7 @@ void WholeBodyController::setMeasuredJointPosition(const std::string& joint_name
     //std::cout << joint_name << q_current_(joint_name_to_index_[joint_name]) <<  std::endl;
 }
 
-bool WholeBodyController::update() {
+bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_reference, Eigen::VectorXd& qdot_reference) {
 
     //ROS_INFO("WholeBodyController::update()");
 
@@ -194,6 +194,9 @@ bool WholeBodyController::update() {
     //for (uint i = 0; i < q_current_.rows(); i++) ROS_INFO("Position joint %i = %f",i,q_current_(i));
     //for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));
 
+    q_current = q_current_;
+    q_reference = q_reference_;
+    qdot_reference = qdot_reference_;
 
     //ROS_INFO("WholeBodyController::update() - end");
 
@@ -209,39 +212,6 @@ const std::vector<std::string>& WholeBodyController::getJointNames() const {
     return index_to_joint_name_;
 }
 
-void WholeBodyController::computeForwardKinematics(KDL::Frame& FK_end_effector_pose,
-                                                   const std::string& end_effector_frame) {
-
-    // Compute forward kinematics
-    if (end_effector_frame == "/grippoint_left") {
-        if (fk_solver_left->JntToCart(robot_state_.chain_left_->joint_positions_, FK_end_effector_pose) < 0 ) ROS_WARN("Problems with FK computation for the LEFT chain");
-    }
-    else if (end_effector_frame == "/grippoint_right") {
-        if (fk_solver_right->JntToCart(robot_state_.chain_right_->joint_positions_, FK_end_effector_pose) < 0 ) ROS_WARN("Problems with FK computation for the RIGHT chain");
-    }
-    // Add 0.055 since base and base_link frame are not at exactly the same pose
-    FK_end_effector_pose.p.z(FK_end_effector_pose.p.z()+0.055);
-    ///ROS_INFO("Return value = %i",ret);
-    //if (is_active_) ROS_INFO("end_effector_pose_.p = [%f\t%f\t%f]",end_effector_pose_.p.x(),end_effector_pose_.p.y(),end_effector_pose_.p.z());
-
-}
-
-void WholeBodyController::getFKsolution(KDL::Frame& FK_end_effector_pose,
-                                        geometry_msgs::PoseStamped& pose) {
-
-    // ToDo: get rid of hardcoding
-    pose.header.frame_id = "/base_link";
-    // Position
-    pose.pose.position.x = FK_end_effector_pose.p.x();
-    pose.pose.position.y = FK_end_effector_pose.p.y();
-    pose.pose.position.z = FK_end_effector_pose.p.z();
-    // Orientation
-    FK_end_effector_pose.M.GetQuaternion(pose.pose.orientation.x,
-                                         pose.pose.orientation.y,
-                                         pose.pose.orientation.z,
-                                         pose.pose.orientation.w);
-
-}
 
 void WholeBodyController::createFKsolvers(const std::vector<Chain*>& chains) {
     //chain_left_ = 0;
@@ -260,4 +230,110 @@ void WholeBodyController::createFKsolvers(const std::vector<Chain*>& chains) {
     }
 
     //return (chain_left_ != 0 && chain_right_ != 0) ;
+}
+
+
+void WholeBodyController::computeForwardKinematics(KDL::Frame& FK_end_effector_pose,
+                                                   const std::string& end_effector_frame) {
+
+    // Compute forward kinematics
+    if (end_effector_frame == "/grippoint_left") {
+        if (fk_solver_left->JntToCart(robot_state_.chain_left_->joint_positions_, FK_end_effector_pose) < 0 ) ROS_WARN("Problems with FK computation for the LEFT chain");
+    }
+    else if (end_effector_frame == "/grippoint_right") {
+        if (fk_solver_right->JntToCart(robot_state_.chain_right_->joint_positions_, FK_end_effector_pose) < 0 ) ROS_WARN("Problems with FK computation for the RIGHT chain");
+    }
+    // Add 0.055 since base and base_link frame are not at exactly the same pose
+    FK_end_effector_pose.p.z(FK_end_effector_pose.p.z()+0.055);
+    ///ROS_INFO("Return value = %i",ret);
+    //if (is_active_) ROS_INFO("end_effector_pose_.p = [%f\t%f\t%f]",end_effector_pose_.p.x(),end_effector_pose_.p.y(),end_effector_pose_.p.z());
+
+}
+
+
+void WholeBodyController::getFKsolution(KDL::Frame& FK_end_effector_pose,
+                                        geometry_msgs::PoseStamped& pose) {
+
+    // ToDo: get rid of hardcoding
+    pose.header.frame_id = "/base_link";
+    // Position
+    pose.pose.position.x = FK_end_effector_pose.p.x();
+    pose.pose.position.y = FK_end_effector_pose.p.y();
+    pose.pose.position.z = FK_end_effector_pose.p.z();
+    // Orientation
+    FK_end_effector_pose.M.GetQuaternion(pose.pose.orientation.x,
+                                         pose.pose.orientation.y,
+                                         pose.pose.orientation.z,
+                                         pose.pose.orientation.w);
+
+}
+
+void WholeBodyController::setTarget(const amigo_arm_navigation::grasp_precomputeGoal& goal, const std::string& end_effector_frame) {
+
+    geometry_msgs::PoseStamped goal_pose;
+
+    goal_pose.header = goal.goal.header;
+    goal_pose.pose.position.x = goal.goal.x;
+    goal_pose.pose.position.y = goal.goal.y;
+    goal_pose.pose.position.z = goal.goal.z;
+    double roll = goal.goal.roll;
+    double pitch = goal.goal.pitch;
+    double yaw = goal.goal.yaw;
+    geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
+    goal_pose.pose.orientation = orientation;
+
+    //tf::Stamped<tf::Pose> tf_goal;
+    //poseStampedMsgToTF(goal_pose, tf_goal);
+    //tf_goal.frame_id_ = "/base_link";
+
+    ROS_INFO("Pointer: %p", &cart_imp_left_);
+    if (end_effector_frame == "/grippoint_left") {
+        cart_imp_left_->setGoal(goal_pose);
+    }
+    else if (end_effector_frame == "/grippoint_right") {
+        cart_imp_right_->setGoal(goal_pose);
+    }
+    else ROS_WARN("Cannot process this goal");
+}
+
+void WholeBodyController::cancelTarget(const std::string& end_effector_frame) {
+    if (end_effector_frame == "/grippoint_left") {
+        cart_imp_left_->cancelGoal();
+    }
+    else if (end_effector_frame == "/grippoint_right") {
+        cart_imp_right_->cancelGoal();
+    }
+    else ROS_WARN("Not clear what to cancel");
+}
+
+
+double WholeBodyController::getCost() {
+
+    // Set to zero
+    double current_cost = 0;
+
+    // Tau due to Cartesian Impedance + Collision avoidance
+    for (int i = 0; i < tau_.rows(); i++) current_cost += fabs(tau_(i));
+
+    // Joint limit avoidance
+    current_cost += JointLimitAvoidance_.getCost();
+
+    // Posture control
+    current_cost += PostureControl_.getCost();
+
+    // Singularity avoidance
+
+    return current_cost;
+
+}
+
+std::vector<uint> WholeBodyController::getCIstatus() {
+    // Vector with status of Cartesian Impedances
+    std::vector<uint> CIstatus;
+    CIstatus.resize(2);
+
+    CIstatus[0] = cart_imp_left_->status_;
+    CIstatus[1] = cart_imp_right_->status_;
+
+    return CIstatus;
 }

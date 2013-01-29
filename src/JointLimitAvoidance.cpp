@@ -41,15 +41,27 @@ void JointLimitAvoidance::initialize(const KDL::JntArray& q_min, const KDL::JntA
         //ROS_INFO("qmin = %f, qthresmin = %f, qthresmax = %f, qmax = %f, K = %f",q_min[i],qmin_threshold_(i),qmax_threshold_(i),q_max[i], K_[i]);
     }
 
+    current_cost_ = 0;
+
 }
 
 void JointLimitAvoidance::update(const KDL::JntArray& q_in, Eigen::VectorXd& tau_out) {
+
+    current_cost_ = 0;
 
     //ToDo: Check joint limit avoidance algorithm
     for (uint i = 0; i < num_joints_; i++) {
         if (q_in(i) < qmin_threshold_(i)) tau_out(i) += K_[i]*(qmin_threshold_(i) - q_in(i));
         else if (q_in(i) > qmax_threshold_(i)) tau_out(i) += K_[i]*(qmax_threshold_(i) - q_in(i));
         //ROS_INFO("q(%i) = %f\tq0 = %f\ttau = %f ",i,q_in(i),q0_(i),tau_out(i));
-    }
 
+        // Add this to the costs
+        current_cost_ += fabs(tau_out(i));
+    }
+}
+
+
+double JointLimitAvoidance::getCost() {
+
+    return current_cost_;
 }
