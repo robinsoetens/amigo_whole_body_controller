@@ -233,8 +233,7 @@ void WholeBodyController::createFKsolvers(const std::vector<Chain*>& chains) {
 }
 
 
-void WholeBodyController::computeForwardKinematics(KDL::Frame& FK_end_effector_pose,
-                                                   const std::string& end_effector_frame) {
+void WholeBodyController::computeForwardKinematics(KDL::Frame& FK_end_effector_pose, const std::string& end_effector_frame) {
 
     // Compute forward kinematics
     if (end_effector_frame == "/grippoint_left") {
@@ -268,45 +267,6 @@ void WholeBodyController::getFKsolution(KDL::Frame& FK_end_effector_pose,
 
 }
 
-void WholeBodyController::setTarget(const amigo_arm_navigation::grasp_precomputeGoal& goal, const std::string& end_effector_frame) {
-
-    geometry_msgs::PoseStamped goal_pose;
-
-    goal_pose.header = goal.goal.header;
-    goal_pose.pose.position.x = goal.goal.x;
-    goal_pose.pose.position.y = goal.goal.y;
-    goal_pose.pose.position.z = goal.goal.z;
-    double roll = goal.goal.roll;
-    double pitch = goal.goal.pitch;
-    double yaw = goal.goal.yaw;
-    geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
-    goal_pose.pose.orientation = orientation;
-
-    //tf::Stamped<tf::Pose> tf_goal;
-    //poseStampedMsgToTF(goal_pose, tf_goal);
-    //tf_goal.frame_id_ = "/base_link";
-
-    ROS_INFO("Pointer: %p", &cart_imp_left_);
-    if (end_effector_frame == "/grippoint_left") {
-        cart_imp_left_->setGoal(goal_pose);
-    }
-    else if (end_effector_frame == "/grippoint_right") {
-        cart_imp_right_->setGoal(goal_pose);
-    }
-    else ROS_WARN("Cannot process this goal");
-}
-
-void WholeBodyController::cancelTarget(const std::string& end_effector_frame) {
-    if (end_effector_frame == "/grippoint_left") {
-        cart_imp_left_->cancelGoal();
-    }
-    else if (end_effector_frame == "/grippoint_right") {
-        cart_imp_right_->cancelGoal();
-    }
-    else ROS_WARN("Not clear what to cancel");
-}
-
-
 double WholeBodyController::getCost() {
 
     // Set to zero
@@ -332,8 +292,8 @@ std::vector<uint> WholeBodyController::getCIstatus() {
     std::vector<uint> CIstatus;
     CIstatus.resize(2);
 
-    CIstatus[0] = cart_imp_left_->status_;
-    CIstatus[1] = cart_imp_right_->status_;
+    //CIstatus[0] = cart_imp_left_->status_;
+    //CIstatus[1] = cart_imp_right_->status_;
 
     return CIstatus;
 }

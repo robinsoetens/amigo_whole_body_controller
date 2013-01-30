@@ -64,19 +64,53 @@ void rightCancelCB() {
     server_right_->setPreempted();
 }
 
+void setTarget(const amigo_arm_navigation::grasp_precomputeGoal& goal, const std::string& end_effector_frame) {
+
+    geometry_msgs::PoseStamped goal_pose;
+
+    goal_pose.header = goal.goal.header;
+    goal_pose.pose.position.x = goal.goal.x;
+    goal_pose.pose.position.y = goal.goal.y;
+    goal_pose.pose.position.z = goal.goal.z;
+    double roll = goal.goal.roll;
+    double pitch = goal.goal.pitch;
+    double yaw = goal.goal.yaw;
+    geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
+    goal_pose.pose.orientation = orientation;
+
+    if (end_effector_frame == "/grippoint_left") {
+        cart_imp_left_->setGoal(goal_pose);
+    }
+    else if (end_effector_frame == "/grippoint_right") {
+        cart_imp_right_->setGoal(goal_pose);
+    }
+    else ROS_WARN("Cannot process this goal");
+}
+
+void cancelTarget(const std::string& end_effector_frame) {
+    if (end_effector_frame == "/grippoint_left") {
+        cart_imp_left_->cancelGoal();
+    }
+    else if (end_effector_frame == "/grippoint_right") {
+        cart_imp_right_->cancelGoal();
+    }
+    else ROS_WARN("Not clear what to cancel");
+}
+
 void leftGoalCB() {
     ROS_INFO("Received left goal");
     std::string end_effector_frame = "/grippoint_left";
     const amigo_arm_navigation::grasp_precomputeGoal& goal = *server_left_->acceptNewGoal();
-    wbc->setTarget(goal, end_effector_frame);
+    setTarget(goal, end_effector_frame);
 }
 
 void rightGoalCB() {
     ROS_INFO("Received right goal");
     std::string end_effector_frame = "/grippoint_right";
     const amigo_arm_navigation::grasp_precomputeGoal& goal = *server_right_->acceptNewGoal();
-    wbc->setTarget(goal, end_effector_frame);
+    setTarget(goal, end_effector_frame);
 }
+
 
 int main(int argc, char **argv) {
 

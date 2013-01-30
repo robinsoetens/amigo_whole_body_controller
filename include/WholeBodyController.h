@@ -68,17 +68,7 @@ public:
       */
     void getFKsolution(KDL::Frame &FK_end_effector_pose, geometry_msgs::PoseStamped& pose);
 
-    /**
-      * Function to set a target in Cartesian space
-      */
-    void setTarget(const amigo_arm_navigation::grasp_precomputeGoal& goal, const std::string& end_effector_frame);
-
-    /**
-      * Function to cancel a target in Cartesian space
-      */
-    void cancelTarget(const std::string& end_effector_frame);
-
-    /**
+     /**
       * Function returns the positions of the end-effectors
       */
     void getFK(std::vector<geometry_msgs::PoseStamped>& poses);
@@ -96,9 +86,6 @@ public:
     RobotState robot_state_;
 
 protected:
-
-    CartesianImpedance* cart_imp_left_;
-    CartesianImpedance* cart_imp_right_;
 
     std::vector<Chain*> chains_;
 

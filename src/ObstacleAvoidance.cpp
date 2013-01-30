@@ -44,7 +44,7 @@ bool ObstacleAvoidance::isActive() {
 }
 
 void ObstacleAvoidance::apply(const RobotState &robotstate) {
-
+    // Check which chain is active
         if (end_effector_frame_ == "grippoint_left") {
         end_effector_msg_ = robotstate.endEffectorPoseLeft;
         chain_ = robotstate.chain_left_;
@@ -54,6 +54,7 @@ void ObstacleAvoidance::apply(const RobotState &robotstate) {
         chain_ = robotstate.chain_right_;
     }
 
+    // Transform frame to map frame
     poseStampedMsgToTF(end_effector_msg_, tf_end_effector_pose_);
 
    try {
@@ -70,12 +71,15 @@ void ObstacleAvoidance::apply(const RobotState &robotstate) {
 
     //ROS_INFO("End effector pose: %f, %f, %f", end_effector_pose_MAP.getOrigin().getX(), end_effector_pose_MAP.getOrigin().getY(), end_effector_pose_MAP.getOrigin().getZ());
 
+    // Calculate
     Eigen::Vector3d end_effector_pos(tf_end_effector_pose_MAP_.getOrigin().getX(),
                                      tf_end_effector_pose_MAP_.getOrigin().getY(),
                                      tf_end_effector_pose_MAP_.getOrigin().getZ());
 
-    Eigen::VectorXd wrench(6);
+    Eigen::Vector3d wrench;
+    Eigen::VectorXd wrench_transformed(6);
     wrench.setZero();
+    wrench_transformed.setZero();
     for(vector<Box*>::iterator it = boxes_.begin(); it != boxes_.end(); ++it) {
         const Box& box = **it;
 
@@ -107,7 +111,7 @@ void ObstacleAvoidance::apply(const RobotState &robotstate) {
                 }
                 */
             if (distance < 0.1) {
-                weight = (1 - (distance / 0.1)) * 10;
+                weight = (1 - (distance / 0.1)) * 100;
             }
             for(unsigned int i = 0; i < 3; i++) {
                 wrench(i) +=  diff_normalized(i) * weight;
@@ -116,8 +120,11 @@ void ObstacleAvoidance::apply(const RobotState &robotstate) {
         }
     }
 
-    visualize(end_effector_pos, wrench); // + (total_force / 10));
-    chain_->addCartesianWrench(end_effector_frame_, wrench);
+    transformWench(end_effector_msg_, wrench, wrench_transformed);
+
+
+    visualize(end_effector_pos, wrench_transformed); // + (total_force / 10));
+    chain_->addCartesianWrench(end_effector_frame_, wrench_transformed);
 
         // cout << F_task << endl;
 }
@@ -126,7 +133,7 @@ void ObstacleAvoidance::visualize(const Eigen::Vector3d& end_effector_pos, const
 
     Eigen::Vector3d marker_pos;
     for(unsigned int i = 0; i < 3; ++i) {
-        marker_pos(i) = end_effector_pos(i) + wrench(i) / 10;
+        marker_pos(i) = end_effector_pos(i) + wrench(i) / 100;
     }
 
     visualization_msgs::MarkerArray marker_array;
@@ -190,16 +197,36 @@ void ObstacleAvoidance::visualize(const Eigen::Vector3d& end_effector_pos, const
 }
 
 
-/*
-void ObstacleAvoidance::getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY){
 
-    tf::Quaternion q;
+void ObstacleAvoidance::getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY) {
+
+    tf::Quaternion Q;
     double roll, pitch, yaw;
-    tf::quaternionMsgToTF(pose.pose.orientation, q);
-    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+    tf::quaternionMsgToTF(pose.pose.orientation, Q);
+    tf::Matrix3x3(Q).getRPY(roll, pitch, yaw);
     RPY(0) = roll;
     RPY(1) = pitch;
     RPY(2) = yaw;
 
 }
-*/
+
+
+void ObstacleAvoidance::transformWench(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& wrench_in, Eigen::VectorXd &wrench_out) {
+
+    Eigen::Vector3d RPY;
+    RPY.setZero();
+    getposeRPY(pose,RPY);
+
+
+    tf::Transform transform;
+    transform.setOrigin(tf::Vector3(wrench_in[0], wrench_in[1], wrench_in[2]));
+
+    tf::Quaternion Q;
+    Q.setRPY(RPY(0),RPY(1),RPY(2));
+    transform.setRotation(Q);
+
+    wrench_out[0] = transform.getOrigin().x();
+    wrench_out[1] = transform.getOrigin().y();
+    wrench_out[2] = transform.getOrigin().z();
+
+}
