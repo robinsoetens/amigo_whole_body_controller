@@ -1,35 +1,34 @@
-whole_body_controller:
-    joint_limit_avoidance:
-        gain:
-            spindle_joint: 1000.0
-            shoulder_yaw_joint_left: 200.0
-            shoulder_yaw_joint_right: 200.0
-            shoulder_pitch_joint_left: 200.0
-            shoulder_pitch_joint_right: 200.0
-            shoulder_roll_joint_left: 200.0
-            shoulder_roll_joint_right: 200.0
-            elbow_pitch_joint_left: 200.0
-            elbow_pitch_joint_right: 200.0
-            elbow_roll_joint_left: 200.0
-            elbow_roll_joint_right: 200.0
-            wrist_pitch_joint_left: 200.0
-            wrist_pitch_joint_right: 200.0
-            wrist_yaw_joint_left: 200.0
-            wrist_yaw_joint_right: 200.0
+joint_limit_avoidance:
+    gain:
+        spindle_joint: 1000.0
+        shoulder_yaw_joint_left: 200.0
+        shoulder_yaw_joint_right: 200.0
+        shoulder_pitch_joint_left: 200.0
+        shoulder_pitch_joint_right: 200.0
+        shoulder_roll_joint_left: 200.0
+        shoulder_roll_joint_right: 200.0
+        elbow_pitch_joint_left: 200.0
+        elbow_pitch_joint_right: 200.0
+        elbow_roll_joint_left: 200.0
+        elbow_roll_joint_right: 200.0
+        wrist_pitch_joint_left: 200.0
+        wrist_pitch_joint_right: 200.0
+        wrist_yaw_joint_left: 200.0
+        wrist_yaw_joint_right: 200.0
         
-        workspace:
-            spindle_joint: 0.9
-            shoulder_yaw_joint_left: 0.9
-            shoulder_yaw_joint_right: 0.9
-            shoulder_pitch_joint_left: 0.9
-            shoulder_pitch_joint_right: 0.9
-            shoulder_roll_joint_left: 0.9
-            shoulder_roll_joint_right: 0.9
-            elbow_pitch_joint_left: 0.9
-            elbow_pitch_joint_right: 0.9
-            elbow_roll_joint_left: 0.9
-            elbow_roll_joint_right: 0.9
-            wrist_pitch_joint_left: 0.9
-            wrist_pitch_joint_right: 0.9
-            wrist_yaw_joint_left: 0.9
-            wrist_yaw_joint_right: 0.9
+    workspace:
+        spindle_joint: 0.9
+        shoulder_yaw_joint_left: 0.9
+        shoulder_yaw_joint_right: 0.9
+        shoulder_pitch_joint_left: 0.9
+        shoulder_pitch_joint_right: 0.9
+        shoulder_roll_joint_left: 0.9
+        shoulder_roll_joint_right: 0.9
+        elbow_pitch_joint_left: 0.9
+        elbow_pitch_joint_right: 0.9
+        elbow_roll_joint_left: 0.9
+        elbow_roll_joint_right: 0.9
+        wrist_pitch_joint_left: 0.9
+        wrist_pitch_joint_right: 0.9
+        wrist_yaw_joint_left: 0.9
+        wrist_yaw_joint_right: 0.9

@@ -1,19 +1,18 @@
-whole_body_controller:
-    component_description:
-        - torso:
-            root_name: "base"
-            leaf_names:
-                - "shoulder_mount_left"
-                - "shoulder_mount_right"
-        - left_upper_arm:
-            root_name: "shoulder_mount_left"
-            leaf_names:
-                - "elbow_link4_left"
-        - left_lower_arm:
-            root_name: "elbow_link4_left"
-            leaf_names:
-                - "grippoint_left"
-        - right_arm:
-            root_name: "shoulder_mount_right"
-            leaf_names:
-                - "grippoint_right"
+component_description:
+    - torso:
+        root_name: "base"
+        leaf_names:
+            - "shoulder_mount_left"
+            - "shoulder_mount_right"
+    - left_upper_arm:
+        root_name: "shoulder_mount_left"
+        leaf_names:
+            - "elbow_link4_left"
+    - left_lower_arm:
+        root_name: "elbow_link4_left"
+        leaf_names:
+            - "grippoint_left"
+    - right_arm:
+        root_name: "shoulder_mount_right"
+        leaf_names:
+            - "grippoint_right"

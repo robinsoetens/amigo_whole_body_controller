@@ -1,19 +1,18 @@
-whole_body_controller:
-    kx: 25
-    ky: 25
-    kz: 25
-    krx: 2.5
-    kry: 2.5
-    krz: 2.5
+kx: 25
+ky: 25
+kz: 25
+krx: 2.5
+kry: 2.5
+krz: 2.5
     
-    pre_grasp_delta: 0.1
-    
-    #kx: 25
-    #ky: 25
-    #kz: 25
-    #krx: 2.5
-    #kry: 2.5
-    #krz: 2.5
+pre_grasp_delta: 0.1
+  
+#kx: 25
+#ky: 25
+#kz: 25
+#krx: 2.5
+#kry: 2.5
+#krz: 2.5
 #    chain_description_array:
 #        - - grippoint_left
 #          - shoulder_mount_left

@@ -52,7 +52,7 @@ bool ChainParser::parse(std::vector<Chain*>& chains, std::map<std::string, unsig
 
     XmlRpc::XmlRpcValue chain_params;
     if (!n.getParam(ns + "/chain_description", chain_params)) {
-        ROS_ERROR("No chain description given. (namespace: %s)", n.getNamespace().c_str());
+        ROS_ERROR("No chain description given: %s", (ns + "/chain_description").c_str());
         return false;
     }
 

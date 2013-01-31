@@ -102,8 +102,10 @@ void CartesianImpedance::apply(const RobotState &robotstate) {
     stampedPoseToKDLframe(end_effector_pose_, end_effector_kdl_frame, end_effector_RPY);
     stampedPoseToKDLframe(goal_pose_, goal_kdl_frame, goal_RPY);
 
-    //ROS_INFO("goal_kdl_frame = %f,\t%f,\t%f,\t%f,\t%f,\t%f", goal_kdl_frame.p.x(), goal_kdl_frame.p.y(), goal_kdl_frame.p.z(), groll, gpitch, gyaw);
-    //ROS_INFO("end_effector_kdl_frame = %f,\t%f,\t%f,\t%f,\t%f,\t%f", end_effector_kdl_frame.p.x(), end_effector_kdl_frame.p.y(), end_effector_kdl_frame.p.z(), eroll, epitch ,eyaw);
+    //ROS_INFO("goal_kdl_frame = %f,\t%f,\t%f,\t%f,\t%f,\t%f", goal_kdl_frame.p.x(), goal_kdl_frame.p.y(), goal_kdl_frame.p.z(),
+    //                                                         goal_RPY(0), goal_RPY(1), goal_RPY(2));
+    //ROS_INFO("end_effector_kdl_frame = %f,\t%f,\t%f,\t%f,\t%f,\t%f", end_effector_kdl_frame.p.x(), end_effector_kdl_frame.p.y(), end_effector_kdl_frame.p.z(),
+    //                                                                 end_effector_RPY(0), end_effector_RPY(1), end_effector_RPY(2));
 
     KDL::Twist error_vector_fk = KDL::diff(end_effector_kdl_frame,goal_kdl_frame, Ts);
 

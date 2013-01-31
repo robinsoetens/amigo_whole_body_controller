@@ -1,5 +1,4 @@
-whole_body_controller:
-    chain_description:
-        - ["left_lower_arm", "left_upper_arm"]
-        - ["left_upper_arm", "torso"]
-        - ["right_arm", "torso"]
+chain_description:
+    - ["left_lower_arm", "left_upper_arm"]
+    - ["left_upper_arm", "torso"]
+    - ["right_arm", "torso"]
