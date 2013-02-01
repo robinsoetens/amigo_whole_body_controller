@@ -171,15 +171,15 @@ int main(int argc, char **argv) {
         exit(-1);
     }
 
-    ObstacleAvoidance* obstacle_avoidance_left = new ObstacleAvoidance("grippoint_left", &tf_listener);
-    if (!wbc->addMotionObjective(obstacle_avoidance_left)) {
-        ROS_ERROR("Could not initialize obstacle avoidance");
+    CollisionAvoidance* collision_avoidance_left = new CollisionAvoidance(1/loop_rate_, "grippoint_left", &tf_listener);
+    if (!wbc->addMotionObjective(collision_avoidance_left)) {
+        ROS_ERROR("Could not initialize collision avoidance");
         exit(-1);
     }
 
-    ObstacleAvoidance* obstacle_avoidance_right = new ObstacleAvoidance("grippoint_right", &tf_listener);
-    if (!wbc->addMotionObjective(obstacle_avoidance_right)) {
-        ROS_ERROR("Could not initialize obstacle avoidance");
+    CollisionAvoidance* collision_avoidance_right = new CollisionAvoidance(1/loop_rate_, "grippoint_right", &tf_listener);
+    if (!wbc->addMotionObjective(collision_avoidance_right)) {
+        ROS_ERROR("Could not initialize collision avoidance");
         exit(-1);
     }
 

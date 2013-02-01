@@ -41,7 +41,7 @@ rosbuild_add_library(wholebodycontroller
 					src/CartesianImpedance.cpp
 					src/AdmittanceController.cpp
 					src/ComputeNullspace.cpp
-					src/ObstacleAvoidance.cpp
+					src/CollisionAvoidance.cpp
                                         src/JointLimitAvoidance.cpp
                                         src/PostureControl.cpp
                                         src/Component.cpp

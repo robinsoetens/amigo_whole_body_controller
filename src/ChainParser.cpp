@@ -93,15 +93,12 @@ Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, const KDL
     ros::NodeHandle n("~");
     std::string ns = n.getNamespace();
 
-    cout << "A" << endl;
     cout << chain_description << endl;
 
     if (chain_description.getType() != XmlRpc::XmlRpcValue::TypeStruct) {
         ROS_ERROR("Chain description should be a struct containing 'root' and 'tip'. (namespace: %s)", n.getNamespace().c_str());
         return 0;
     }
-
-    cout << "B" << endl;
 
     XmlRpc::XmlRpcValue& v_root_link = chain_description["root"];
     if (v_root_link.getType() != XmlRpc::XmlRpcValue::TypeString) {
@@ -110,16 +107,12 @@ Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, const KDL
     }
     std::string root_link_name = (std::string)v_root_link;
 
-    cout << "C" << endl;
-
     XmlRpc::XmlRpcValue& v_tip_link = chain_description["tip"];
     if (v_tip_link.getType() != XmlRpc::XmlRpcValue::TypeString) {
         ROS_ERROR("Chain description for does not contain 'tip'. (namespace: %s)", n.getNamespace().c_str());
         return 0;
     }
     std::string tip_link_name = (std::string)v_tip_link;
-
-    cout << "D" << endl;
 
     Chain* chain = new Chain();
 

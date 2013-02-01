@@ -24,7 +24,7 @@
 #include "ComputeNullspace.h"
 #include "JointLimitAvoidance.h"
 #include "PostureControl.h"
-#include "ObstacleAvoidance.h"
+#include "CollisionAvoidance.h"
 //#include "TreeDescription.h"
 
 // Vector
@@ -68,7 +68,7 @@ public:
       */
     void getFKsolution(KDL::Frame &FK_end_effector_pose, geometry_msgs::PoseStamped& pose);
 
-     /**
+    /**
       * Function returns the positions of the end-effectors
       */
     void getFK(std::vector<geometry_msgs::PoseStamped>& poses);
@@ -77,11 +77,6 @@ public:
       * Returns the current "cost", i.e., the absolute value of the torque of every single plugin
       */
     double getCost();
-
-    /**
-      * Returns the status of the Cartesian Impedance modules
-      */
-    std::vector<uint> getCIstatus ();
 
     RobotState robot_state_;
 

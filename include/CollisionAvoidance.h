@@ -20,7 +20,7 @@
 
 /////
 
-class ObstacleAvoidance : public MotionObjective {
+class CollisionAvoidance : public MotionObjective {
 
     struct Box {
 
@@ -39,12 +39,12 @@ public:
     /**
      * Constructor
      */
-    ObstacleAvoidance(const std::string& end_effector_frame, tf::TransformListener* tf_listener);
+    CollisionAvoidance(const double Ts, const std::string& end_effector_frame, tf::TransformListener* tf_listener);
 
     /**
      * Deconstructor
      */
-    virtual ~ObstacleAvoidance();
+    virtual ~CollisionAvoidance();
 
     /**
      * Initialize function
@@ -56,15 +56,18 @@ public:
 
     void apply(const RobotState& robotstate);
 
-    void visualize(const Eigen::Vector3d& end_effector_pos, const Eigen::VectorXd& wrench) const;
+    void visualize(const tf::Stamped<tf::Pose> &tf_end_effector_pose_MAP, const Eigen::VectorXd& wrench) const;
 
 protected:
 
+    //! Sampling time
+    double Ts_;
+
     Chain* chain_;
 
-    tf::TransformListener& listener_;
-
     std::string end_effector_frame_;
+
+    tf::TransformListener& listener_;
 
     std::vector<Box*> boxes_;
 
@@ -74,9 +77,18 @@ protected:
     tf::Stamped<tf::Pose> tf_end_effector_pose_;
     tf::Stamped<tf::Pose> tf_end_effector_pose_MAP_;
 
+    geometry_msgs::PoseStamped contactpoint_msg_;
+
     void getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY);
 
     void transformWench(geometry_msgs::PoseStamped& pose, Eigen::Vector3d &wrench_in, Eigen::VectorXd& wrench_out);
+
+    void stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame, Eigen::Vector3d& RPY);
+
+    void selfCollision(geometry_msgs::PoseStamped end_effector,geometry_msgs::PoseStamped contactpoint, Eigen::VectorXd& wrench_self_collision);
+
+    void environmentCollision(tf::Stamped<tf::Pose>& tf_end_effector_pose_MAP, Eigen::VectorXd& wrench_out);
+
 
 };
 

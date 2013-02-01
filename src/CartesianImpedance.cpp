@@ -113,11 +113,9 @@ void CartesianImpedance::apply(const RobotState &robotstate) {
     error_vector_(0) = error_vector_fk.vel.x();
     error_vector_(1) = error_vector_fk.vel.y();
     error_vector_(2) = error_vector_fk.vel.z();
-    error_vector_(3) = goal_RPY(0) - end_effector_RPY(0)/ Ts;      // error_vector_fk.rot.x();
-    error_vector_(4) = goal_RPY(1) - end_effector_RPY(1)/ Ts;    // error_vector_fk.rot.y();
-    error_vector_(5) = goal_RPY(2) - end_effector_RPY(2)/ Ts;        // error_vector_fk.rot.z();
-
-
+    error_vector_(3) = goal_RPY(0) - end_effector_RPY(0)/ Ts;
+    error_vector_(4) = goal_RPY(1) - end_effector_RPY(1)/ Ts;
+    error_vector_(5) = goal_RPY(2) - end_effector_RPY(2)/ Ts;
 
 
     //std::cout << "goal_pose = " << goal_pose_.getOrigin().getX() << " , " << goal_pose_.getOrigin().getY() << " , " << goal_pose_.getOrigin().getZ() << std::endl;
@@ -126,12 +124,12 @@ void CartesianImpedance::apply(const RobotState &robotstate) {
     // If pre-grasping, an offset is added to the errorpose in x-direction
     //if (pre_grasp_) error_vector_(0) -= pre_grasp_delta_;
 
-    ROS_INFO("error pose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+    //ROS_INFO("error pose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
 
     F_task = K_ * error_vector_;
 
     //std::cout << "F_task = " << F_task << std::endl;
-    ROS_INFO("F_task = %f,\t%f,\t%f,\t%f,\t%f,\t%f",F_task(0),F_task(1),F_task(2),F_task(3),F_task(4),F_task(5));
+    //ROS_INFO("F_task = %f,\t%f,\t%f,\t%f,\t%f,\t%f",F_task(0),F_task(1),F_task(2),F_task(3),F_task(4),F_task(5));
 
     // add the wrench to the end effector of the kinematic chain
     chain_->addCartesianWrench(end_effector_frame_, F_task);
@@ -150,8 +148,8 @@ void CartesianImpedance::apply(const RobotState &robotstate) {
         ROS_INFO("pre_grasp_ = %d",pre_grasp_);
     }
     //////////else if (num_converged_dof == 6 && server_->isActive() && !pre_grasp_) {
-        //////////server_->setSucceeded();
-        //////////ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+    //////////server_->setSucceeded();
+    //////////ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
     //////////}
     else if (num_converged_dof == 6 && status_ == 2 && !pre_grasp_) {
         status_ = 1;

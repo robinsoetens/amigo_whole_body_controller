@@ -117,7 +117,7 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
 
     // Set some variables to zero
     tau_.setZero();
-    tau_nullspace_.setZero();   
+    tau_nullspace_.setZero();
     F_task_.setZero();
 
     // Update the torque output
@@ -287,13 +287,3 @@ double WholeBodyController::getCost() {
 
 }
 
-std::vector<uint> WholeBodyController::getCIstatus() {
-    // Vector with status of Cartesian Impedances
-    std::vector<uint> CIstatus;
-    CIstatus.resize(2);
-
-    //CIstatus[0] = cart_imp_left_->status_;
-    //CIstatus[1] = cart_imp_right_->status_;
-
-    return CIstatus;
-}

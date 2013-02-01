@@ -34,20 +34,20 @@ public:
 protected:
 
     //! Vector that hold the multiplication factor
-        std::vector<double> K_;
+    std::vector<double> K_;
 
-        //! Joint array with average joint value
-        // H = ((q-q0)/(qmax-qmin))^2
-        // dH/dq = 2(q-q0)/(qmax-qmin)^2
-        std::vector<double> q0_;
+    //! Joint array with average joint value
+    // H = ((q-q0)/(qmax-qmin))^2
+    // dH/dq = 2(q-q0)/(qmax-qmin)^2
+    std::vector<double> q0_;
 
-        //! Number of joints
-        uint num_joints_;
+    //! Number of joints
+    uint num_joints_;
 
-        /**
+    /**
           * Current cost
           */
-        double current_cost_;
+    double current_cost_;
 
 };
 
