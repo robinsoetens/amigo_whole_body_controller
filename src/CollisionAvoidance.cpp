@@ -84,41 +84,32 @@ void CollisionAvoidance::apply(const RobotState &robotstate) {
 
 
     // Correct self-collision avoidance vizualization for base orientation
-    geometry_msgs::PoseStamped base_pose;
-    geometry_msgs::PoseStamped base_pose_MAP;
-    tf::Stamped<tf::Pose> tf_base_pose;
-    tf::Stamped<tf::Pose> tf_base_pose_MAP;
-    Eigen::Vector3d wrench_self_collision_pos;
-    base_pose.header.frame_id = "/base_link";
-    base_pose.pose.position.x = 0;
-    base_pose.pose.position.y = 0;
-    base_pose.pose.position.z = 0;
+    geometry_msgs::PoseStamped wrench_self_collision_msg;
+    tf::Stamped<tf::Pose> tf_wrench_self_collision;
+    tf::Stamped<tf::Pose> tf_wrench_self_collision_MAP;
+    Eigen::VectorXd wrench_self_collision_vizualization(6);
+    wrench_self_collision_vizualization.setZero();
+    wrench_self_collision_msg.header.frame_id = end_effector_frame_;
+    wrench_self_collision_msg.pose.position.x = wrench_self_collision(0);
+    wrench_self_collision_msg.pose.position.y = wrench_self_collision(1);
+    wrench_self_collision_msg.pose.position.z = wrench_self_collision(2);
     double roll = 0;
     double pitch = 0;
     double yaw = 0;
     geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
-    base_pose.pose.orientation = orientation;
+    wrench_self_collision_msg.pose.orientation = orientation;
+    tf::poseStampedMsgToTF(wrench_self_collision_msg, tf_wrench_self_collision);
 
-    tf::poseStampedMsgToTF(base_pose, tf_base_pose);
     try {
-        listener_.transformPose("/map", tf_base_pose, tf_base_pose_MAP);
+        listener_.transformPose("/map", tf_wrench_self_collision, tf_wrench_self_collision_MAP);
     } catch (tf::TransformException& e) {
         ROS_ERROR("CartesianImpedance: %s", e.what());
         return;
     }
-    tf::poseStampedTFToMsg(tf_base_pose_MAP, base_pose_MAP);
-    //ROS_INFO("base orientation = %f, \t%f, \t%f, \t%f", base_pose_MAP.pose.orientation.w, base_pose_MAP.pose.orientation.x, base_pose_MAP.pose.orientation.y, base_pose_MAP.pose.orientation.z);
 
-
-    wrench_self_collision_pos(0) = wrench_self_collision(0);
-    wrench_self_collision_pos(1) = wrench_self_collision(1);
-    wrench_self_collision_pos(2) = wrench_self_collision(2);
-    Eigen::VectorXd wrench_self_collision_vizualization(6);
-    wrench_self_collision_vizualization.setZero();
-
-    transformWench(base_pose_MAP, wrench_self_collision_pos, wrench_self_collision_vizualization);
-    //ROS_INFO("wrench_self_collision_pos  = %f,\t%f,\t%f", wrench_self_collision_pos(0), wrench_self_collision_pos(1), wrench_self_collision_pos(2));
-    //ROS_INFO("wrench_self_collision_vizualization  = %f,\t%f,\t%f", wrench_self_collision_vizualization(0), wrench_self_collision_vizualization(1), wrench_self_collision_vizualization(2));
+    wrench_self_collision_vizualization(0) = tf_wrench_self_collision_MAP.getOrigin().getX();
+    wrench_self_collision_vizualization(1) = tf_wrench_self_collision_MAP.getOrigin().getY();
+    wrench_self_collision_vizualization(2) = tf_wrench_self_collision_MAP.getOrigin().getZ();
 
     // Output
     visualize(tf_end_effector_pose_MAP_, wrench_environment_collision + wrench_self_collision_vizualization); // + (total_force / 10));
