@@ -66,7 +66,7 @@ public:
       * Returns the current FK solution
       *
       */
-    void getFKsolution(KDL::Frame &FK_end_effector_pose, geometry_msgs::PoseStamped& pose);
+    void getFKsolution(KDL::Frame& FK_pose, geometry_msgs::PoseStamped &pose);
 
     /**
       * Function returns the positions of the end-effectors
@@ -154,7 +154,7 @@ protected:
     /**
       * computeForwardKinematics
       */
-    void computeForwardKinematics(KDL::Frame &FK_end_effector_pose, const std::string &end_effector_frame);
+    void computeForwardKinematics(KDL::Frame &FK_end_effector_pose, const std::string &end_effector_frame, int segmentNr);
 
     /**
       * Forward Kinematics Solver
@@ -173,6 +173,9 @@ protected:
      * Create the forward kinematics solvers for both chains
      */
     void createFKsolvers(const std::vector<Chain *> &chains);
+
+
+    int getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment_name) ;
 
 
 

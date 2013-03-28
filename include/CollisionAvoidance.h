@@ -18,6 +18,17 @@
 
 #include "MotionObjective.h"
 
+// Bullet GJK Closest Point calculation
+#include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
+#include <BulletCollision/CollisionShapes/btBoxShape.h>
+#include <BulletCollision/CollisionShapes/btConeShape.h>
+#include <BulletCollision/CollisionShapes/btCylinderShape.h>
+#include <BulletCollision/CollisionShapes/btSphereShape.h>
+#include <BulletCollision/NarrowPhaseCollision/btPointCollector.h>
+#include <BulletCollision/NarrowPhaseCollision/btVoronoiSimplexSolver.h>
+#include <BulletCollision/NarrowPhaseCollision/btMinkowskiPenetrationDepthSolver.h>
+#include <Bullet-C-Api.h>
+
 /////
 
 class CollisionAvoidance : public MotionObjective {
@@ -58,12 +69,18 @@ public:
 
     void visualize(const tf::Stamped<tf::Pose> &tf_end_effector_pose_MAP, const Eigen::VectorXd& wrench) const;
 
+    void visualizeCollisionModel(btConvexShape& shape, const btTransform& transform, std::string frame_id, int id, double length, double width, double height)  const;
+    //! for spheres length, width and height are equal to the radius
+    //! for cylinders length and width are equal to the radius
+
 protected:
 
     //! Sampling time
     double Ts_;
 
     Chain* chain_;
+
+    RobotState robot_state_;
 
     std::string end_effector_frame_;
 
@@ -88,6 +105,52 @@ protected:
     void selfCollision(geometry_msgs::PoseStamped end_effector,geometry_msgs::PoseStamped contactpoint, Eigen::VectorXd& wrench_self_collision);
 
     void environmentCollision(tf::Stamped<tf::Pose>& tf_end_effector_pose_MAP, Eigen::VectorXd& wrench_out);
+
+    void collisionModel();
+
+    void distanceCalculation(btConvexShape& shapeA,btConvexShape& shapeB,btTransform& transformA,btTransform& transformB,btPointCollector distance_out);
+
+    void setTransform(btTransform& transform_out, geometry_msgs::PoseStamped& fkPose, geometry_msgs::PoseStamped& fixPose);
+
+    // Robot Model
+    btConvexShape* btBaseBottom_;
+    btConvexShape* btBaseMiddle_;
+    btConvexShape* btBaseTop_;
+    btConvexShape* btSliders_;
+    btConvexShape* btTorso_;
+    btConvexShape* btClavicles_;
+    btConvexShape* btUpperArmLeft_;
+    btConvexShape* btUpperArmRight_;
+    btConvexShape* btForeArmLeft_;
+    btConvexShape* btForeArmRight_;
+    btConvexShape* btGripperLeft_;
+    btConvexShape* btGripperRight_;
+    //btConvexShape* btHead_;
+
+    btTransform btTransformBaseBottom_;
+    btTransform btTransformBaseMiddle_;
+    btTransform btTransformBaseTop_;
+    btTransform btTransformSliders_;
+    btTransform btTransformTorso_;
+    btTransform btTransformClavicles_;
+    btTransform btTransformUpperArmLeft_;
+    btTransform btTransformUpperArmRight_;
+    btTransform btTransformForeArmLeft_;
+    btTransform btTransformForeArmRight_;
+    btTransform btTransformGripperLeft_;
+    btTransform btTransformGripperRight_;
+    //btTransform btTransformHead_;
+
+    std::vector<btConvexShape*> shapesBody;
+    std::vector<btTransform> tranformsBody;
+
+    std::vector<btConvexShape*> shapesLeftArm;
+    std::vector<btTransform> tranformsLeftArm;
+
+    std::vector<btConvexShape*> shapesRightArm;
+    std::vector<btTransform> tranformsRightArm;
+
+    std::vector<btPointCollector> distances;
 
 
 };

@@ -135,12 +135,73 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
         chain->setMeasuredJointPositions(q_current_);
     }
 
-    KDL::Frame end_effector_pose_left;
-    KDL::Frame end_effector_pose_right;
-    computeForwardKinematics(end_effector_pose_left, "/grippoint_left");
-    getFKsolution(end_effector_pose_left, robot_state_.endEffectorPoseLeft);
-    computeForwardKinematics(end_effector_pose_right, "/grippoint_right");
-    getFKsolution(end_effector_pose_right, robot_state_.endEffectorPoseRight);
+    // TO-DO GET RID OF HARD CODED
+    KDL::Frame kdl_frame_base;
+    computeForwardKinematics(kdl_frame_base, "grippoint_left",getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"base"));
+    getFKsolution(kdl_frame_base, robot_state_.poseBase_);
+    robot_state_.poseBase_.pose.position.x = 0;
+    robot_state_.poseBase_.pose.position.y = 0;
+    robot_state_.poseBase_.pose.position.z = 0.055;
+    robot_state_.poseBase_.pose.orientation.x = 0;
+    robot_state_.poseBase_.pose.orientation.y = 0;
+    robot_state_.poseBase_.pose.orientation.z = 0;
+    robot_state_.poseBase_.pose.orientation.w = 1;
+    //cout << "BASE segment Nr = " << getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"base") << endl;
+    //cout << "BASE: x = " << robot_state_.poseBase_.pose.position.x << "y = " << robot_state_.poseBase_.pose.position.y << "z = " << robot_state_.poseBase_.pose.position.z << endl;
+
+    KDL::Frame kdl_frame_sliders;
+    computeForwardKinematics(kdl_frame_sliders, "grippoint_left",getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"torso_slider"));
+    getFKsolution(kdl_frame_sliders, robot_state_.poseSliders_);
+    //cout << "SLIDERS segment Nr = " << getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"torso_slider") << endl;
+    // << "SLIDERS: x = " << robot_state_.poseSliders_.pose.position.x << "y = " << robot_state_.poseSliders_.pose.position.y << "z = " << robot_state_.poseSliders_.pose.position.z << endl;
+    KDL::Frame kdl_frame_torso;
+    computeForwardKinematics(kdl_frame_torso, "grippoint_left",getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"torso"));
+    getFKsolution(kdl_frame_torso, robot_state_.poseTorso_);
+    //cout << "TORSO segment Nr = " << getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"torso") << endl;
+    //cout << "TORSO: x = " << robot_state_.poseTorso_.pose.position.x << "y = " << robot_state_.poseTorso_.pose.position.y << "z = " << robot_state_.poseTorso_.pose.position.z << endl;
+    KDL::Frame kdl_frame_clavicles; // Clavicles will be defined in torso frame.
+    computeForwardKinematics(kdl_frame_clavicles, "grippoint_left",getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"torso"));
+    getFKsolution(kdl_frame_clavicles, robot_state_.poseClavicles_);
+    //cout << "CLAVICLES segment Nr = " << getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"torso") << endl;
+    //cout << "CLAVICLES: x = " << robot_state_.poseClavicles_.pose.position.x << "y = " << robot_state_.poseClavicles_.pose.position.y << "z = " << robot_state_.poseClavicles_.pose.position.z << endl;
+
+
+    KDL::Frame kdl_frame_upper_arm_left;
+    KDL::Frame kdl_frame_upper_arm_right;
+    computeForwardKinematics(kdl_frame_upper_arm_left, "grippoint_left",getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"upper_arm_left"));
+    getFKsolution(kdl_frame_upper_arm_left, robot_state_.poseUpperArmLeft_);
+    //cout << "UPPER ARM LEFT segment Nr = " << getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"upper_arm_left") << endl;
+    //cout << "UPPER ARM LEFT: x = " << robot_state_.poseUpperArmLeft_.pose.position.x << "y = " << robot_state_.poseUpperArmLeft_.pose.position.y << "z = " << robot_state_.poseUpperArmLeft_.pose.position.z << endl;
+    computeForwardKinematics(kdl_frame_upper_arm_right, "grippoint_right",getNrOfSegment(robot_state_.chain_right_->kdl_chain_,"upper_arm_right"));
+    getFKsolution(kdl_frame_upper_arm_right, robot_state_.poseUpperArmRight_);
+    //cout << "UPPER ARM RIGHT segment Nr = " << getNrOfSegment(robot_state_.chain_right_->kdl_chain_,"upper_arm_right") << endl;
+    //cout << "UPPER ARM RIGHT: x = " << robot_state_.poseUpperArmRight_.pose.position.x << "y = " << robot_state_.poseUpperArmRight_.pose.position.y << "z = " << robot_state_.poseUpperArmRight_.pose.position.z << endl;
+
+    KDL::Frame kdl_frame_fore_arm_left;
+    KDL::Frame kdl_frame_fore_arm_right;
+    computeForwardKinematics(kdl_frame_fore_arm_left, "grippoint_left",getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"fore_arm_left"));
+    getFKsolution(kdl_frame_fore_arm_left, robot_state_.poseForeArmLeft_);
+    //cout << "FOREARM LEFT segment Nr = " << getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"fore_arm_left") << endl;
+    //cout << "FOREARM LEFT: x = " << robot_state_.poseForeArmLeft_.pose.position.x << "y = " << robot_state_.poseForeArmLeft_.pose.position.y << "z = " << robot_state_.poseForeArmLeft_.pose.position.z << endl;
+    computeForwardKinematics(kdl_frame_fore_arm_right, "grippoint_right",getNrOfSegment(robot_state_.chain_right_->kdl_chain_,"fore_arm_right"));
+    getFKsolution(kdl_frame_fore_arm_right, robot_state_.poseForeArmRight_);
+    //cout << "FOREARM RIGHT segment Nr = " << getNrOfSegment(robot_state_.chain_right_->kdl_chain_,"fore_arm_right") << endl;
+    //cout << "FOREARM RIGHT: x = " << robot_state_.poseForeArmRight_.pose.position.x << "y = " << robot_state_.poseForeArmRight_.pose.position.y << "z = " << robot_state_.poseForeArmRight_.pose.position.z << endl;
+
+
+    KDL::Frame kdl_frame_grippoint_left;
+    KDL::Frame kdl_frame_grippoint_right;
+    computeForwardKinematics(kdl_frame_grippoint_left, "grippoint_left",getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"grippoint_left"));
+    getFKsolution(kdl_frame_grippoint_left, robot_state_.poseGrippointLeft_);
+    //cout << "GRIPPOINT LEFT segment Nr = " << getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"grippoint_left") << endl;
+    //cout << "GRIPPOINT LEFT: x = " << robot_state_.poseGrippointLeft_.pose.position.x << "y = " << robot_state_.poseGrippointLeft_.pose.position.y << "z = " << robot_state_.poseGrippointLeft_.pose.position.z << endl;
+    computeForwardKinematics(kdl_frame_grippoint_right, "grippoint_right",getNrOfSegment(robot_state_.chain_right_->kdl_chain_,"grippoint_right"));
+    getFKsolution(kdl_frame_grippoint_right, robot_state_.poseGrippointRight_);
+    //cout << "GRIPPOINT RIGHT segment Nr = " << getNrOfSegment(robot_state_.chain_right_->kdl_chain_,"grippoint_right") << endl;
+    //cout << "GRIPPOINT RIGHT: x = " << robot_state_.poseGrippointRight_.pose.position.x << "y = " << robot_state_.poseGrippointRight_.pose.position.y << "z = " << robot_state_.poseGrippointRight_.pose.position.z << endl;
+
+    //KDL::Frame kdl_frame_head;
+
 
     for(std::vector<MotionObjective*>::iterator it_motionobjective = motionobjectives_.begin(); it_motionobjective != motionobjectives_.end(); ++it_motionobjective) {
 
@@ -233,34 +294,33 @@ void WholeBodyController::createFKsolvers(const std::vector<Chain*>& chains) {
 }
 
 
-void WholeBodyController::computeForwardKinematics(KDL::Frame& FK_end_effector_pose, const std::string& end_effector_frame) {
-
+void WholeBodyController::computeForwardKinematics(KDL::Frame& kdl_frame, const std::string& end_effector_frame,int segmentNr) {
     // Compute forward kinematics
-    if (end_effector_frame == "/grippoint_left") {
-        if (fk_solver_left->JntToCart(robot_state_.chain_left_->joint_positions_, FK_end_effector_pose) < 0 ) ROS_WARN("Problems with FK computation for the LEFT chain");
+    if (end_effector_frame == "grippoint_left") {
+        if (fk_solver_left->JntToCart(robot_state_.chain_left_->joint_positions_, kdl_frame,segmentNr) < 0 ) ROS_WARN("Problems with FK computation for the LEFT chain");
     }
-    else if (end_effector_frame == "/grippoint_right") {
-        if (fk_solver_right->JntToCart(robot_state_.chain_right_->joint_positions_, FK_end_effector_pose) < 0 ) ROS_WARN("Problems with FK computation for the RIGHT chain");
+    else if (end_effector_frame == "grippoint_right") {
+        if (fk_solver_right->JntToCart(robot_state_.chain_right_->joint_positions_, kdl_frame,segmentNr) < 0 ) ROS_WARN("Problems with FK computation for the RIGHT chain");
     }
     // Add 0.055 since base and base_link frame are not at exactly the same pose
-    FK_end_effector_pose.p.z(FK_end_effector_pose.p.z()+0.055);
+    kdl_frame.p.z(kdl_frame.p.z()+0.055);
     ///ROS_INFO("Return value = %i",ret);
     //if (is_active_) ROS_INFO("end_effector_pose_.p = [%f\t%f\t%f]",end_effector_pose_.p.x(),end_effector_pose_.p.y(),end_effector_pose_.p.z());
 
 }
 
 
-void WholeBodyController::getFKsolution(KDL::Frame& FK_end_effector_pose,
+void WholeBodyController::getFKsolution(KDL::Frame& FK_pose,
                                         geometry_msgs::PoseStamped& pose) {
 
     // ToDo: get rid of hardcoding
     pose.header.frame_id = "/base_link";
     // Position
-    pose.pose.position.x = FK_end_effector_pose.p.x();
-    pose.pose.position.y = FK_end_effector_pose.p.y();
-    pose.pose.position.z = FK_end_effector_pose.p.z();
+    pose.pose.position.x = FK_pose.p.x();
+    pose.pose.position.y = FK_pose.p.y();
+    pose.pose.position.z = FK_pose.p.z();
     // Orientation
-    FK_end_effector_pose.M.GetQuaternion(pose.pose.orientation.x,
+    FK_pose.M.GetQuaternion(pose.pose.orientation.x,
                                          pose.pose.orientation.y,
                                          pose.pose.orientation.z,
                                          pose.pose.orientation.w);
@@ -287,3 +347,15 @@ double WholeBodyController::getCost() {
 
 }
 
+int WholeBodyController::getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment_name) {
+    int segmentNr = -1;
+    for(unsigned int i = 0; i < kdl_chain_.getNrOfSegments(); i++){
+        //cout << kdl_chain_.getSegment(i).getName().data() << endl;
+        if (kdl_chain_.getSegment(i).getName().data() == segment_name) {
+            //cout << "segment " << segment_name << " found" << endl;
+            segmentNr = i+1;
+            break;
+        }
+    }
+    return segmentNr;
+}

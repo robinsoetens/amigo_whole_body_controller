@@ -4,7 +4,7 @@
      amigo_whole_body_controller
 
   </description>
-  <author>JLunenburg</author>
+  <author>JLunenburg, PMetsemakers</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/amigo_whole_body_controller</url>
@@ -29,6 +29,8 @@
   <depend package="amigo_joint_interface_converter"/>
   
   <depend package="visualization_msgs"/>
+
+  <depend package="bullet"/>
 
   <export>
     <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -lwholebodycontroller"/>

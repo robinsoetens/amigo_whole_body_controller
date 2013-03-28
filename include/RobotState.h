@@ -23,8 +23,17 @@ public:
     //Destructor
     virtual ~RobotState();
 
-    geometry_msgs::PoseStamped endEffectorPoseLeft;
-    geometry_msgs::PoseStamped endEffectorPoseRight;
+    geometry_msgs::PoseStamped poseBase_;
+    geometry_msgs::PoseStamped poseSliders_;
+    geometry_msgs::PoseStamped poseTorso_;
+    geometry_msgs::PoseStamped poseClavicles_;
+    geometry_msgs::PoseStamped poseUpperArmLeft_;
+    geometry_msgs::PoseStamped poseUpperArmRight_;
+    geometry_msgs::PoseStamped poseForeArmLeft_;
+    geometry_msgs::PoseStamped poseForeArmRight_;
+    geometry_msgs::PoseStamped poseGrippointLeft_;
+    geometry_msgs::PoseStamped poseGrippointRight_;
+    geometry_msgs::PoseStamped poseHead_;
 
     Chain* chain_left_;
     Chain* chain_right_;

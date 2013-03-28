@@ -87,11 +87,11 @@ void CartesianImpedance::apply(const RobotState &robotstate) {
     //ROS_INFO("    is active");
 
     if (end_effector_frame_ == "grippoint_left") {
-        end_effector_pose_ = robotstate.endEffectorPoseLeft;
+        end_effector_pose_ = robotstate.poseGrippointLeft_;
         chain_ = robotstate.chain_left_;
     }
     else if (end_effector_frame_ == "grippoint_right") {
-        end_effector_pose_ = robotstate.endEffectorPoseRight;
+        end_effector_pose_ = robotstate.poseGrippointRight_;
         chain_ = robotstate.chain_right_;
     }
 
@@ -162,7 +162,7 @@ void CartesianImpedance::apply(const RobotState &robotstate) {
 
 void CartesianImpedance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame, Eigen::Vector3d& RPY) {
 
-    if (pose.header.frame_id != "/base_link") ROS_WARN("FK computation can now only cope with base_link as input frame");
+    if (pose.header.frame_id != "base_link") ROS_WARN("FK computation can now only cope with base_link as input frame");
 
     // Position
     frame.p.x(pose.pose.position.x);
