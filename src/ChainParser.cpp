@@ -20,8 +20,8 @@ bool ChainParser::parse(std::vector<Chain*>& chains, std::map<std::string, unsig
     /* * * * * * * * PARSE URDF * * * * * * * * */
 
     std::string urdf_xml, full_urdf_xml;
-    n.param("urdf_xml",urdf_xml,std::string("robot_description"));
-    n.searchParam(urdf_xml,full_urdf_xml);
+    n.param("urdf_xml", urdf_xml,std::string("robot_description"));
+    n.searchParam(urdf_xml, full_urdf_xml);
     ROS_DEBUG("Reading xml file from parameter server");
     std::string result_string;
     if (!n.getParam(full_urdf_xml, result_string)) {

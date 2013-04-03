@@ -12,6 +12,7 @@
 
 // KDL
 #include "Chain.h"
+#include <XmlRpc.h>
 
 class RobotState {
 
@@ -22,6 +23,47 @@ public:
 
     //Destructor
     virtual ~RobotState();
+
+    struct CollisionShape {
+        std::string name_collision_part;
+        struct Shape {
+            std::string shape_type;
+            struct Dimensions {
+                double x;
+                double y;
+                double z;
+            };
+
+            void fromXmlRpc(XmlRpc::XmlRpcValue& value)
+            {
+                shape_type = static_cast<std::string>(value["shape_type"]);
+                Dimensions.x = value["dimensions"];
+                Dimensions.y = value["dimensions"];
+                Dimensions.z = value["dimensions"];
+            }
+        };
+        geometry_msgs::PoseStamped frame_pose;
+        struct CorrectionTransform {
+            std::string frame_id;
+            struct Origin {
+                double x;
+                double y;
+                double z;
+            };
+            struct Orientation {
+                double x;
+                double y;
+                double z;
+                double w;
+            };
+        };
+    };
+
+    std::vector< CollisionShape > groupBody;
+    std::vector< CollisionShape > groupArmLeft;
+    std::vector< CollisionShape > groupArmRight;
+
+    std::vector< std::vector<CollisionShape> >  Robot;
 
     geometry_msgs::PoseStamped poseBase_;
     geometry_msgs::PoseStamped poseSliders_;
@@ -41,3 +83,5 @@ public:
 };
 
 #endif // ROBOTSTATE_H
+
+

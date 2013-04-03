@@ -1,5 +1,6 @@
 #include "WholeBodyController.h"
 #include "ChainParser.h"
+#include <XmlRpcException.h>
 
 using namespace std;
 
@@ -16,6 +17,7 @@ bool WholeBodyController::initialize(const double Ts) {
     std::string ns = n.getNamespace();
     //ROS_INFO("Nodehandle %s",n.getNamespace().c_str());
     ROS_INFO("Initializing whole body controller");
+
 
     // ToDo: Parameterize
     Ts_ = Ts;
@@ -48,6 +50,54 @@ bool WholeBodyController::initialize(const double Ts) {
         n.param<double> (ns+"/admittance_control/damping/"+iter->first, admittance_damping[iter->second], 10);
         ROS_INFO("Damping joint %s = %f",iter->first.c_str(),admittance_damping[iter->second]);
     }
+
+
+    typedef std::map<std::string, XmlRpc::XmlRpcValue>::iterator XmlRpcIterator;
+    try
+    {
+        XmlRpc::XmlRpcValue groups;
+        n.getParam(ns+"/collision_model", groups);
+
+        // ROBOT
+        for(XmlRpcIterator itrGroups = groups.begin(); itrGroups != groups.end(); ++itrGroups)
+        {
+            // COLLISION GROUP
+            XmlRpc::XmlRpcValue group = itrGroups->second;
+            //cout << group.getType() << endl;
+
+            for(XmlRpcIterator itrShapes = group.begin(); itrShapes != group.end(); ++itrShapes)
+            {
+                // COLLISION SHAPE
+                XmlRpc::XmlRpcValue collisionShape = itrShapes->second;
+
+                RobotState::CollisionShape::Shape coll;
+                coll.fromXmlRpc(collisionShape);
+
+                //cout << shape.getType() << endl;
+                //cout << shape["name"] << endl;
+
+            }
+        }
+
+    } catch(XmlRpc::XmlRpcException& ex)
+    {
+        cout << ex.getMessage() << endl;
+    }
+
+
+
+/*    for (unsigned int iter = 0; iter < nr_collision_body; iter++) {
+        n.param<double> (ns+"/group_body/"+iter->first);
+    }
+
+    for (unsigned int iter = 0; iter < nr_collision_arm_left; iter++) {
+        n.param<double> (ns+"/group_arm_left/");
+    }
+
+    for (unsigned int iter = 0; iter < nr_collision_arm_right; iter++) {
+        n.param<double> (ns+"/group_arm_right/");
+    }*/
+
 
     createFKsolvers(chains_);
 

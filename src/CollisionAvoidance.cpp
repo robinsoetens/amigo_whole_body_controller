@@ -137,15 +137,15 @@ void CollisionAvoidance::selfCollision(geometry_msgs::PoseStamped end_effector,g
     int k = 0;
     btPointCollector btDistance;
     if (end_effector_frame_ == "grippoint_left") {
-        for (uint i = 0; i < shapesLeftArm.size(); i++) {
+        for (uint i = 0; i < shapesArmLeft.size(); i++) {
             for (uint j = 0; j < shapesBody.size(); j++) {
-                distanceCalculation(*shapesLeftArm[i],*shapesBody[j],tranformsLeftArm[i],tranformsBody[j],btDistance);
+                distanceCalculation(*shapesArmLeft[i],*shapesBody[j],tranformsArmLeft[i],tranformsBody[j],btDistance);
                 distances.push_back(btDistance);
                 k++;
             }
 
-            for (uint j = 0; j < shapesRightArm.size(); j++) {
-                distanceCalculation(*shapesLeftArm[i],*shapesRightArm[j],tranformsLeftArm[i],tranformsRightArm[j],btDistance);
+            for (uint j = 0; j < shapesArmRight.size(); j++) {
+                distanceCalculation(*shapesArmLeft[i],*shapesArmRight[j],tranformsArmLeft[i],tranformsArmRight[j],btDistance);
                 distances.push_back(btDistance);
                 k++;
             }
@@ -153,15 +153,15 @@ void CollisionAvoidance::selfCollision(geometry_msgs::PoseStamped end_effector,g
     }
 
     else if (end_effector_frame_ == "grippoint_right") {
-        for (uint i = 0; i < shapesRightArm.size(); i++) {
+        for (uint i = 0; i < shapesArmRight.size(); i++) {
             for (uint j = 0; j < shapesBody.size(); j++) {
-                distanceCalculation(*shapesRightArm[i],*shapesBody[j],tranformsRightArm[i],tranformsBody[j],btDistance);
+                distanceCalculation(*shapesArmRight[i],*shapesBody[j],tranformsArmRight[i],tranformsBody[j],btDistance);
                 distances.push_back(btDistance);
                 k++;
             }
 
-            for (uint j = 0; j < shapesLeftArm.size(); j++) {
-                distanceCalculation(*shapesRightArm[i],*shapesLeftArm[j],tranformsRightArm[i],tranformsLeftArm[j],btDistance);
+            for (uint j = 0; j < shapesArmLeft.size(); j++) {
+                distanceCalculation(*shapesArmRight[i],*shapesArmLeft[j],tranformsArmRight[i],tranformsArmLeft[j],btDistance);
                 distances.push_back(btDistance);
                 k++;
             }
@@ -522,17 +522,17 @@ void CollisionAvoidance::collisionModel(){
     tranformsBody.push_back(btTransformUpperArmLeft_);
     tranformsBody.push_back(btTransformUpperArmRight_);
 
-    shapesLeftArm.push_back(btForeArmLeft_);
-    shapesLeftArm.push_back(btGripperLeft_);
+    shapesArmLeft.push_back(btForeArmLeft_);
+    shapesArmLeft.push_back(btGripperLeft_);
 
-    tranformsLeftArm.push_back(btTransformForeArmLeft_);
-    tranformsLeftArm.push_back(btTransformGripperLeft_);
+    tranformsArmLeft.push_back(btTransformForeArmLeft_);
+    tranformsArmLeft.push_back(btTransformGripperLeft_);
 
-    shapesRightArm.push_back(btForeArmRight_);
-    shapesRightArm.push_back(btGripperRight_);
+    shapesArmRight.push_back(btForeArmRight_);
+    shapesArmRight.push_back(btGripperRight_);
 
-    tranformsRightArm.push_back(btTransformForeArmRight_);
-    tranformsRightArm.push_back(btTransformGripperRight_);
+    tranformsArmRight.push_back(btTransformForeArmRight_);
+    tranformsArmRight.push_back(btTransformGripperRight_);
 
 }
 

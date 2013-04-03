@@ -144,11 +144,11 @@ protected:
     std::vector<btConvexShape*> shapesBody;
     std::vector<btTransform> tranformsBody;
 
-    std::vector<btConvexShape*> shapesLeftArm;
-    std::vector<btTransform> tranformsLeftArm;
+    std::vector<btConvexShape*> shapesArmLeft;
+    std::vector<btTransform> tranformsArmLeft;
 
-    std::vector<btConvexShape*> shapesRightArm;
-    std::vector<btTransform> tranformsRightArm;
+    std::vector<btConvexShape*> shapesArmRight;
+    std::vector<btTransform> tranformsArmRight;
 
     std::vector<btPointCollector> distances;
 
