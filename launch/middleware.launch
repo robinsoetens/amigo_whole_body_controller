@@ -1,12 +1,41 @@
 <?xml version="1.0"?>
 
-<launch>	
+<launch>
+	
+	<arg name="ROBOT_REAL" default="$(optenv ROBOT_REAL false)" />
+	
+	<group if="$(arg ROBOT_REAL)">
+		<!-- REAL ROBOT -->
+
+		<!-- Start all sensors -->
+		<include file="$(find amigo_launch_files)/launch/sensors/sensors.launch" />	
+		
+		<!-- PEIN Perception -->
+		<include file="$(find pein_supervisor)/launch/start.launch" />
+
+		 <!-- face segmentation -->
+		<include file="$(find pein_face_recognition)/launch/start.launch" />
+		
+		<!-- Template matching -->
+		<node pkg="pein_template_matching" type="detection_node" name="template_matching" machine="amigo1"/>		
+	</group>
+	
+	<group unless="$(arg ROBOT_REAL)">
+		<!-- SIMULATION -->
+		
+		<!-- Gazebo perception -->
+		<include file="$(find gazebo_perception)/launch/start.launch" />
+		
+	</group>
 	
 	<!-- Localization -->
 	<include file="$(find amigo_launch_files)/launch/middleware/localization.launch" />
 
 	<!-- Navigation -->
-	<include file="$(find tue_move_base)/launch/base_navigation.launch" />
+	<include file="$(find amigo_launch_files)/launch/middleware/base_navigation.launch" />
+	
+	<!-- Inverse reachability -->
+	<include file="$(find amigo_launch_files)/launch/middleware/inverse_reachability.launch" />
 	
 	<!-- Arm & gripper control -->
 	<!--<include file="$(find amigo_launch_files)/launch/middleware/arms.launch" />-->
@@ -15,7 +44,16 @@
 	<!-- Head control -->
 	<include file="$(find amigo_launch_files)/launch/middleware/head.launch" />	
 
-	<!-- Spindle -->
-	<include file="$(find amigo_launch_files)/launch/middleware/spindle.launch" />	
+	<!-- Spindle --> 
+	<!--<include file="$(find amigo_launch_files)/launch/middleware/spindle.launch" />-->
+	
+	<!-- Reasoner (including World Model) -->
+	<include file="$(find amigo_launch_files)/launch/middleware/reasoner.launch"/>
+
+	<!-- Node to attach world model object to gripper-->
+	<node pkg="obj_in_gripper" type="obj_in_gripper_pub" name="obj_in_gripper"/>
+	
+	<!-- Start text to speech -->
+    <include file="$(find amigo_launch_files)/launch/interaction/text_to_speech.launch" />	
 	
 </launch>
