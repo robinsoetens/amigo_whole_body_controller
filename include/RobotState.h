@@ -14,7 +14,12 @@
 #include "Chain.h"
 #include <XmlRpc.h>
 
-class RobotState {
+// Bullet
+#include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
+
+
+class RobotState
+{
 
 public:
 
@@ -24,58 +29,74 @@ public:
     //Destructor
     virtual ~RobotState();
 
-    struct CollisionShape {
-        std::string name_collision_part;
-        struct Shape {
+    struct CollisionBody
+    {
+        std::string name_collision_body;
+        struct CollisionShape
+        {
             std::string shape_type;
-            struct Dimensions {
-                double x;
-                double y;
-                double z;
-            };
-
-            void fromXmlRpc(XmlRpc::XmlRpcValue& value)
+            struct Dimensions
             {
-                shape_type = static_cast<std::string>(value["shape_type"]);
-                Dimensions.x = value["dimensions"];
-                Dimensions.y = value["dimensions"];
-                Dimensions.z = value["dimensions"];
-            }
-        };
-        geometry_msgs::PoseStamped frame_pose;
-        struct CorrectionTransform {
-            std::string frame_id;
-            struct Origin {
                 double x;
                 double y;
                 double z;
-            };
-            struct Orientation {
-                double x;
-                double y;
-                double z;
-                double w;
-            };
-        };
-    };
+            } dimensions;
+        } collision_shape;
+        std::string chain_side;
+        geometry_msgs::PoseStamped fk_pose;
+        geometry_msgs::PoseStamped fix_pose;
+        btTransform bt_transform;
+        btConvexShape* bt_shape;
 
-    std::vector< CollisionShape > groupBody;
-    std::vector< CollisionShape > groupArmLeft;
-    std::vector< CollisionShape > groupArmRight;
+        void fromXmlRpc(XmlRpc::XmlRpcValue& value)
+        {
+            name_collision_body = static_cast<std::string>(value["name"]);
 
-    std::vector< std::vector<CollisionShape> >  Robot;
+            // COLLISION SHAPE
+            XmlRpc::XmlRpcValue collShape = value["shape"];
+            collision_shape.shape_type =  static_cast<std::string>(collShape["shape_type"]);
 
-    geometry_msgs::PoseStamped poseBase_;
-    geometry_msgs::PoseStamped poseSliders_;
-    geometry_msgs::PoseStamped poseTorso_;
-    geometry_msgs::PoseStamped poseClavicles_;
-    geometry_msgs::PoseStamped poseUpperArmLeft_;
-    geometry_msgs::PoseStamped poseUpperArmRight_;
-    geometry_msgs::PoseStamped poseForeArmLeft_;
-    geometry_msgs::PoseStamped poseForeArmRight_;
+            XmlRpc::XmlRpcValue dim = collShape["dimensions"];
+            collision_shape.dimensions.x = dim["x"];
+            collision_shape.dimensions.y = dim["y"];
+            collision_shape.dimensions.z = dim["z"];
+
+            // CORRECTION TRANSFORM
+            XmlRpc::XmlRpcValue corrTransform = value["transform"];
+            XmlRpc::XmlRpcValue origin = corrTransform["origin"];
+            XmlRpc::XmlRpcValue orientation = corrTransform["orientation"];
+
+            chain_side = static_cast<std::string>(corrTransform["chain_side"]);
+
+            fix_pose.header.frame_id = static_cast<std::string>(corrTransform["frame_id"]);
+            fix_pose.pose.position.x = origin["x"];
+            fix_pose.pose.position.y = origin["y"];
+            fix_pose.pose.position.z = origin["z"];
+            fix_pose.pose.orientation.x = orientation["x"];
+            fix_pose.pose.orientation.y = orientation["y"];
+            fix_pose.pose.orientation.z = orientation["z"];
+            fix_pose.pose.orientation.w = orientation["w"];
+
+            /*
+            std::cout << "name = " << name_collision_body << std::endl;
+            std::cout << "frame_id = " << fix_pose.header.frame_id << std::endl;
+            std::cout << "x = " << fix_pose.pose.position.x << std::endl;
+            std::cout << "y = " << fix_pose.pose.position.y << std::endl;
+            std::cout << "z = " << fix_pose.pose.position.z << std::endl;
+            std::cout << "X = " << fix_pose.pose.orientation.x << std::endl;
+            std::cout << "Y = " << fix_pose.pose.orientation.y << std::endl;
+            std::cout << "Z = " << fix_pose.pose.orientation.z << std::endl;
+            std::cout << "W = " << fix_pose.pose.orientation.w << std::endl;
+            */
+        }
+    } collision_body;
+
+    struct Robot {
+        std::vector< std::vector<CollisionBody> > groups;
+    } robot_;
+
     geometry_msgs::PoseStamped poseGrippointLeft_;
     geometry_msgs::PoseStamped poseGrippointRight_;
-    geometry_msgs::PoseStamped poseHead_;
 
     Chain* chain_left_;
     Chain* chain_right_;

@@ -6,16 +6,20 @@
 using namespace std;
 
 CollisionAvoidance::CollisionAvoidance(const double Ts, const string &end_effector_frame, tf::TransformListener *tf_listener)
-    : Ts_ (Ts), end_effector_frame_ (end_effector_frame), listener_(*tf_listener) {
+    : Ts_ (Ts), end_effector_frame_ (end_effector_frame), listener_(*tf_listener)
+{
 }
 
-CollisionAvoidance::~CollisionAvoidance() {
-    for(vector<Box*>::iterator it = boxes_.begin(); it != boxes_.end(); ++it) {
+CollisionAvoidance::~CollisionAvoidance()
+{
+    for(vector<Box*>::iterator it = boxes_.begin(); it != boxes_.end(); ++it)
+    {
         delete *it;
     }
 }
 
-bool CollisionAvoidance::initialize() {
+bool CollisionAvoidance::initialize()
+{
 
     ROS_INFO_STREAM("Initializing Obstacle Avoidance, " << end_effector_frame_);
 
@@ -30,28 +34,33 @@ bool CollisionAvoidance::initialize() {
 
     // initialize environment
     boxes_.push_back(new Box(Eigen::Vector3d(-0.127, 0.730, 0), Eigen::Vector3d(1.151, 1.139, 0.7)));
-    boxes_.push_back(new Box(Eigen::Vector3d( 1.032, -0.942, 0), Eigen::Vector3d(1.590, 0.140, 0.5)));
+    boxes_.push_back(new Box(Eigen::Vector3d( 1.032, -0.942, 0), Eigen::Vector3d(1.590, 0.140, 0.6)));
 
     ROS_INFO_STREAM("Initialized Obstacle Avoidance" << end_effector_frame_);
 
     return true;
 }
 
-bool CollisionAvoidance::isActive() {
+bool CollisionAvoidance::isActive()
+{
     return true;
 }
 
-void CollisionAvoidance::apply(const RobotState &robotstate) {
+void CollisionAvoidance::apply(const RobotState &robotstate)
+{
 
     robot_state_ = robotstate;
+    calculateTransform();
 
     // Check which chain is active
-    if (end_effector_frame_ == "grippoint_left") {
+    if (end_effector_frame_ == "grippoint_left")
+    {
         end_effector_msg_ = robot_state_.poseGrippointLeft_;
         chain_ = robot_state_.chain_left_;
         contactpoint_msg_ = robot_state_.poseGrippointRight_;
     }
-    else if (end_effector_frame_ == "grippoint_right") {
+    else if (end_effector_frame_ == "grippoint_right")
+    {
         end_effector_msg_ = robot_state_.poseGrippointRight_;
         chain_ = robot_state_.chain_right_;
         contactpoint_msg_ = robot_state_.poseGrippointLeft_;
@@ -60,14 +69,14 @@ void CollisionAvoidance::apply(const RobotState &robotstate) {
     // Transform frame to map frame
     tf::poseStampedMsgToTF(end_effector_msg_, tf_end_effector_pose_);
 
-    try {
+    try
+    {
         listener_.transformPose("/map", tf_end_effector_pose_, tf_end_effector_pose_MAP_);
-    } catch (tf::TransformException& e) {
+    } catch (tf::TransformException& e)
+    {
         ROS_ERROR("CollisionAvoidance: %s", e.what());
         return;
     }
-
-    collisionModel();
 
     // Calculate the wrench as a result of self-collision avoidance
     Eigen::VectorXd wrench_self_collision(6);
@@ -105,9 +114,11 @@ void CollisionAvoidance::apply(const RobotState &robotstate) {
     wrench_self_collision_msg.pose.orientation = orientation;
     tf::poseStampedMsgToTF(wrench_self_collision_msg, tf_wrench_self_collision);
 
-    try {
+    try
+    {
         listener_.transformPose("/map", tf_wrench_self_collision, tf_wrench_self_collision_MAP);
-    } catch (tf::TransformException& e) {
+    } catch (tf::TransformException& e)
+    {
         ROS_ERROR("CartesianImpedance: %s", e.what());
         return;
     }
@@ -203,12 +214,14 @@ void CollisionAvoidance::environmentCollision(tf::Stamped<tf::Pose>& tf_end_effe
 
 
     double threshold_environment_collision = 0.1; // in meters
-    for(vector<Box*>::iterator it = boxes_.begin(); it != boxes_.end(); ++it) {
+    for(vector<Box*>::iterator it = boxes_.begin(); it != boxes_.end(); ++it)
+    {
         const Box& box = **it;
 
         bool inside_obstacle = true;
         Eigen::Vector3d diff;
-        for(unsigned int i = 0; i < 3; ++i) {
+        for(unsigned int i = 0; i < 3; ++i)
+        {
             if (end_effector_pos[i] < box.min_[i]) {
                 diff[i] = end_effector_pos[i] - box.min_[i];
                 inside_obstacle = false;
@@ -226,7 +239,8 @@ void CollisionAvoidance::environmentCollision(tf::Stamped<tf::Pose>& tf_end_effe
             double distance = diff.norm();
             Eigen::Vector3d diff_normalized = diff / distance;
             double weight = 0;
-            if (distance < threshold_environment_collision) {
+            if (distance < threshold_environment_collision)
+            {
                 weight = (1 - (distance / threshold_environment_collision)) * 100;
             }
             for(unsigned int i = 0; i < 3; i++) {
@@ -241,7 +255,8 @@ void CollisionAvoidance::environmentCollision(tf::Stamped<tf::Pose>& tf_end_effe
 }
 
 
-void CollisionAvoidance::getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY) {
+void CollisionAvoidance::getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY)
+{
 
     tf::Quaternion Q;
     double roll, pitch, yaw;
@@ -254,7 +269,8 @@ void CollisionAvoidance::getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vec
 }
 
 
-void CollisionAvoidance::transformWench(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& wrench_in, Eigen::VectorXd &wrench_out) {
+void CollisionAvoidance::transformWench(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& wrench_in, Eigen::VectorXd &wrench_out)
+{
 
     Eigen::Vector3d RPY;
     RPY.setZero();
@@ -275,7 +291,8 @@ void CollisionAvoidance::transformWench(geometry_msgs::PoseStamped& pose, Eigen:
 }
 
 
-void CollisionAvoidance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame, Eigen::Vector3d& RPY) {
+void CollisionAvoidance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame, Eigen::Vector3d& RPY)
+{
 
     if (pose.header.frame_id != "/base_link") ROS_WARN("FK computation can now only cope with base_link as input frame");
 
@@ -288,7 +305,8 @@ void CollisionAvoidance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose,
 
 }
 
-void CollisionAvoidance::visualize(const tf::Stamped<tf::Pose>& tf_end_effector_pose_MAP, const Eigen::VectorXd& wrench) const {
+void CollisionAvoidance::visualize(const tf::Stamped<tf::Pose>& tf_end_effector_pose_MAP, const Eigen::VectorXd& wrench) const
+{
 
     Eigen::Vector3d end_effector_pos(tf_end_effector_pose_MAP.getOrigin().getX(),
                                      tf_end_effector_pose_MAP.getOrigin().getY(),
@@ -302,7 +320,8 @@ void CollisionAvoidance::visualize(const tf::Stamped<tf::Pose>& tf_end_effector_
     visualization_msgs::MarkerArray marker_array;
 
     int id = 0;
-    for(vector<Box*>::const_iterator it = boxes_.begin(); it != boxes_.end(); ++it) {
+    for(vector<Box*>::const_iterator it = boxes_.begin(); it != boxes_.end(); ++it)
+    {
         const Box& box = **it;
 
         visualization_msgs::Marker marker;
@@ -358,186 +377,75 @@ void CollisionAvoidance::visualize(const tf::Stamped<tf::Pose>& tf_end_effector_
 
     pub_marker_.publish(marker_array);
 
-    visualizeCollisionModel(*btBaseBottom_, btTransformBaseBottom_,robot_state_.poseBase_.header.frame_id,id++,0.36,0.36,0.5*0.28);
-    visualizeCollisionModel(*btBaseMiddle_, btTransformBaseMiddle_,robot_state_.poseBase_.header.frame_id,id++,0.2,0.28,0.19);
-    visualizeCollisionModel(*btBaseTop_, btTransformBaseTop_,robot_state_.poseBase_.header.frame_id,id++,0.25,0.25,.5*0.9);
-    visualizeCollisionModel(*btSliders_, btTransformSliders_,robot_state_.poseSliders_.header.frame_id,id++,0.7,0.23,0.15);
-    visualizeCollisionModel(*btTorso_, btTransformTorso_,robot_state_.poseTorso_.header.frame_id,id++,0.18,0.18,0.18);
-    visualizeCollisionModel(*btClavicles_, btTransformClavicles_,robot_state_.poseClavicles_.header.frame_id,id++,0.1,0.6,0.16);
-    visualizeCollisionModel(*btUpperArmLeft_, btTransformUpperArmLeft_,robot_state_.poseUpperArmLeft_.header.frame_id,id++,0.07,0.07,0.35);
-    visualizeCollisionModel(*btUpperArmRight_, btTransformUpperArmRight_,robot_state_.poseUpperArmRight_.header.frame_id,id++,0.07,0.07,0.35);
-    visualizeCollisionModel(*btForeArmLeft_, btTransformForeArmLeft_,robot_state_.poseForeArmLeft_.header.frame_id,id++,0.05,0.05,0.32);
-    visualizeCollisionModel(*btForeArmRight_, btTransformForeArmRight_,robot_state_.poseForeArmRight_.header.frame_id,id++,0.05,0.05,0.32);
-    visualizeCollisionModel(*btGripperLeft_, btTransformGripperLeft_,robot_state_.poseGrippointLeft_.header.frame_id,id++,0.2,0.17,0.05);
-    visualizeCollisionModel(*btGripperRight_, btTransformGripperRight_,robot_state_.poseGrippointRight_.header.frame_id,id++,0.2,0.17,0.05);
+    for (std::vector< std::vector<RobotState::CollisionBody> >::const_iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
+    {
+        std::vector<RobotState::CollisionBody> group = *it;
 
+        for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
+        {
+            RobotState::CollisionBody &collisionBody = *it;
+            visualizeCollisionModel(collisionBody,id++);
+
+        }
+    }
 }
 
-void CollisionAvoidance::collisionModel(){
+void CollisionAvoidance::initializeCollisionModel()
+{
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
+    {
+        std::vector<RobotState::CollisionBody> &group = *it;
 
-    // Construction of the Primitive Shapes
-    btBaseBottom_ = new btCylinderShapeZ(btVector3(0.36,0.36,0.5*0.28));
-    btBaseMiddle_ = new btBoxShape(btVector3(0.2*0.5,0.5*0.28,0.5*0.19));
-    btBaseTop_ = new btConeShapeZ(0.25,0.9);
-    btSliders_ = new btBoxShape(btVector3(0.7*0.5,0.23*0.5,0.15*0.5)); //btBoxShape(btVector3(x*0.5,y*0.5,z*0.5))
-    btTorso_ =  new btSphereShape(0.19); //btSphereShape(radius)
-    btClavicles_ = new btBoxShape(btVector3(0.1*0.5,0.6*0.5,0.16*0.5));
-    btUpperArmLeft_ = new btCylinderShape(btVector3(0.07,0.35*0.5,0.07)); //btCylinderShape(btVector3(radius,height*0.5,radius))
-    btUpperArmRight_= new btCylinderShape(btVector3(0.07,0.35*0.5,0.07)); //centered around the origin, its central axis aligned with the Y axis
-    btForeArmLeft_ = new btCylinderShape(btVector3(0.05,0.32*0.5,0.05));
-    btForeArmRight_ = new btCylinderShape(btVector3(0.05,0.32*0.5,0.05));
-    btGripperLeft_ = new btBoxShape(btVector3(0.2*0.5,0.17*0.5,0.05*0.5));
-    btGripperRight_ = new btBoxShape(btVector3(0.2*0.5,0.17*0.5,0.05*0.5));
-    //btHead_ = btBoxShape(btVector3(0.255*0.5,0.13*0.5,0.11*0.5)); //Head Cover, for Kinect use btBoxShape(btVector3(0.28*0.5,0.06*0.5,0.035*0.5))
+        for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
+        {
+            RobotState::CollisionBody &collisionBody = *it;
 
-    geometry_msgs::PoseStamped fixPoseBaseBottom;
-    fixPoseBaseBottom.pose.position.x = 0.0;
-    fixPoseBaseBottom.pose.position.y = 0.0;
-    fixPoseBaseBottom.pose.position.z = 0.5*0.14;
-    fixPoseBaseBottom.pose.orientation.x = 0.0;
-    fixPoseBaseBottom.pose.orientation.y = 0.0;
-    fixPoseBaseBottom.pose.orientation.z = 0.0;
-    fixPoseBaseBottom.pose.orientation.w = 1.0;
-    geometry_msgs::PoseStamped fixPoseBaseMiddle;
-    fixPoseBaseMiddle.pose.position.x = 0.25;
-    fixPoseBaseMiddle.pose.position.y = 0.0;
-    fixPoseBaseMiddle.pose.position.z = 0.14+0.5*0.19;
-    fixPoseBaseMiddle.pose.orientation.x = 0.0;
-    fixPoseBaseMiddle.pose.orientation.y = 0.0;
-    fixPoseBaseMiddle.pose.orientation.z = 0.0;
-    fixPoseBaseMiddle.pose.orientation.w = 1.0;
-    geometry_msgs::PoseStamped fixPoseBaseTop;
-    fixPoseBaseTop.pose.position.x = 0.02;
-    fixPoseBaseTop.pose.position.y = 0.0;
-    fixPoseBaseTop.pose.position.z = 0.1+0.5*0.9;
-    fixPoseBaseTop.pose.orientation.x = 0.0;
-    fixPoseBaseTop.pose.orientation.y = 0.0;
-    fixPoseBaseTop.pose.orientation.z = 0.0;
-    fixPoseBaseTop.pose.orientation.w = 1.0;
-    geometry_msgs::PoseStamped fixPoseSliders;
-    fixPoseSliders.pose.position.x = -0.2;
-    fixPoseSliders.pose.position.y = 0.0;
-    fixPoseSliders.pose.position.z = -0.04;
-    fixPoseSliders.pose.orientation.x = 0.0;
-    fixPoseSliders.pose.orientation.y = 0.0;
-    fixPoseSliders.pose.orientation.z = 0.0;
-    fixPoseSliders.pose.orientation.w = 1.0;
-    geometry_msgs::PoseStamped fixPoseTorso;
-    fixPoseTorso.pose.position.x = 0.01;
-    fixPoseTorso.pose.position.y = 0.0;
-    fixPoseTorso.pose.position.z = 0.005;
-    fixPoseTorso.pose.orientation.x = 0.0;
-    fixPoseTorso.pose.orientation.y = 0.0;
-    fixPoseTorso.pose.orientation.z = 0.0;
-    fixPoseTorso.pose.orientation.w = 1.0;
-    geometry_msgs::PoseStamped fixPoseClavicles;
-    fixPoseClavicles.pose.position.x = 0.05;
-    fixPoseClavicles.pose.position.y = 0.0;
-    fixPoseClavicles.pose.position.z = 0.0;
-    fixPoseClavicles.pose.orientation.x = 0.0;
-    fixPoseClavicles.pose.orientation.y = 0.0;
-    fixPoseClavicles.pose.orientation.z = 0.0;
-    fixPoseClavicles.pose.orientation.w = 1.0;
-    geometry_msgs::PoseStamped fixPoseUpperArmLeft;
-    fixPoseUpperArmLeft.pose.position.x = -0.01;
-    fixPoseUpperArmLeft.pose.position.y = -0.35*0.5;
-    fixPoseUpperArmLeft.pose.position.z = 0.0;
-    fixPoseUpperArmLeft.pose.orientation.x = 0.0;
-    fixPoseUpperArmLeft.pose.orientation.y = 0.0;
-    fixPoseUpperArmLeft.pose.orientation.z = 0.0;
-    fixPoseUpperArmLeft.pose.orientation.w = 1.0;
-    geometry_msgs::PoseStamped fixPoseUpperArmRight;
-    fixPoseUpperArmRight.pose.position.x = -0.01;
-    fixPoseUpperArmRight.pose.position.y = -0.35*0.5;
-    fixPoseUpperArmRight.pose.position.z = 0.0;
-    fixPoseUpperArmRight.pose.orientation.x = 0.0;
-    fixPoseUpperArmRight.pose.orientation.y = 0.0;
-    fixPoseUpperArmRight.pose.orientation.z = 0.0;
-    fixPoseUpperArmRight.pose.orientation.w = 1.0;
-    geometry_msgs::PoseStamped fixPoseForeArmLeft;
-    fixPoseForeArmLeft.pose.position.x = 0.0;
-    fixPoseForeArmLeft.pose.position.y = -0.32*0.5;
-    fixPoseForeArmLeft.pose.position.z = 0.0;
-    fixPoseForeArmLeft.pose.orientation.x = 0.0;
-    fixPoseForeArmLeft.pose.orientation.y = 0.0;
-    fixPoseForeArmLeft.pose.orientation.z = 0.0;
-    fixPoseForeArmLeft.pose.orientation.w = 1.0;
-    geometry_msgs::PoseStamped fixPoseForeArmRight;
-    fixPoseForeArmRight.pose.position.x = 0.0;
-    fixPoseForeArmRight.pose.position.y = -0.32*0.5;
-    fixPoseForeArmRight.pose.position.z = 0.0;
-    fixPoseForeArmRight.pose.orientation.x = 0.0;
-    fixPoseForeArmRight.pose.orientation.y = 0.0;
-    fixPoseForeArmRight.pose.orientation.z = 0.0;
-    fixPoseForeArmRight.pose.orientation.w = 1.0;
-    geometry_msgs::PoseStamped fixPoseGrippointLeft;
-    fixPoseGrippointLeft.pose.position.x = -0.02;
-    fixPoseGrippointLeft.pose.position.y = 0.0;
-    fixPoseGrippointLeft.pose.position.z = 0.0;
-    fixPoseGrippointLeft.pose.orientation.x = 0.0;
-    fixPoseGrippointLeft.pose.orientation.y = 0.0;
-    fixPoseGrippointLeft.pose.orientation.z = 0.0;
-    fixPoseGrippointLeft.pose.orientation.w = 1.0;
-    geometry_msgs::PoseStamped fixPoseGrippointRight;
-    fixPoseGrippointRight.pose.position.x = -0.02;
-    fixPoseGrippointRight.pose.position.y = 0.0;
-    fixPoseGrippointRight.pose.position.z = 0.0;
-    fixPoseGrippointRight.pose.orientation.x = 0.0;
-    fixPoseGrippointRight.pose.orientation.y = 0.0;
-    fixPoseGrippointRight.pose.orientation.z = 0.0;
-    fixPoseGrippointRight.pose.orientation.w = 1.0;
-    //geometry_msgs::PoseStamped fixPoseHead;
+            std::string type = collisionBody.collision_shape.shape_type;
+            double x = collisionBody.collision_shape.dimensions.x;
+            double y = collisionBody.collision_shape.dimensions.y;
+            double z = collisionBody.collision_shape.dimensions.z;
 
-    // Positioning and Orientation of the Primitive Shapes
-    setTransform(btTransformBaseBottom_, robot_state_.poseBase_,fixPoseBaseBottom);
-    setTransform(btTransformBaseMiddle_, robot_state_.poseBase_,fixPoseBaseMiddle);
-    setTransform(btTransformBaseTop_, robot_state_.poseBase_,fixPoseBaseTop);
-    setTransform(btTransformSliders_, robot_state_.poseSliders_,fixPoseSliders);
-    setTransform(btTransformTorso_, robot_state_.poseTorso_,fixPoseTorso);
-    setTransform(btTransformClavicles_, robot_state_.poseClavicles_,fixPoseClavicles);
-    setTransform(btTransformUpperArmLeft_, robot_state_.poseUpperArmLeft_,fixPoseUpperArmLeft);
-    setTransform(btTransformUpperArmRight_, robot_state_.poseUpperArmRight_,fixPoseUpperArmRight);
-    setTransform(btTransformForeArmLeft_, robot_state_.poseForeArmLeft_,fixPoseForeArmLeft);
-    setTransform(btTransformForeArmRight_, robot_state_.poseForeArmRight_,fixPoseForeArmRight);
-    setTransform(btTransformGripperLeft_, robot_state_.poseGrippointLeft_,fixPoseGrippointLeft);
-    setTransform(btTransformGripperRight_, robot_state_.poseGrippointRight_,fixPoseGrippointRight);
-    //setTransform(btTransformHead_, robot_state_.poseHead_,fixPoseHead);
+            if (type=="Box")
+            {
+                collisionBody.bt_shape = new btBoxShape(btVector3(0.5*x,0.5*y,0.5*z));
+            }
+            else if (type == "Sphere")
+            {
+                collisionBody.bt_shape = new btSphereShape(x);
+            }
+            else if (type == "Cone")
+            {
+                collisionBody.bt_shape = new btConeShapeZ(x,z);
+            }
+            else if (type == "CylinderY")
+            {
+                collisionBody.bt_shape = new btCylinderShape(btVector3(x,0.5*y,z));
+            }
+            else if (type == "CylinderZ")
+            {
+                collisionBody.bt_shape = new btCylinderShapeZ(btVector3(x,y,0.5*z));
+            }
+        }
+    }
+}
 
+void CollisionAvoidance::calculateTransform()
+{
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
+    {
+        std::vector<RobotState::CollisionBody> &group = *it;
 
-    shapesBody.push_back(btBaseBottom_);
-    shapesBody.push_back(btBaseMiddle_);
-    shapesBody.push_back(btBaseTop_);
-    shapesBody.push_back(btSliders_);
-    shapesBody.push_back(btTorso_);
-    shapesBody.push_back(btClavicles_);
-    shapesBody.push_back(btUpperArmLeft_);
-    shapesBody.push_back(btUpperArmRight_);
-
-    tranformsBody.push_back(btTransformBaseBottom_);
-    tranformsBody.push_back(btTransformBaseMiddle_);
-    tranformsBody.push_back(btTransformBaseTop_);
-    tranformsBody.push_back(btTransformSliders_);
-    tranformsBody.push_back(btTransformTorso_);
-    tranformsBody.push_back(btTransformClavicles_);
-    tranformsBody.push_back(btTransformUpperArmLeft_);
-    tranformsBody.push_back(btTransformUpperArmRight_);
-
-    shapesArmLeft.push_back(btForeArmLeft_);
-    shapesArmLeft.push_back(btGripperLeft_);
-
-    tranformsArmLeft.push_back(btTransformForeArmLeft_);
-    tranformsArmLeft.push_back(btTransformGripperLeft_);
-
-    shapesArmRight.push_back(btForeArmRight_);
-    shapesArmRight.push_back(btGripperRight_);
-
-    tranformsArmRight.push_back(btTransformForeArmRight_);
-    tranformsArmRight.push_back(btTransformGripperRight_);
-
+        for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
+        {
+            RobotState::CollisionBody &collisionBody = *it;
+            CollisionAvoidance::setTransform(collisionBody.bt_transform, collisionBody.fk_pose, collisionBody.fix_pose);
+        }
+    }
 }
 
 
-void CollisionAvoidance::setTransform(btTransform& transform_out, geometry_msgs::PoseStamped& fkPose, geometry_msgs::PoseStamped& fixPose) {
+void CollisionAvoidance::setTransform(btTransform& transform_out, geometry_msgs::PoseStamped& fkPose, geometry_msgs::PoseStamped& fixPose)
+{
     //cout << "FKPOSE: x = " << fkPose.pose.position.x << "y = " << fkPose.pose.position.y << "z = " << fkPose.pose.position.z << endl;
     btTransform fkTransform;
     btTransform fixTransform;
@@ -557,12 +465,24 @@ void CollisionAvoidance::setTransform(btTransform& transform_out, geometry_msgs:
                                           fixPose.pose.orientation.z,
                                           fixPose.pose.orientation.w));
 
+    /*
+    std::cout << "frame_id = " << fixPose.header.frame_id << std::endl;
+    std::cout << "x = " << fixPose.pose.position.x << std::endl;
+    std::cout << "y = " << fixPose.pose.position.y << std::endl;
+    std::cout << "z = " << fixPose.pose.position.z << std::endl;
+    std::cout << "X = " << fixPose.pose.orientation.x << std::endl;
+    std::cout << "Y = " << fixPose.pose.orientation.y << std::endl;
+    std::cout << "Z = " << fixPose.pose.orientation.z << std::endl;
+    std::cout << "W = " << fixPose.pose.orientation.w << std::endl;
+    */
+
     transform_out.mult(fkTransform,fixTransform);
 
 }
 
 
-void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA,btConvexShape& shapeB,btTransform& transformA,btTransform& transformB,btPointCollector distance_out) {
+void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA,btConvexShape& shapeB,btTransform& transformA,btTransform& transformB,btPointCollector distance_out)
+{
     btConvexPenetrationDepthSolver*	depthSolver = new btMinkowskiPenetrationDepthSolver;
     btSimplexSolverInterface* simplexSolver = new btVoronoiSimplexSolver;
 
@@ -573,20 +493,29 @@ void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA,btConvexShape
     convexConvex.getClosestPoints(input, distance_out, 0);
 }
 
-void CollisionAvoidance::visualizeCollisionModel(btConvexShape& btshape, const btTransform& transform, string frame_id, int id, double length, double width, double height) const {
+void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id) const
+{
+    const btTransform& transform = collisionBody.bt_transform;
+    std::string type = collisionBody.collision_shape.shape_type;
+    string frame_id = collisionBody.fk_pose.header.frame_id;
+
+    double x = collisionBody.collision_shape.dimensions.x;
+    double y = collisionBody.collision_shape.dimensions.y;
+    double z = collisionBody.collision_shape.dimensions.z;
+
     visualization_msgs::Marker modelviz;
     visualization_msgs::MarkerArray marker_array;
-    std::string type = btshape.getName();
 
-    if (type == "Box") {
+    if (type == "Box")
+    {
         modelviz.type = visualization_msgs::Marker::CUBE;
         modelviz.header.frame_id = frame_id;
         modelviz.header.stamp = ros::Time::now();
         modelviz.id = id;
 
-        modelviz.scale.x = length;
-        modelviz.scale.y = width;
-        modelviz.scale.z = height;
+        modelviz.scale.x = x;
+        modelviz.scale.y = y;
+        modelviz.scale.z = z;
 
         modelviz.pose.position.x = transform.getOrigin().getX();
         modelviz.pose.position.y = transform.getOrigin().getY();
@@ -607,15 +536,16 @@ void CollisionAvoidance::visualizeCollisionModel(btConvexShape& btshape, const b
         pub_marker_.publish(marker_array);
     }
 
-    else if (type == "SPHERE") {
+    else if (type == "Sphere")
+    {
         modelviz.type = visualization_msgs::Marker::SPHERE;
         modelviz.header.frame_id = frame_id;
         modelviz.header.stamp = ros::Time::now();
         modelviz.id = id;
 
-        modelviz.scale.x = 2*length;
-        modelviz.scale.y = 2*width;
-        modelviz.scale.z = 2*height;
+        modelviz.scale.x = 2*x;
+        modelviz.scale.y = 2*y;
+        modelviz.scale.z = 2*z;
 
         modelviz.pose.position.x = transform.getOrigin().getX();
         modelviz.pose.position.y = transform.getOrigin().getY();
@@ -635,15 +565,16 @@ void CollisionAvoidance::visualizeCollisionModel(btConvexShape& btshape, const b
         pub_marker_.publish(marker_array);
     }
 
-    else if (type == "CylinderY") {
+    else if (type == "CylinderY")
+    {
         modelviz.type = visualization_msgs::Marker::CYLINDER;
         modelviz.header.frame_id = frame_id;
         modelviz.header.stamp = ros::Time::now();
         modelviz.id = id;
 
-        modelviz.scale.x = 2*length;
-        modelviz.scale.y = 2*width;
-        modelviz.scale.z = height;
+        modelviz.scale.x = 2*x;
+        modelviz.scale.y = 2*z;
+        modelviz.scale.z = y;
 
         modelviz.pose.position.x = transform.getOrigin().getX();
         modelviz.pose.position.y = transform.getOrigin().getY();
@@ -670,15 +601,16 @@ void CollisionAvoidance::visualizeCollisionModel(btConvexShape& btshape, const b
         pub_marker_.publish(marker_array);
     }
 
-    else if (type == "CylinderZ") {
+    else if (type == "CylinderZ")
+    {
         modelviz.type = visualization_msgs::Marker::CYLINDER;
         modelviz.header.frame_id = frame_id;
         modelviz.header.stamp = ros::Time::now();
         modelviz.id = id;
 
-        modelviz.scale.x = 2*length;
-        modelviz.scale.y = 2*width;
-        modelviz.scale.z = height;
+        modelviz.scale.x = 2*x;
+        modelviz.scale.y = 2*y;
+        modelviz.scale.z = z;
 
         modelviz.pose.position.x = transform.getOrigin().getX();
         modelviz.pose.position.y = transform.getOrigin().getY();
@@ -698,16 +630,17 @@ void CollisionAvoidance::visualizeCollisionModel(btConvexShape& btshape, const b
         pub_marker_.publish(marker_array);
     }
 
-    else if (type == "Cone") {
+    else if (type == "Cone")
+    {
         modelviz.type = visualization_msgs::Marker::MESH_RESOURCE;
         modelviz.header.frame_id = frame_id;
         modelviz.header.stamp = ros::Time::now();
         modelviz.mesh_resource = "package://amigo_whole_body_controller/data/cone.dae";
         modelviz.id = id;
 
-        modelviz.scale.x = 2*length;
-        modelviz.scale.y = 2*height;
-        modelviz.scale.z = 2*width;
+        modelviz.scale.x = 2*x;
+        modelviz.scale.y = z;
+        modelviz.scale.z = 2*y;
 
         btTransform rotXfromZtoY;
         btTransform fromZto;

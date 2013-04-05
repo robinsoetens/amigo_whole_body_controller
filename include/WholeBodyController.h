@@ -154,7 +154,7 @@ protected:
     /**
       * computeForwardKinematics
       */
-    void computeForwardKinematics(KDL::Frame &FK_end_effector_pose, const std::string &end_effector_frame, int segmentNr);
+    void computeForwardKinematics(KDL::Frame &FK_end_effector_pose, const std::string &chain_side, int segmentNr);
 
     /**
       * Forward Kinematics Solver

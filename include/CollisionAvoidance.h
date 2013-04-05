@@ -69,7 +69,7 @@ public:
 
     void visualize(const tf::Stamped<tf::Pose> &tf_end_effector_pose_MAP, const Eigen::VectorXd& wrench) const;
 
-    void visualizeCollisionModel(btConvexShape& shape, const btTransform& transform, std::string frame_id, int id, double length, double width, double height)  const;
+    void visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id)  const;
     //! for spheres length, width and height are equal to the radius
     //! for cylinders length and width are equal to the radius
 
@@ -106,11 +106,16 @@ protected:
 
     void environmentCollision(tf::Stamped<tf::Pose>& tf_end_effector_pose_MAP, Eigen::VectorXd& wrench_out);
 
-    void collisionModel();
+
+    void initializeCollisionModel();
+
+    void calculateTransform();
+
+    void setTransform(btTransform& transform_out, geometry_msgs::PoseStamped& fkPose, geometry_msgs::PoseStamped& fixPose);
 
     void distanceCalculation(btConvexShape& shapeA,btConvexShape& shapeB,btTransform& transformA,btTransform& transformB,btPointCollector distance_out);
 
-    void setTransform(btTransform& transform_out, geometry_msgs::PoseStamped& fkPose, geometry_msgs::PoseStamped& fixPose);
+
 
     // Robot Model
     btConvexShape* btBaseBottom_;
