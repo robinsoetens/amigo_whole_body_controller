@@ -248,7 +248,15 @@ void CartesianImpedance::goalCB() {
     }*/
     //else {
 
-    // Put the goal data in the right datatype
+    /// Hack: set Cartesian impedance to inactive if frame_id equals "reset"
+    if (goal.goal.header.frame_id == "reset") {
+        is_active_ = false;
+        server_->setSucceeded();
+        return;
+    }
+
+    /// Put the goal data in the right datatype
+    /// If it's a delta goal this will be corrected further on
     goal_pose_.header = goal.goal.header;
     goal_pose_.pose.position.x = goal.goal.x;
     goal_pose_.pose.position.y = goal.goal.y;
@@ -258,6 +266,86 @@ void CartesianImpedance::goalCB() {
     double yaw = goal.goal.yaw;
     geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
     goal_pose_.pose.orientation = orientation;
+
+    // Check for absolute or delta (and ambiqious goals)
+    double EPS = 1e-6;
+    bool absolute_requested=false, delta_requested=false;
+    if(fabs(goal.goal.x)>EPS || fabs(goal.goal.y)>EPS || fabs(goal.goal.z)>EPS || fabs(goal.goal.roll)>EPS || fabs(goal.goal.pitch)>EPS || fabs(goal.goal.yaw)>EPS)
+        absolute_requested = true;
+    if(fabs(goal.delta.x)>EPS || fabs(goal.delta.y)>EPS || fabs(goal.delta.z)>EPS || fabs(goal.delta.roll)>EPS || fabs(goal.delta.pitch)>EPS || fabs(goal.delta.yaw)>EPS)
+        delta_requested = true;
+    if(absolute_requested && delta_requested)
+    {
+        server_->setAborted();
+        ROS_WARN("grasp_precompute_action: goal consists out of both absolute AND delta values. Choose only one!");
+        return;
+    }
+
+    /// Check if a delta is requested
+    // ToDo: can't we use transformpose?
+    if(delta_requested)
+    {
+        ROS_DEBUG("Delta requested of x=%f \t y=%f \t z=%f \t roll=%f \t pitch=%f \t yaw=%f",goal.delta.x,goal.delta.y,goal.delta.z,goal.delta.roll,goal.delta.pitch,goal.delta.yaw);
+        // Create tmp variable
+        tf::StampedTransform tmp;
+
+        // Lookup the current vector of the desired TF to the grippoint
+        if(listener.waitForTransform(goal.delta.header.frame_id, end_effector_frame_, goal.delta.header.stamp, ros::Duration(1.0))) {
+            try
+            {listener.lookupTransform(goal.delta.header.frame_id,end_effector_frame_, goal.delta.header.stamp, tmp);
+            }
+            catch (tf::TransformException ex){
+                server_->setAborted();
+                ROS_ERROR("%s",ex.what());
+                return;}
+        }
+        else {
+            server_->setAborted();
+            ROS_ERROR("grasp_precompute_action: TF_LISTENER could not find transform from gripper to %s:",goal.delta.header.frame_id.c_str());
+            return;
+
+        }
+
+        // Print the transform
+        ROS_DEBUG("tmp.x=%f \t tmp.y=%f \t tmp.z=%f tmp.X=%f \t tmp.Y=%f \t tmp.Z=%f \t tmp.W=%f",tmp.getOrigin().getX(),tmp.getOrigin().getY(),tmp.getOrigin().getZ(),tmp.getRotation().getX(),tmp.getRotation().getY(),tmp.getRotation().getZ(),tmp.getRotation().getW());
+
+        // Add the delta values and overwrite input variable
+        ROS_INFO("Child frame id=%s", tmp.frame_id_.c_str());
+        goal_pose_.header.frame_id  = tmp.frame_id_;
+        goal_pose_.header.stamp     = tmp.stamp_;
+        goal_pose_.pose.position.x  = tmp.getOrigin().getX() + goal.delta.x;
+        goal_pose_.pose.position.y  = tmp.getOrigin().getY() + goal.delta.y;
+        goal_pose_.pose.position.z  = tmp.getOrigin().getZ() + goal.delta.z;
+        double roll, pitch, yaw;
+        tmp.getBasis().getRPY(roll, pitch, yaw);
+        goal_pose_.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(roll + goal.delta.roll, pitch + goal.delta.pitch, yaw + goal.delta.yaw);
+    }
+
+    // If input frame is not /base_link, convert to base_link
+    if(goal_pose_.header.frame_id.compare("/base_link"))
+    {
+        ROS_DEBUG("Frame id was not BASE_LINK");
+        // Create tmp variable
+        geometry_msgs::PoseStamped tmp;
+
+        // Perform the transformation to /base_link
+        if(listener.waitForTransform("/base_link", goal_pose_.header.frame_id, goal_pose_.header.stamp, ros::Duration(1.0))) {
+            try
+            {listener.transformPose("/base_link", goal_pose_, tmp);}
+            catch (tf::TransformException ex){
+                server_->setAborted();
+                ROS_ERROR("%s",ex.what());
+                return;}
+        }
+        else {
+            server_->setAborted();
+            ROS_ERROR("grasp_precompute_action: TF_LISTENER could not find transform from /base_link to %s:",goal_pose_.header.frame_id.c_str());
+            return;
+
+        }
+        /// Overwrite input values
+        goal_pose_ = tmp;
+    }
 
     // Pre-grasp
     if (goal.PERFORM_PRE_GRASP) {
