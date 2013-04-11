@@ -60,12 +60,11 @@ public:
     /**
      * Initialize function
      */
-    bool initialize();
-
+    bool initialize(RobotState &robotstate);
 
     bool isActive();
 
-    void apply(const RobotState& robotstate);
+    void apply(RobotState& robotstate);
 
     void visualize(const tf::Stamped<tf::Pose> &tf_end_effector_pose_MAP, const Eigen::VectorXd& wrench) const;
 
@@ -107,56 +106,20 @@ protected:
     void environmentCollision(tf::Stamped<tf::Pose>& tf_end_effector_pose_MAP, Eigen::VectorXd& wrench_out);
 
 
-    void initializeCollisionModel();
+    void initializeCollisionModel(RobotState &robotstate);
 
     void calculateTransform();
 
     void setTransform(btTransform& transform_out, geometry_msgs::PoseStamped& fkPose, geometry_msgs::PoseStamped& fixPose);
 
-    void distanceCalculation(btConvexShape& shapeA,btConvexShape& shapeB,btTransform& transformA,btTransform& transformB,btPointCollector distance_out);
+    void distanceCalculation(btConvexShape &shapeA, btConvexShape &shapeB, btTransform& transformA, btTransform& transformB, btPointCollector& distance_out);
 
+    void bulletTest();
 
+    std::vector<RobotState::CollisionBody>  active_group_;
+    std::vector< std::vector<RobotState::CollisionBody> > collision_groups_;
 
-    // Robot Model
-    btConvexShape* btBaseBottom_;
-    btConvexShape* btBaseMiddle_;
-    btConvexShape* btBaseTop_;
-    btConvexShape* btSliders_;
-    btConvexShape* btTorso_;
-    btConvexShape* btClavicles_;
-    btConvexShape* btUpperArmLeft_;
-    btConvexShape* btUpperArmRight_;
-    btConvexShape* btForeArmLeft_;
-    btConvexShape* btForeArmRight_;
-    btConvexShape* btGripperLeft_;
-    btConvexShape* btGripperRight_;
-    //btConvexShape* btHead_;
-
-    btTransform btTransformBaseBottom_;
-    btTransform btTransformBaseMiddle_;
-    btTransform btTransformBaseTop_;
-    btTransform btTransformSliders_;
-    btTransform btTransformTorso_;
-    btTransform btTransformClavicles_;
-    btTransform btTransformUpperArmLeft_;
-    btTransform btTransformUpperArmRight_;
-    btTransform btTransformForeArmLeft_;
-    btTransform btTransformForeArmRight_;
-    btTransform btTransformGripperLeft_;
-    btTransform btTransformGripperRight_;
-    //btTransform btTransformHead_;
-
-    std::vector<btConvexShape*> shapesBody;
-    std::vector<btTransform> tranformsBody;
-
-    std::vector<btConvexShape*> shapesArmLeft;
-    std::vector<btTransform> tranformsArmLeft;
-
-    std::vector<btConvexShape*> shapesArmRight;
-    std::vector<btTransform> tranformsArmRight;
-
-    std::vector<btPointCollector> distances;
-
+    std::vector<RobotState::Distance> distances_;
 
 };
 

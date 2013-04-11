@@ -65,7 +65,6 @@ bool WholeBodyController::initialize(const double Ts)
         for(XmlRpcIterator itrGroups = groups.begin(); itrGroups != groups.end(); ++itrGroups)
         {
             std::vector< RobotState::CollisionBody > robot_state_group;
-
             // COLLISION GROUP
             XmlRpc::XmlRpcValue group = itrGroups->second;
             for(XmlRpcIterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
@@ -83,7 +82,6 @@ bool WholeBodyController::initialize(const double Ts)
 
             // add group of collision bodies to the robot
             robot_state_.robot_.groups.push_back(robot_state_group);
-
         }
 
     } catch(XmlRpc::XmlRpcException& ex)
@@ -143,7 +141,7 @@ bool WholeBodyController::initialize(const double Ts)
 
 bool WholeBodyController::addMotionObjective(MotionObjective* motionobjective)
 {
-    if (!motionobjective->initialize())
+    if (!motionobjective->initialize(robot_state_))
     {
         return false;
     }
@@ -190,6 +188,7 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     computeForwardKinematics(kdlFrameEndEffectorRight,"right",getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"grippoint_right"));
     getFKsolution(kdlFrameEndEffectorRight, robot_state_.poseGrippointRight_);
 
+    //std::cout << "LEFT end-effector x,y,z: " << robot_state_.poseGrippointLeft_.pose.position.x << " " << robot_state_.poseGrippointLeft_.pose.position.y << " " << robot_state_.poseGrippointLeft_.pose.position.z << std::endl;
 
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
     {
@@ -333,8 +332,6 @@ void WholeBodyController::computeForwardKinematics(KDL::Frame& kdl_frame, const 
     // Add 0.055 since base and base_link frame are not at exactly the same pose
     kdl_frame.p.z(kdl_frame.p.z()+0.055);
     ///ROS_INFO("Return value = %i",ret);
-    //if (is_active_) ROS_INFO("end_effector_pose_.p = [%f\t%f\t%f]",end_effector_pose_.p.x(),end_effector_pose_.p.y(),end_effector_pose_.p.z());
-
 }
 
 

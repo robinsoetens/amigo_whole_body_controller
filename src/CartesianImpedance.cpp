@@ -52,7 +52,7 @@ CartesianImpedance::CartesianImpedance(const std::string& end_effector_frame) :
     ROS_INFO("Initialized Cartesian Impedance");
 }
 
-bool CartesianImpedance::initialize() {
+bool CartesianImpedance::initialize(RobotState &robotstate) {
     return true;
 }
 
@@ -74,7 +74,7 @@ void CartesianImpedance::cancelGoal() {
     status_ = 0;
 }
 
-void CartesianImpedance::apply(const RobotState &robotstate) {
+void CartesianImpedance::apply(RobotState &robotstate) {
 
     //ROS_INFO("CartesianImpedance::apply");
 

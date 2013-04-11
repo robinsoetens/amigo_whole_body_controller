@@ -16,11 +16,11 @@ public:
 
     virtual ~MotionObjective();
 
-    virtual bool initialize() = 0;
+    virtual bool initialize(RobotState& robotstate) = 0;
 
     virtual bool isActive() = 0;
 
-    virtual void apply(const RobotState& robotstate) = 0;
+    virtual void apply(RobotState& robotstate) = 0;
 
 };
 

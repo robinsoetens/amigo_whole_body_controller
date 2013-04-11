@@ -1,5 +1,5 @@
 collision_model:
-    group_body:
+    group_core_body:
         BaseBottom:
           name: "BaseBottom"
           shape:

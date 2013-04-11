@@ -16,6 +16,7 @@
 
 // Bullet
 #include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
+#include <BulletCollision/NarrowPhaseCollision/btPointCollector.h>
 
 
 class RobotState
@@ -29,6 +30,7 @@ public:
     //Destructor
     virtual ~RobotState();
 
+    // Collision Model
     struct CollisionBody
     {
         std::string name_collision_body;
@@ -94,6 +96,13 @@ public:
     struct Robot {
         std::vector< std::vector<CollisionBody> > groups;
     } robot_;
+
+
+    struct Distance {
+        std::string frame_id;
+        btPointCollector bt_distance;
+    };
+
 
     geometry_msgs::PoseStamped poseGrippointLeft_;
     geometry_msgs::PoseStamped poseGrippointRight_;

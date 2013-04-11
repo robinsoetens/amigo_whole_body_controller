@@ -49,11 +49,11 @@ public:
      */
     virtual ~CartesianImpedance();
 
-    bool initialize();
+    bool initialize(RobotState &robotstate);
 
     bool isActive();
 
-    void apply(const RobotState& robotstate);
+    void apply(RobotState& robotstate);
 
     void setGoal(geometry_msgs::PoseStamped &goal_pose);
 

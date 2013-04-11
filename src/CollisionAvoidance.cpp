@@ -18,8 +18,9 @@ CollisionAvoidance::~CollisionAvoidance()
     }
 }
 
-bool CollisionAvoidance::initialize()
+bool CollisionAvoidance::initialize(RobotState &robotstate)
 {
+    robot_state_ = robotstate;
 
     ROS_INFO_STREAM("Initializing Obstacle Avoidance, " << end_effector_frame_);
 
@@ -36,6 +37,8 @@ bool CollisionAvoidance::initialize()
     boxes_.push_back(new Box(Eigen::Vector3d(-0.127, 0.730, 0), Eigen::Vector3d(1.151, 1.139, 0.7)));
     boxes_.push_back(new Box(Eigen::Vector3d( 1.032, -0.942, 0), Eigen::Vector3d(1.590, 0.140, 0.6)));
 
+    initializeCollisionModel(robotstate);
+
     ROS_INFO_STREAM("Initialized Obstacle Avoidance" << end_effector_frame_);
 
     return true;
@@ -46,7 +49,7 @@ bool CollisionAvoidance::isActive()
     return true;
 }
 
-void CollisionAvoidance::apply(const RobotState &robotstate)
+void CollisionAvoidance::apply(RobotState &robotstate)
 {
 
     robot_state_ = robotstate;
@@ -134,8 +137,8 @@ void CollisionAvoidance::apply(const RobotState &robotstate)
 
 
 
-void CollisionAvoidance::selfCollision(geometry_msgs::PoseStamped end_effector,geometry_msgs::PoseStamped contactpoint, Eigen::VectorXd& wrench_self_collision) {
-
+void CollisionAvoidance::selfCollision(geometry_msgs::PoseStamped end_effector,geometry_msgs::PoseStamped contactpoint, Eigen::VectorXd& wrench_self_collision)
+{
     // Transform the poses to the KDL::Frame format
     KDL::Frame end_effector_kdl_frame;
     KDL::Frame contactpoint_kdl_frame;
@@ -144,37 +147,65 @@ void CollisionAvoidance::selfCollision(geometry_msgs::PoseStamped end_effector,g
     stampedPoseToKDLframe(end_effector, end_effector_kdl_frame, end_effector_RPY);
     stampedPoseToKDLframe(contactpoint, contactpoint_kdl_frame, contactpoint_RPY);
 
+    collision_groups_.clear();
+    active_group_.clear();
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_.robot_.groups.begin(); itrGroups != robot_state_.robot_.groups.end(); ++itrGroups)
+    {
 
-    int k = 0;
-    btPointCollector btDistance;
-    if (end_effector_frame_ == "grippoint_left") {
-        for (uint i = 0; i < shapesArmLeft.size(); i++) {
-            for (uint j = 0; j < shapesBody.size(); j++) {
-                distanceCalculation(*shapesArmLeft[i],*shapesBody[j],tranformsArmLeft[i],tranformsBody[j],btDistance);
-                distances.push_back(btDistance);
-                k++;
-            }
+        std::vector<RobotState::CollisionBody> &group = *itrGroups;
 
-            for (uint j = 0; j < shapesArmRight.size(); j++) {
-                distanceCalculation(*shapesArmLeft[i],*shapesArmRight[j],tranformsArmLeft[i],tranformsArmRight[j],btDistance);
-                distances.push_back(btDistance);
-                k++;
+        bool group_check = false;
+        for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
+        {
+
+            RobotState::CollisionBody &collisionBody = *itrBodies;
+            //std::cout << collisionBody.bt_shape->getName() << std::endl;
+            if ( collisionBody.fix_pose.header.frame_id == end_effector_frame_)
+            {
+                group_check = true;
             }
+        }
+
+        if ( group_check == true )
+        {
+            active_group_ = group;
+        }
+        else if ( group_check == false )
+        {
+            // IF NOT FOUND collision_group
+            collision_groups_.push_back(group);
         }
     }
 
-    else if (end_effector_frame_ == "grippoint_right") {
-        for (uint i = 0; i < shapesArmRight.size(); i++) {
-            for (uint j = 0; j < shapesBody.size(); j++) {
-                distanceCalculation(*shapesArmRight[i],*shapesBody[j],tranformsArmRight[i],tranformsBody[j],btDistance);
-                distances.push_back(btDistance);
-                k++;
-            }
 
-            for (uint j = 0; j < shapesArmLeft.size(); j++) {
-                distanceCalculation(*shapesArmRight[i],*shapesArmLeft[j],tranformsArmRight[i],tranformsArmLeft[j],btDistance);
-                distances.push_back(btDistance);
-                k++;
+    //std::cout << "size active_group_ = " << active_group_.size() << std::endl;
+    distances_.clear();
+    for (std::vector<RobotState::CollisionBody>::iterator itrActiveBodies = active_group_.begin(); itrActiveBodies != active_group_.end(); ++itrActiveBodies)
+    {
+        RobotState::CollisionBody &currentBody = *itrActiveBodies;
+        //std::cout << "size collision_groups_ = " << collision_groups_.size() << std::endl;
+        for (std::vector<std::vector<RobotState::CollisionBody> >::iterator itrCollisionGroup = collision_groups_.begin(); itrCollisionGroup != collision_groups_.end(); ++itrCollisionGroup)
+        {
+            std::vector<RobotState::CollisionBody> &collisionGroup = *itrCollisionGroup;
+            //std::cout << "size collisionGroup = " << collisionGroup.size() << std::endl;
+            for (std::vector<RobotState::CollisionBody>::iterator itrCollisionBodies = collisionGroup.begin(); itrCollisionBodies != collisionGroup.end(); ++itrCollisionBodies)
+            {
+                RobotState::CollisionBody &collisionBody = *itrCollisionBodies;
+                RobotState::Distance distance;
+                distance.frame_id = currentBody.fix_pose.header.frame_id;
+                //std::cout << currentBody.bt_shape->getName() << std::endl;
+                //std::cout << "Self-Collision A" << std::endl;
+                //std::cout << *currentBody.bt_shape->getName() << std::endl;
+                distanceCalculation(*currentBody.bt_shape,*collisionBody.bt_shape,currentBody.bt_transform,collisionBody.bt_transform,distance.bt_distance);
+                distances_.push_back(distance);
+
+                //bulletTest();
+
+                std::cout << "frame_id = " << distance.frame_id << std::endl;
+                std::cout << "distance = " << distance.bt_distance.m_distance << std::endl;
+                std::cout << "point on B = " << distance.bt_distance.m_pointInWorld.getX() << " " << distance.bt_distance.m_pointInWorld.getY() << " " << distance.bt_distance.m_pointInWorld.getZ() << std::endl;
+                std::cout << "normal on B = " << distance.bt_distance.m_normalOnBInWorld.getX() << " " << distance.bt_distance.m_normalOnBInWorld.getY() << " " << distance.bt_distance.m_normalOnBInWorld.getZ() << std::endl;
+
             }
         }
     }
@@ -203,8 +234,8 @@ void CollisionAvoidance::selfCollision(geometry_msgs::PoseStamped end_effector,g
 
 }
 
-
-void CollisionAvoidance::environmentCollision(tf::Stamped<tf::Pose>& tf_end_effector_pose_MAP, Eigen::VectorXd& wrench_out) {
+void CollisionAvoidance::environmentCollision(tf::Stamped<tf::Pose>& tf_end_effector_pose_MAP, Eigen::VectorXd& wrench_out)
+{
 
     Eigen::Vector3d wrench;
     wrench.setZero();
@@ -254,10 +285,8 @@ void CollisionAvoidance::environmentCollision(tf::Stamped<tf::Pose>& tf_end_effe
 
 }
 
-
 void CollisionAvoidance::getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY)
 {
-
     tf::Quaternion Q;
     double roll, pitch, yaw;
     tf::quaternionMsgToTF(pose.pose.orientation, Q);
@@ -265,17 +294,13 @@ void CollisionAvoidance::getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vec
     RPY(0) = roll;
     RPY(1) = pitch;
     RPY(2) = yaw;
-
 }
-
 
 void CollisionAvoidance::transformWench(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& wrench_in, Eigen::VectorXd &wrench_out)
 {
-
     Eigen::Vector3d RPY;
     RPY.setZero();
     getposeRPY(pose,RPY);
-
 
     tf::Transform transform;
     transform.setOrigin(tf::Vector3(wrench_in[0], wrench_in[1], wrench_in[2]));
@@ -287,13 +312,10 @@ void CollisionAvoidance::transformWench(geometry_msgs::PoseStamped& pose, Eigen:
     wrench_out[0] = transform.getOrigin().x();
     wrench_out[1] = transform.getOrigin().y();
     wrench_out[2] = transform.getOrigin().z();
-
 }
-
 
 void CollisionAvoidance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame, Eigen::Vector3d& RPY)
 {
-
     if (pose.header.frame_id != "/base_link") ROS_WARN("FK computation can now only cope with base_link as input frame");
 
     // Position
@@ -302,12 +324,10 @@ void CollisionAvoidance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose,
     frame.p.z(pose.pose.position.z);
 
     getposeRPY(pose, RPY);
-
 }
 
 void CollisionAvoidance::visualize(const tf::Stamped<tf::Pose>& tf_end_effector_pose_MAP, const Eigen::VectorXd& wrench) const
 {
-
     Eigen::Vector3d end_effector_pos(tf_end_effector_pose_MAP.getOrigin().getX(),
                                      tf_end_effector_pose_MAP.getOrigin().getY(),
                                      tf_end_effector_pose_MAP.getOrigin().getZ());
@@ -377,29 +397,25 @@ void CollisionAvoidance::visualize(const tf::Stamped<tf::Pose>& tf_end_effector_
 
     pub_marker_.publish(marker_array);
 
-    for (std::vector< std::vector<RobotState::CollisionBody> >::const_iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
+    for (std::vector< std::vector<RobotState::CollisionBody> >::const_iterator itrGroups = robot_state_.robot_.groups.begin(); itrGroups != robot_state_.robot_.groups.end(); ++itrGroups)
     {
-        std::vector<RobotState::CollisionBody> group = *it;
-
-        for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
+        std::vector<RobotState::CollisionBody> group = *itrGroups;
+        for (std::vector<RobotState::CollisionBody>::iterator itrsBodies = group.begin(); itrsBodies != group.end(); ++itrsBodies)
         {
-            RobotState::CollisionBody &collisionBody = *it;
+            RobotState::CollisionBody &collisionBody = *itrsBodies;
             visualizeCollisionModel(collisionBody,id++);
-
         }
     }
 }
 
-void CollisionAvoidance::initializeCollisionModel()
+void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
 {
-    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robotstate.robot_.groups.begin(); itrGroups != robotstate.robot_.groups.end(); ++itrGroups)
     {
-        std::vector<RobotState::CollisionBody> &group = *it;
-
-        for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
+        std::vector<RobotState::CollisionBody> &group = *itrGroups;
+        for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
         {
-            RobotState::CollisionBody &collisionBody = *it;
-
+            RobotState::CollisionBody &collisionBody = *itrBodies;
             std::string type = collisionBody.collision_shape.shape_type;
             double x = collisionBody.collision_shape.dimensions.x;
             double y = collisionBody.collision_shape.dimensions.y;
@@ -477,19 +493,19 @@ void CollisionAvoidance::setTransform(btTransform& transform_out, geometry_msgs:
     */
 
     transform_out.mult(fkTransform,fixTransform);
-
 }
 
 
-void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA,btConvexShape& shapeB,btTransform& transformA,btTransform& transformB,btPointCollector distance_out)
+void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA, btConvexShape& shapeB, btTransform& transformA, btTransform& transformB, btPointCollector &distance_out)
 {
     btConvexPenetrationDepthSolver*	depthSolver = new btMinkowskiPenetrationDepthSolver;
     btSimplexSolverInterface* simplexSolver = new btVoronoiSimplexSolver;
-
     btGjkPairDetector convexConvex(&shapeA, &shapeB, simplexSolver, depthSolver);
     btGjkPairDetector::ClosestPointInput input;
     input.m_transformA = transformA;
     input.m_transformB = transformB;
+    //std::cout << "A: " << transformA.getOrigin().getX() << " " << transformA.getOrigin().getY() << " " << transformA.getOrigin().getZ() << std::endl;
+    //std::cout << "B: " << transformB.getOrigin().getX() << " " << transformB.getOrigin().getY() << " " << transformB.getOrigin().getZ() << std::endl;
     convexConvex.getClosestPoints(input, distance_out, 0);
 }
 
@@ -665,4 +681,36 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         pub_marker_.publish(marker_array);
     }
+}
+
+void CollisionAvoidance::bulletTest()
+{
+    btConvexShape* A = new btBoxShape(btVector3(0.5,0.5,0.5));
+    btConvexShape* B = new btSphereShape(1);
+    btTransform At;
+    btTransform Bt;
+    btPointCollector d;
+
+    At.setOrigin(btVector3(0,0,0));
+    At.setRotation(btQuaternion(0,0,0,1));
+
+    Bt.setOrigin(btVector3(5,0,0));
+    Bt.setRotation(btQuaternion(0,0,0,1));
+
+    /*
+    btConvexPenetrationDepthSolver*	depthSolver = new btMinkowskiPenetrationDepthSolver;
+    btSimplexSolverInterface* simplexSolver = new btVoronoiSimplexSolver;
+    btGjkPairDetector convexConvex(A, B, simplexSolver, depthSolver);
+    btGjkPairDetector::ClosestPointInput input;
+    input.m_transformA = At;
+    input.m_transformB = Bt;
+    convexConvex.getClosestPoints(input, d, 0);
+    */
+
+    distanceCalculation(*A,*B,At,Bt,d);
+
+    std::cout << "distance = " << d.m_distance << std::endl;
+    std::cout << "point on B = " << d.m_pointInWorld.getX() << " " << d.m_pointInWorld.getY() << " " << d.m_pointInWorld.getZ() << std::endl;
+    std::cout << "normal on B = " << d.m_normalOnBInWorld.getX() << " " << d.m_normalOnBInWorld.getY() << " " << d.m_normalOnBInWorld.getZ() << std::endl;
+
 }
