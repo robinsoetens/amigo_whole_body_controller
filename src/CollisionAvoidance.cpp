@@ -3,6 +3,8 @@
 
 #include "visualization_msgs/MarkerArray.h"
 
+#include "profiling/Profiler.h"
+
 using namespace std;
 
 CollisionAvoidance::CollisionAvoidance(const double Ts, const string &end_effector_frame, tf::TransformListener *tf_listener)
@@ -196,16 +198,21 @@ void CollisionAvoidance::selfCollision(geometry_msgs::PoseStamped end_effector,g
                 //std::cout << currentBody.bt_shape->getName() << std::endl;
                 //std::cout << "Self-Collision A" << std::endl;
                 //std::cout << *currentBody.bt_shape->getName() << std::endl;
+
+
+                //ThreadProfiler::Start("DistanceCalc");
                 distanceCalculation(*currentBody.bt_shape,*collisionBody.bt_shape,currentBody.bt_transform,collisionBody.bt_transform,distance.bt_distance);
                 distances_.push_back(distance);
+                //ThreadProfiler::Stop("DistanceCalc");
 
                 //bulletTest();
 
+                /*
                 std::cout << "frame_id = " << distance.frame_id << std::endl;
                 std::cout << "distance = " << distance.bt_distance.m_distance << std::endl;
                 std::cout << "point on B = " << distance.bt_distance.m_pointInWorld.getX() << " " << distance.bt_distance.m_pointInWorld.getY() << " " << distance.bt_distance.m_pointInWorld.getZ() << std::endl;
                 std::cout << "normal on B = " << distance.bt_distance.m_normalOnBInWorld.getX() << " " << distance.bt_distance.m_normalOnBInWorld.getY() << " " << distance.bt_distance.m_normalOnBInWorld.getZ() << std::endl;
-
+                */
             }
         }
     }
@@ -367,8 +374,9 @@ void CollisionAvoidance::visualize(const tf::Stamped<tf::Pose>& tf_end_effector_
         marker.color.g = 1;
         marker.color.b = 1;
 
-        marker_array.markers.push_back(marker);
+        //marker_array.markers.push_back(marker);
     }
+
 
     visualization_msgs::Marker dir;
     dir.type = visualization_msgs::Marker::SPHERE;
@@ -395,7 +403,8 @@ void CollisionAvoidance::visualize(const tf::Stamped<tf::Pose>& tf_end_effector_
 
     marker_array.markers.push_back(dir);
 
-    pub_marker_.publish(marker_array);
+    //pub_marker_.publish(marker_array);
+
 
     for (std::vector< std::vector<RobotState::CollisionBody> >::const_iterator itrGroups = robot_state_.robot_.groups.begin(); itrGroups != robot_state_.robot_.groups.end(); ++itrGroups)
     {
@@ -685,8 +694,8 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
 void CollisionAvoidance::bulletTest()
 {
-    btConvexShape* A = new btBoxShape(btVector3(0.5,0.5,0.5));
-    btConvexShape* B = new btSphereShape(1);
+    btConvexShape* A = new btSphereShape(0.0000000001);
+    btConvexShape* B = new btCylinderShape(btVector3(1,2,1));
     btTransform At;
     btTransform Bt;
     btPointCollector d;
@@ -694,18 +703,8 @@ void CollisionAvoidance::bulletTest()
     At.setOrigin(btVector3(0,0,0));
     At.setRotation(btQuaternion(0,0,0,1));
 
-    Bt.setOrigin(btVector3(5,0,0));
+    Bt.setOrigin(btVector3(0,10,0));
     Bt.setRotation(btQuaternion(0,0,0,1));
-
-    /*
-    btConvexPenetrationDepthSolver*	depthSolver = new btMinkowskiPenetrationDepthSolver;
-    btSimplexSolverInterface* simplexSolver = new btVoronoiSimplexSolver;
-    btGjkPairDetector convexConvex(A, B, simplexSolver, depthSolver);
-    btGjkPairDetector::ClosestPointInput input;
-    input.m_transformA = At;
-    input.m_transformB = Bt;
-    convexConvex.getClosestPoints(input, d, 0);
-    */
 
     distanceCalculation(*A,*B,At,Bt,d);
 

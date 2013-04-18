@@ -1,12 +1,13 @@
 <?xml version="1.0"?>
 
-<launch>	
+<launch>
 	
 	<!-- Localization -->
 	<include file="$(find amigo_launch_files)/launch/middleware/localization.launch" />
 
 	<!-- Navigation -->
-	<include file="$(find tue_move_base)/launch/base_navigation.launch" />
+	<include file="$(find amigo_launch_files)/launch/middleware/base_navigation_3d.launch"/>
+	<!--<include file="$(find tue_move_base)/launch/base_navigation.launch" />-->
 	
 	<!-- Arm & gripper control -->
 	<!--<include file="$(find amigo_launch_files)/launch/middleware/arms.launch" />-->

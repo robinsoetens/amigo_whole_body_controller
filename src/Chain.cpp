@@ -55,12 +55,8 @@ void Chain::fillJacobian(Eigen::MatrixXd& jacobian) const {
     //cout << chain_jacobian.data << endl;
 
     //ROS_INFO("joint_positions_.rows() = %d", joint_positions_.rows());
-
     //ROS_INFO("kdl_chain.getNrOfJoints() = %d", kdl_chain_.getNrOfJoints());
-
     //ROS_INFO("Chain Jacobian: rows = %d, cols = %d", chain_jacobian.rows(), chain_jacobian.columns());
-
-    //ROS_INFO("2");
 
     unsigned int link_start_index = jacobian.rows();
 
@@ -77,8 +73,6 @@ void Chain::fillJacobian(Eigen::MatrixXd& jacobian) const {
     jacobian = jacobian_new;
 
     //ROS_INFO("Full Jacobian: rows = %d, cols = %d", jacobian.rows(), jacobian.cols());
-
-    //ROS_INFO("3");
 
     // TODO: deal with multiple cartesian wrenches
     for(unsigned int i = 0; i < joint_names_.size(); ++i) {

@@ -4,53 +4,51 @@ collision_model:
           name: "BaseBottom"
           shape:
                 shape_type: "CylinderZ"
-                dimensions: {x: 0.36, y: 0.36, z: 0.24 } # radius,radius,height
+                dimensions: {x: 0.36, y: 0.36, z: 0.3 } # radius,radius,height
           transform:
                 chain_side: "left"
                 frame_id: "base_link"
-                origin: {x: 0.0, y: 0.0, z: 0.07 }
+                origin: {x: 0.0, y: 0.0, z: 0.1 }
                 orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
-        BaseFront:
-          name: "BaseFront"
+        BaseMiddle:
+          name: "BaseMiddle"
           shape:
-                shape_type: "Box"
-                dimensions: {x: 0.2, y: 0.28, z: 0.19 } # x,y,z
+                shape_type: "CylinderZ"
+                dimensions: {x: 0.22, y: 0.22, z: 0.3 } # radius,radius,height
           transform:
                 chain_side: "left"
-                chain_side: "left"
                 frame_id: "base_link"
-                origin: {x: 0.25, y: 0.0, z: 0.235 } # z = 0.14+0.5*0.19
-                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
-        BaseBack:
-          name: "BaseBack"
-          shape:
-                shape_type: "Box"
-                dimensions: {x: 0.16, y: 0.16, z: 0.08 } # x,y,z
-          transform:
-                chain_side: "left"
-                chain_side: "left"
-                frame_id: "base_link"
-                origin: {x: -0.25, y: 0.0, z: 0.22 } # z = 0.14+0.5*0.19
+                origin: {x: 0.0, y: 0.0, z: 0.25 } # z = 0.1+0.5*0.9
                 orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
         BaseTop:
           name: "BaseTop"
           shape:
-                shape_type: "Cone"
-                dimensions: {x: 0.25, y: 0.25, z: 0.9 } # radius,radius,height
+                shape_type: "CylinderZ"
+                dimensions: {x: 0.16, y: 0.16, z: 0.6 } # radius,radius,height
           transform:
                 chain_side: "left"
                 frame_id: "base_link"
-                origin: {x: 0.02, y: 0.0, z: 0.55 } # z = 0.1+0.5*0.9
+                origin: {x: 0.02, y: 0.0, z: 0.38 } # z = 0.1+0.5*0.9
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        KinectFront:
+          name: "KinectFront"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.04, y: 0.28, z: 0.04 } # radius,height,radius
+          transform:
+                chain_side: "left"
+                frame_id: "base_link"
+                origin: {x: 0.27, y: 0.0, z: 0.3 } # z = 0.1+0.5*0.9
                 orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
         Sliders:
           name: "Sliders"
           shape:
-                shape_type: "Box"
-                dimensions: {x: 0.7, y: 0.23, z: 0.15 } # x,y,z
+                shape_type: "CylinderZ"
+                dimensions: {x: 0.11, y: 0.11, z: 0.8 } # radius,radius,height
           transform:
                 chain_side: "left"
-                frame_id: "torso_slider"
-                origin: {x: -0.2, y: 0.0, z: -0.04 }
+                frame_id: "base_link"
+                origin: {x: 0.0, y: 0.0, z: 0.6 } # z = 0.1+0.5*0.9
                 orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
         Torso:
           name: "Torso"
@@ -65,12 +63,22 @@ collision_model:
         Clavicles:
           name: "Clavicles"
           shape:
-                shape_type: "Box"
-                dimensions: {x: 0.1, y: 0.6, z: 0.16 } # x,y,z
+                shape_type: "CylinderY"
+                dimensions: {x: 0.08, y: 0.6, z: 0.08 } # x,y,z
           transform:
                 chain_side: "left"
                 frame_id: "torso"
                 origin: {x: 0.05, y: 0.0, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        Head:
+          name: "Head"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.09, y: 0.26, z: 0.09 } # x,y,z
+          transform:
+                chain_side: "left"
+                frame_id: "torso"
+                origin: {x: 0.28, y: 0.0, z: 0.0 }
                 orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
         UpperArmLeft:
           name: "UpperArmLeft"
@@ -107,8 +115,8 @@ collision_model:
         GripperLeft:
           name: "GripperLeft"
           shape:
-                shape_type: "Box"
-                dimensions: {x: 0.2, y: 0.17, z: 0.05 } # x,y,z
+                shape_type: "CylinderZ"
+                dimensions: {x: 0.12, y: 0.12, z: 0.05 } # x,y,z
           transform:
                 chain_side: "left"
                 frame_id: "grippoint_left"
@@ -129,8 +137,8 @@ collision_model:
         GripperRight:
           name: "GripperRight"
           shape:
-                shape_type: "Box"
-                dimensions: {x: 0.2, y: 0.17, z: 0.05 } # x,y,z
+                shape_type: "CylinderZ"
+                dimensions: {x: 0.12, y: 0.12, z: 0.05 } # x,y,z
           transform:
                 chain_side: "right"
                 frame_id: "grippoint_right"
