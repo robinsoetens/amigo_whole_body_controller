@@ -1,0 +1,5 @@
+collision_avoidance:
+    self_collision:
+        d_threshold: 0.1 # [m]
+        F_max: 300 # [N]
+        order: 2
