@@ -36,11 +36,11 @@ collision_model:
           name: "BaseTop"
           shape:
                 shape_type: "Cone"
-                dimensions: {x: 0.25, y: 0.25, z: 0.9 } # radius,radius,height
+                dimensions: {x: 0.18, y: 0.18, z: 0.57 } # radius,radius,height
           transform:
                 chain_side: "left"
                 frame_id: "base_link"
-                origin: {x: 0.02, y: 0.0, z: 0.55 } # z = 0.1+0.5*0.9
+                origin: {x: 0.02, y: 0.0, z: 0.6 }
                 orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
         Sliders:
           name: "Sliders"
@@ -136,6 +136,14 @@ collision_model:
                 frame_id: "grippoint_right"
                 origin: {x: -0.02, y: 0.0, z: 0.0 }
                 orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+
+exlusions_collision_calculation:
+    group_arm_left:
+        FrameIdBodyA: "fore_arm_left"
+        FrameIdBodyB: "upper_arm_left"
+    group_arm_right:
+        FrameIdBodyA: "fore_arm_right"
+        FrameIdBodyB: "upper_arm_right"
 
 
 
