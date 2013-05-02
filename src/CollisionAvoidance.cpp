@@ -1,5 +1,6 @@
 #include "CollisionAvoidance.h"
 #include <tf/transform_datatypes.h>
+#include <math.h>
 
 #include "visualization_msgs/MarkerArray.h"
 
@@ -7,41 +8,34 @@
 
 using namespace std;
 
-CollisionAvoidance::CollisionAvoidance(const double Ts, const string &end_effector_frame, tf::TransformListener *tf_listener)
-    : Ts_ (Ts), end_effector_frame_ (end_effector_frame), listener_(*tf_listener)
+CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts, tf::TransformListener *tf_listener)
+    : ca_param_(parameters), Ts_ (Ts), listener_(*tf_listener)
 {
 }
 
 CollisionAvoidance::~CollisionAvoidance()
 {
-    for(vector<Box*>::iterator it = boxes_.begin(); it != boxes_.end(); ++it)
-    {
-        delete *it;
-    }
+
 }
 
 bool CollisionAvoidance::initialize(RobotState &robotstate)
 {
     robot_state_ = robotstate;
 
-    ROS_INFO_STREAM("Initializing Obstacle Avoidance, " << end_effector_frame_);
+    ROS_INFO_STREAM("Initializing Obstacle Avoidance, ");
 
     // Get node handle
     ros::NodeHandle n("~");
     std::string ns = ros::this_node::getName();
 
-    pub_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/environment_markers/"+end_effector_frame_, 10);
+    pub_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_avoidance_markers/", 10);
 
-    bool wait_for_transform = listener_.waitForTransform(end_effector_frame_, "/map", ros::Time::now(), ros::Duration(1.0));
-    if (!wait_for_transform) ROS_WARN("Transform between %s and /map is not available", end_effector_frame_.c_str());
-
-    // initialize environment
-    boxes_.push_back(new Box(Eigen::Vector3d(-0.127, 0.730, 0), Eigen::Vector3d(1.151, 1.139, 0.7)));
-    boxes_.push_back(new Box(Eigen::Vector3d( 1.032, -0.942, 0), Eigen::Vector3d(1.590, 0.140, 0.6)));
+    //bool wait_for_transform = listener_.waitForTransform(end_effector_frame_, "/map", ros::Time::now(), ros::Duration(1.0));
+    //if (!wait_for_transform) ROS_WARN("Transform between %s and /map is not available", end_effector_frame_.c_str());
 
     initializeCollisionModel(robotstate);
 
-    ROS_INFO_STREAM("Initialized Obstacle Avoidance" << end_effector_frame_);
+    ROS_INFO_STREAM("Initialized Obstacle Avoidance");
 
     return true;
 }
@@ -57,20 +51,10 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     robot_state_ = robotstate;
     calculateTransform();
 
-    // Check which chain is active
-    if (end_effector_frame_ == "grippoint_left")
-    {
-        end_effector_msg_ = robot_state_.poseGrippointLeft_;
-        chain_ = robot_state_.chain_left_;
-        contactpoint_msg_ = robot_state_.poseGrippointRight_;
-    }
-    else if (end_effector_frame_ == "grippoint_right")
-    {
-        end_effector_msg_ = robot_state_.poseGrippointRight_;
-        chain_ = robot_state_.chain_right_;
-        contactpoint_msg_ = robot_state_.poseGrippointLeft_;
-    }
+    chain_left_ = robot_state_.chain_left_;
+    chain_right_ = robot_state_.chain_right_;
 
+    /*
     // Transform frame to map frame
     tf::poseStampedMsgToTF(end_effector_msg_, tf_end_effector_pose_);
 
@@ -82,87 +66,54 @@ void CollisionAvoidance::apply(RobotState &robotstate)
         ROS_ERROR("CollisionAvoidance: %s", e.what());
         return;
     }
+    */
 
-    // Calculate the wrench as a result of self-collision avoidance
-    Eigen::VectorXd wrench_self_collision(6);
-    wrench_self_collision.setZero();
-    selfCollision(end_effector_msg_, contactpoint_msg_,wrench_self_collision);
-
-    //ROS_INFO("wrench_self_collision = %f, \t%f, \t%f", wrench_self_collision(0), wrench_self_collision(1), wrench_self_collision(2));
-
-
-    // Calculate the wrench as a result of environment collision avoidance
-    Eigen::VectorXd wrench_environment_collision(6);
-    wrench_environment_collision.setZero();
-    environmentCollision(tf_end_effector_pose_MAP_, wrench_environment_collision);
-
-    // Calculate the total wrench
-    Eigen::VectorXd wrench_total(6);
-    wrench_total.setZero();
-    wrench_total = wrench_self_collision + wrench_environment_collision;
-
-
-    // Correct self-collision avoidance vizualization for base orientation
-    geometry_msgs::PoseStamped wrench_self_collision_msg;
-    tf::Stamped<tf::Pose> tf_wrench_self_collision;
-    tf::Stamped<tf::Pose> tf_wrench_self_collision_MAP;
-    Eigen::VectorXd wrench_self_collision_vizualization(6);
-    wrench_self_collision_vizualization.setZero();
-    wrench_self_collision_msg.header.frame_id = end_effector_frame_;
-    wrench_self_collision_msg.pose.position.x = wrench_self_collision(0);
-    wrench_self_collision_msg.pose.position.y = wrench_self_collision(1);
-    wrench_self_collision_msg.pose.position.z = wrench_self_collision(2);
-    double roll = 0;
-    double pitch = 0;
-    double yaw = 0;
-    geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
-    wrench_self_collision_msg.pose.orientation = orientation;
-    tf::poseStampedMsgToTF(wrench_self_collision_msg, tf_wrench_self_collision);
-
-    try
-    {
-        listener_.transformPose("/map", tf_wrench_self_collision, tf_wrench_self_collision_MAP);
-    } catch (tf::TransformException& e)
-    {
-        ROS_ERROR("CartesianImpedance: %s", e.what());
-        return;
-    }
-
-    wrench_self_collision_vizualization(0) = tf_wrench_self_collision_MAP.getOrigin().getX();
-    wrench_self_collision_vizualization(1) = tf_wrench_self_collision_MAP.getOrigin().getY();
-    wrench_self_collision_vizualization(2) = tf_wrench_self_collision_MAP.getOrigin().getZ();
+    // Calculate the wrenches as a result of self-collision avoidance
+    std::vector<Distance> min_distances_total;
+    std::vector<ReactionForce> reaction_forces_total;
+    std::vector<Wrench> wrenches_total;
+    min_distances_total.clear();
+    reaction_forces_total.clear();
+    wrenches_total.clear();
+    selfCollision(min_distances_total, reaction_forces_total);
+    calculateWrenches(reaction_forces_total, wrenches_total);
 
     // Output
-    visualize(tf_end_effector_pose_MAP_, wrench_environment_collision + wrench_self_collision_vizualization); // + (total_force / 10));
-    chain_->addCartesianWrench(end_effector_frame_, wrench_total);
+    visualize(min_distances_total);
+    outputWrenches(wrenches_total);
+
+    /*
+    std::cout << "==============================================" << std::endl;
+    std::cout << "Size Reaction Force Vector = " << reaction_forces_total.size() << std::endl;
+    std::cout << "==============================================" << std::endl;
+    for (std::vector<ReactionForce>::iterator itrRF = reaction_forces_total.begin(); itrRF != reaction_forces_total.end(); ++itrRF)
+    {
+        ReactionForce &RF = *itrRF;
+        std::cout << "----------------------------------------------" << std::endl;
+        std::cout << "Frame ID = " << RF.frame_id << std::endl;
+        std::cout << "point on A = " << RF.pointOnA.getX() << " " << RF.pointOnA.getY() << " " << RF.pointOnA.getZ() << std::endl;
+        std::cout << "Direction of the force on A = " << RF.direction.getX() << " " << RF.direction.getY() << " " << RF.direction.getZ() << std::endl;
+        std::cout << "Amplitude = " << RF.amplitude << std::endl;
+    }
+    */
 }
 
-
-
-void CollisionAvoidance::selfCollision(geometry_msgs::PoseStamped end_effector,geometry_msgs::PoseStamped contactpoint, Eigen::VectorXd& wrench_self_collision)
+void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std::vector<ReactionForce> &reaction_forces)
 {
-    // Transform the poses to the KDL::Frame format
-    KDL::Frame end_effector_kdl_frame;
-    KDL::Frame contactpoint_kdl_frame;
-    Eigen::Vector3d end_effector_RPY;
-    Eigen::Vector3d contactpoint_RPY;
-    stampedPoseToKDLframe(end_effector, end_effector_kdl_frame, end_effector_RPY);
-    stampedPoseToKDLframe(contactpoint, contactpoint_kdl_frame, contactpoint_RPY);
-
+    active_groups_.clear();
     collision_groups_.clear();
-    active_group_.clear();
+
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_.robot_.groups.begin(); itrGroups != robot_state_.robot_.groups.end(); ++itrGroups)
     {
-
         std::vector<RobotState::CollisionBody> &group = *itrGroups;
 
         bool group_check = false;
         for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
         {
-
             RobotState::CollisionBody &collisionBody = *itrBodies;
             //std::cout << collisionBody.bt_shape->getName() << std::endl;
-            if ( collisionBody.fix_pose.header.frame_id == end_effector_frame_)
+            if ( collisionBody.fix_pose.header.frame_id == chain_left_->kdl_chain_.getSegment(chain_left_->kdl_chain_.getNrOfSegments()-1).getName().data()
+                 || collisionBody.fix_pose.header.frame_id == chain_right_->kdl_chain_.getSegment(chain_right_->kdl_chain_.getNrOfSegments()-1).getName().data())
             {
                 group_check = true;
             }
@@ -170,7 +121,7 @@ void CollisionAvoidance::selfCollision(geometry_msgs::PoseStamped end_effector,g
 
         if ( group_check == true )
         {
-            active_group_ = group;
+            active_groups_.push_back(group);
         }
         else if ( group_check == false )
         {
@@ -179,117 +130,99 @@ void CollisionAvoidance::selfCollision(geometry_msgs::PoseStamped end_effector,g
         }
     }
 
-
-    //std::cout << "size active_group_ = " << active_group_.size() << std::endl;
-    distances_.clear();
-    for (std::vector<RobotState::CollisionBody>::iterator itrActiveBodies = active_group_.begin(); itrActiveBodies != active_group_.end(); ++itrActiveBodies)
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrActiveGroup = active_groups_.begin(); itrActiveGroup != active_groups_.end(); ++itrActiveGroup)
     {
-        RobotState::CollisionBody &currentBody = *itrActiveBodies;
-        //std::cout << "size collision_groups_ = " << collision_groups_.size() << std::endl;
-        for (std::vector<std::vector<RobotState::CollisionBody> >::iterator itrCollisionGroup = collision_groups_.begin(); itrCollisionGroup != collision_groups_.end(); ++itrCollisionGroup)
+        std::vector<Distance> distanceCollection;
+        std::vector<RobotState::CollisionBody> &activeGroup = *itrActiveGroup;
+        for (std::vector<RobotState::CollisionBody>::iterator itrActiveBody = activeGroup.begin(); itrActiveBody != activeGroup.end(); ++itrActiveBody)
         {
-            std::vector<RobotState::CollisionBody> &collisionGroup = *itrCollisionGroup;
-            //std::cout << "size collisionGroup = " << collisionGroup.size() << std::endl;
-            for (std::vector<RobotState::CollisionBody>::iterator itrCollisionBodies = collisionGroup.begin(); itrCollisionBodies != collisionGroup.end(); ++itrCollisionBodies)
+            RobotState::CollisionBody &currentBody = *itrActiveBody;
+
+            // Distance check with other active groups
+            for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrActiveGroup = active_groups_.begin(); itrActiveGroup != active_groups_.end(); ++itrActiveGroup)
             {
-                RobotState::CollisionBody &collisionBody = *itrCollisionBodies;
-                RobotState::Distance distance;
-                distance.frame_id = currentBody.fix_pose.header.frame_id;
-                //std::cout << currentBody.bt_shape->getName() << std::endl;
-                //std::cout << "Self-Collision A" << std::endl;
-                //std::cout << *currentBody.bt_shape->getName() << std::endl;
+                std::vector<RobotState::CollisionBody> &checkGroup = *itrActiveGroup;
+                if (checkGroup.front().name_collision_body != activeGroup.front().name_collision_body)
+                {
+                    for (std::vector<RobotState::CollisionBody>::iterator itrCheckBody = checkGroup.begin(); itrCheckBody != checkGroup.end(); ++itrCheckBody)
+                    {
+                        RobotState::CollisionBody &checkBody = *itrCheckBody;
 
+                        // Check for exclusions
+                        bool skip_check = false;
+                        for (std::vector<RobotState::Exclusion> ::iterator itrExcl = robot_state_.exclusion_checks.checks.begin(); itrExcl != robot_state_.exclusion_checks.checks.end(); ++itrExcl)
+                        {
+                            RobotState::Exclusion &excluded_bodies = *itrExcl;
+                            if ( currentBody.fix_pose.header.frame_id == excluded_bodies.frame_id_A
+                                 && checkBody.fix_pose.header.frame_id == excluded_bodies.frame_id_B )
+                            {
+                                skip_check = true;
+                            }
+                        }
 
-                //ThreadProfiler::Start("DistanceCalc");
-                distanceCalculation(*currentBody.bt_shape,*collisionBody.bt_shape,currentBody.bt_transform,collisionBody.bt_transform,distance.bt_distance);
-                distances_.push_back(distance);
-                //ThreadProfiler::Stop("DistanceCalc");
-
-                //bulletTest();
-
-                /*
-                std::cout << "frame_id = " << distance.frame_id << std::endl;
-                std::cout << "distance = " << distance.bt_distance.m_distance << std::endl;
-                std::cout << "point on B = " << distance.bt_distance.m_pointInWorld.getX() << " " << distance.bt_distance.m_pointInWorld.getY() << " " << distance.bt_distance.m_pointInWorld.getZ() << std::endl;
-                std::cout << "normal on B = " << distance.bt_distance.m_normalOnBInWorld.getX() << " " << distance.bt_distance.m_normalOnBInWorld.getY() << " " << distance.bt_distance.m_normalOnBInWorld.getZ() << std::endl;
-                */
+                        if (skip_check == false)
+                        {
+                            Distance distance;
+                            distance.frame_id = currentBody.fix_pose.header.frame_id;
+                            //ThreadProfiler::Start("DistanceCalc");
+                            distanceCalculation(*currentBody.bt_shape,*checkBody.bt_shape,currentBody.bt_transform,checkBody.bt_transform,distance.bt_distance);
+                            distanceCollection.push_back(distance);
+                            //ThreadProfiler::Stop("DistanceCalc");
+                        }
+                    }
+                }
             }
-        }
-    }
 
 
-    // Calculate the difference between the two frames
-    Eigen::Vector3d diff;
-    diff.setZero();
-    KDL::Twist diff_fk = KDL::diff(contactpoint_kdl_frame, end_effector_kdl_frame, Ts_);
-    diff(0) = diff_fk.vel.x();
-    diff(1) = diff_fk.vel.y();
-    diff(2) = diff_fk.vel.z();
-
-    //ROS_INFO("error pose = %f,\t%f,\t%f", diff_fk.vel.x(), diff_fk.vel.y(), diff_fk.vel.z());
-    double threshold_self_collision = 10; // in centimeters
-    double distance = diff.norm();
-    Eigen::Vector3d diff_normalized = diff / distance;
-    double weight = 0;
-    if (distance < threshold_self_collision) {
-        weight = (1 - (distance / threshold_self_collision)) * 100;
-    }
-    for(unsigned int i = 0; i < 3; i++) {
-        wrench_self_collision(i) +=  diff_normalized(i) * weight;
-    }
-    //ROS_INFO("distance = %f", distance);
-
-}
-
-void CollisionAvoidance::environmentCollision(tf::Stamped<tf::Pose>& tf_end_effector_pose_MAP, Eigen::VectorXd& wrench_out)
-{
-
-    Eigen::Vector3d wrench;
-    wrench.setZero();
-    Eigen::Vector3d end_effector_pos(tf_end_effector_pose_MAP.getOrigin().getX(),
-                                     tf_end_effector_pose_MAP.getOrigin().getY(),
-                                     tf_end_effector_pose_MAP.getOrigin().getZ());
-
-
-    double threshold_environment_collision = 0.1; // in meters
-    for(vector<Box*>::iterator it = boxes_.begin(); it != boxes_.end(); ++it)
-    {
-        const Box& box = **it;
-
-        bool inside_obstacle = true;
-        Eigen::Vector3d diff;
-        for(unsigned int i = 0; i < 3; ++i)
-        {
-            if (end_effector_pos[i] < box.min_[i]) {
-                diff[i] = end_effector_pos[i] - box.min_[i];
-                inside_obstacle = false;
-            } else if (end_effector_pos[i] > box.max_[i]) {
-                diff[i] = end_effector_pos[i] - box.max_[i];
-                inside_obstacle = false;
-            } else {
-                diff[i] = 0;
-            }
-        }
-
-        if (inside_obstacle) {
-            ROS_ERROR("Inside obstacle!");
-        } else {
-            double distance = diff.norm();
-            Eigen::Vector3d diff_normalized = diff / distance;
-            double weight = 0;
-            if (distance < threshold_environment_collision)
+            // Distance check with collision groups
+            for (std::vector<std::vector<RobotState::CollisionBody> >::iterator itrCollisionGroup = collision_groups_.begin(); itrCollisionGroup != collision_groups_.end(); ++itrCollisionGroup)
             {
-                weight = (1 - (distance / threshold_environment_collision)) * 100;
-            }
-            for(unsigned int i = 0; i < 3; i++) {
-                wrench(i) +=  diff_normalized(i) * weight;
-            }
+                std::vector<RobotState::CollisionBody> &collisionGroup = *itrCollisionGroup;
+                //std::cout << "size collisionGroup = " << collisionGroup.size() << std::endl;
+                for (std::vector<RobotState::CollisionBody>::iterator itrCollisionBodies = collisionGroup.begin(); itrCollisionBodies != collisionGroup.end(); ++itrCollisionBodies)
+                {
+                    RobotState::CollisionBody &collisionBody = *itrCollisionBodies;
 
+                    // Check for exclusions
+                    bool skip_check = false;
+                    for (std::vector<RobotState::Exclusion> ::iterator itrExcl = robot_state_.exclusion_checks.checks.begin(); itrExcl != robot_state_.exclusion_checks.checks.end(); ++itrExcl)
+                    {
+                        RobotState::Exclusion &excluded_bodies = *itrExcl;
+                        if ( currentBody.fix_pose.header.frame_id == excluded_bodies.frame_id_A
+                             && collisionBody.fix_pose.header.frame_id == excluded_bodies.frame_id_B )
+                        {
+                            skip_check = true;
+                        }
+                    }
+
+                    if (skip_check == false)
+                    {
+                        Distance distance;
+                        distance.frame_id = currentBody.fix_pose.header.frame_id;
+                        //ThreadProfiler::Start("DistanceCalc");
+                        distanceCalculation(*currentBody.bt_shape,*collisionBody.bt_shape,currentBody.bt_transform,collisionBody.bt_transform,distance.bt_distance);
+                        distanceCollection.push_back(distance);
+                        //ThreadProfiler::Stop("DistanceCalc");
+
+
+                        if (distance.bt_distance.m_distance < 0)
+                        {
+                            /*
+                            std::cout << "COLLISION" << std::endl;
+                            std::cout << "Frame A:" << currentBody.name_collision_body << std::endl;
+                            std::cout << "Frame B:" << collisionBody.name_collision_body << std::endl;
+                            std::cout << "Distance:" << distance.bt_distance.m_distance << std::endl;
+                            */
+                        }
+                    }
+                }
+            }
+            // Find minimum distance
+            pickMinimumDistance(distanceCollection,min_distances);
         }
     }
-
-    transformWench(end_effector_msg_, wrench, wrench_out);
-
+    // Calculate the reaction forces
+    calculateReactionForce(min_distances,reaction_forces);
 }
 
 void CollisionAvoidance::getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY)
@@ -303,109 +236,68 @@ void CollisionAvoidance::getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vec
     RPY(2) = yaw;
 }
 
-void CollisionAvoidance::transformWench(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& wrench_in, Eigen::VectorXd &wrench_out)
+void CollisionAvoidance::calculateWrenches(std::vector<ReactionForce> &reaction_forces, std::vector<Wrench> &wrenches_out)
 {
-    Eigen::Vector3d RPY;
-    RPY.setZero();
-    getposeRPY(pose,RPY);
-
-    tf::Transform transform;
-    transform.setOrigin(tf::Vector3(wrench_in[0], wrench_in[1], wrench_in[2]));
-
-    tf::Quaternion Q;
-    Q.setRPY(RPY(0),RPY(1),RPY(2));
-    transform.setRotation(Q);
-
-    wrench_out[0] = transform.getOrigin().x();
-    wrench_out[1] = transform.getOrigin().y();
-    wrench_out[2] = transform.getOrigin().z();
-}
-
-void CollisionAvoidance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame, Eigen::Vector3d& RPY)
-{
-    if (pose.header.frame_id != "/base_link") ROS_WARN("FK computation can now only cope with base_link as input frame");
-
-    // Position
-    frame.p.x(pose.pose.position.x);
-    frame.p.y(pose.pose.position.y);
-    frame.p.z(pose.pose.position.z);
-
-    getposeRPY(pose, RPY);
-}
-
-void CollisionAvoidance::visualize(const tf::Stamped<tf::Pose>& tf_end_effector_pose_MAP, const Eigen::VectorXd& wrench) const
-{
-    Eigen::Vector3d end_effector_pos(tf_end_effector_pose_MAP.getOrigin().getX(),
-                                     tf_end_effector_pose_MAP.getOrigin().getY(),
-                                     tf_end_effector_pose_MAP.getOrigin().getZ());
-
-    Eigen::Vector3d marker_pos;
-    for(unsigned int i = 0; i < 3; ++i) {
-        marker_pos(i) = end_effector_pos(i) + wrench(i) / 100;
-    }
-
-    visualization_msgs::MarkerArray marker_array;
-
-    int id = 0;
-    for(vector<Box*>::const_iterator it = boxes_.begin(); it != boxes_.end(); ++it)
+    for (std::vector<ReactionForce>::iterator itrRF = reaction_forces.begin(); itrRF != reaction_forces.end(); ++itrRF)
     {
-        const Box& box = **it;
+        ReactionForce &RF = *itrRF;
+        Wrench W;
+        geometry_msgs::PoseStamped p0;
+        Eigen::VectorXd wrench_calc(6);
+        wrench_calc.setZero();
+        double dpx, dpy, dpz, fx, fy, fz;
 
-        visualization_msgs::Marker marker;
-        marker.type = visualization_msgs::Marker::CUBE;
-        marker.header.frame_id = "/map";
-        marker.header.stamp = ros::Time::now();
-        marker.id = id++;
+        /*
+        std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robot_state_.fk_poses_.find(RF.frame_id);
+        std::pair<std::string, geometry_msgs::PoseStamped> FK = *itrFK;
+        geometry_msgs::PoseStamped p0 = FK.second;
+        */
 
-        marker.scale.x = (box.max_[0] - box.min_[0]);
-        marker.scale.y = (box.max_[1] - box.min_[1]);
-        marker.scale.z = (box.max_[2] - box.min_[2]);
+        for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_.robot_.groups.begin(); itrGroups != robot_state_.robot_.groups.end(); ++itrGroups)
+        {
+            std::vector<RobotState::CollisionBody> &group = *itrGroups;
+            for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
+            {
+                RobotState::CollisionBody &collisionBody = *itrBodies;
+                if (collisionBody.fix_pose.header.frame_id == RF.frame_id )
+                {
+                    p0 = collisionBody.fk_pose;
+                }
+            }
+        }
 
-        marker.pose.position.x = box.min_[0] + marker.scale.x / 2;
-        marker.pose.position.y = box.min_[1] + marker.scale.y / 2;
-        marker.pose.position.z = box.min_[2] + marker.scale.z / 2;
-        marker.pose.orientation.x = 0;
-        marker.pose.orientation.y = 0;
-        marker.pose.orientation.z = 0;
-        marker.pose.orientation.w = 1;
 
-        marker.color.a = 1;
-        marker.color.r = 1;
-        marker.color.g = 1;
-        marker.color.b = 1;
+        dpx = RF.pointOnA.getX() - p0.pose.position.x;
+        dpy = RF.pointOnA.getY() - p0.pose.position.y;
+        dpz = RF.pointOnA.getZ() - p0.pose.position.z;
 
-        //marker_array.markers.push_back(marker);
+        fx = RF.amplitude*RF.direction.getX();
+        fy = RF.amplitude*RF.direction.getY();
+        fz = RF.amplitude*RF.direction.getZ();
+
+        wrench_calc[0] = fx;
+        wrench_calc[1] = fy;
+        wrench_calc[2] = fz;
+        wrench_calc[3] = fz*dpy - fy*dpz;
+        wrench_calc[4] = fx*dpz - fz*dpx;
+        wrench_calc[5] = fy*dpx - fx*dpy;
+
+        W.frame_id = RF.frame_id;
+        W.wrench = wrench_calc;
+
+        wrenches_out.push_back(W);
+
+        std::cout << "----------------------------------------------" << std::endl;
+        std::cout << "Frame ID = " << W.frame_id << std::endl;
+        std::cout << "dp = " << dpx << " " << dpy << " " << dpz << std::endl;
+        std::cout << "f = " << W.wrench[0] << " " << W.wrench[1] << " " << W.wrench[2] << std::endl;
+        std::cout << "T = " << W.wrench[3] << " " << W.wrench[4] << " " << W.wrench[5] << std::endl;
     }
+}
 
-
-    visualization_msgs::Marker dir;
-    dir.type = visualization_msgs::Marker::SPHERE;
-    dir.header.frame_id = "/map";
-    dir.header.stamp = ros::Time::now();
-    dir.id = id++;
-
-    dir.scale.x = 0.1;
-    dir.scale.y = 0.1;
-    dir.scale.z = 0.1;
-
-    dir.pose.position.x = marker_pos[0];
-    dir.pose.position.y = marker_pos[1];
-    dir.pose.position.z = marker_pos[2];
-    dir.pose.orientation.x = 0;
-    dir.pose.orientation.y = 0;
-    dir.pose.orientation.z = 0;
-    dir.pose.orientation.w = 1;
-
-    dir.color.a = 1;
-    dir.color.r = 1;
-    dir.color.g = 0;
-    dir.color.b = 0;
-
-    marker_array.markers.push_back(dir);
-
-    //pub_marker_.publish(marker_array);
-
-
+void CollisionAvoidance::visualize(std::vector<Distance> &min_distances) const
+{
+    int id = 0;
     for (std::vector< std::vector<RobotState::CollisionBody> >::const_iterator itrGroups = robot_state_.robot_.groups.begin(); itrGroups != robot_state_.robot_.groups.end(); ++itrGroups)
     {
         std::vector<RobotState::CollisionBody> group = *itrGroups;
@@ -414,6 +306,12 @@ void CollisionAvoidance::visualize(const tf::Stamped<tf::Pose>& tf_end_effector_
             RobotState::CollisionBody &collisionBody = *itrsBodies;
             visualizeCollisionModel(collisionBody,id++);
         }
+    }
+
+    for (std::vector<Distance>::const_iterator itrdmin = min_distances.begin(); itrdmin != min_distances.end(); ++itrdmin)
+    {
+        Distance dmin = *itrdmin;
+        visualizeReactionForce(dmin,id++);
     }
 }
 
@@ -440,7 +338,7 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
             }
             else if (type == "Cone")
             {
-                collisionBody.bt_shape = new btConeShapeZ(x,z);
+                collisionBody.bt_shape = new btConeShapeZ(x-0.05,z);
             }
             else if (type == "CylinderY")
             {
@@ -468,12 +366,25 @@ void CollisionAvoidance::calculateTransform()
     }
 }
 
-
 void CollisionAvoidance::setTransform(btTransform& transform_out, geometry_msgs::PoseStamped& fkPose, geometry_msgs::PoseStamped& fixPose)
 {
     //cout << "FKPOSE: x = " << fkPose.pose.position.x << "y = " << fkPose.pose.position.y << "z = " << fkPose.pose.position.z << endl;
     btTransform fkTransform;
     btTransform fixTransform;
+
+    // Get FK solution
+    std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robot_state_.fk_poses_.find(fixPose.header.frame_id);
+    std::pair<std::string, geometry_msgs::PoseStamped> FK = *itrFK;
+    geometry_msgs::PoseStamped p = FK.second;
+    /*
+    fkTransform.setOrigin(btVector3(p.pose.position.x,
+                                    p.pose.position.y,
+                                    p.pose.position.z));
+    fkTransform.setRotation(btQuaternion(p.pose.orientation.x,
+                                         p.pose.orientation.y,
+                                         p.pose.orientation.z,
+                                         p.pose.orientation.w));
+    */
     fkTransform.setOrigin(btVector3(fkPose.pose.position.x,
                                     fkPose.pose.position.y,
                                     fkPose.pose.position.z));
@@ -490,18 +401,20 @@ void CollisionAvoidance::setTransform(btTransform& transform_out, geometry_msgs:
                                           fixPose.pose.orientation.z,
                                           fixPose.pose.orientation.w));
 
-    /*
-    std::cout << "frame_id = " << fixPose.header.frame_id << std::endl;
-    std::cout << "x = " << fixPose.pose.position.x << std::endl;
-    std::cout << "y = " << fixPose.pose.position.y << std::endl;
-    std::cout << "z = " << fixPose.pose.position.z << std::endl;
-    std::cout << "X = " << fixPose.pose.orientation.x << std::endl;
-    std::cout << "Y = " << fixPose.pose.orientation.y << std::endl;
-    std::cout << "Z = " << fixPose.pose.orientation.z << std::endl;
-    std::cout << "W = " << fixPose.pose.orientation.w << std::endl;
-    */
-
     transform_out.mult(fkTransform,fixTransform);
+
+    /*
+    std::cout << "--------------------------------------" << std::endl;
+    std::cout << "frame_id = " << fixPose.header.frame_id << std::endl;
+    std::cout << "frame_id = " << p.header.frame_id << std::endl;
+    std::cout << "dx = " << fkPose.pose.position.x - p.pose.position.x << std::endl;
+    std::cout << "dy = " << fkPose.pose.position.y - p.pose.position.y << std::endl;
+    std::cout << "dz = " << fkPose.pose.position.z - p.pose.position.z << std::endl;
+    std::cout << "dX = " << fkPose.pose.orientation.x - p.pose.orientation.x << std::endl;
+    std::cout << "dY = " << fkPose.pose.orientation.y - p.pose.orientation.y << std::endl;
+    std::cout << "dZ = " << fkPose.pose.orientation.z - p.pose.orientation.z << std::endl;
+    std::cout << "dW = " << fkPose.pose.orientation.w - p.pose.orientation.w << std::endl;
+    */
 }
 
 
@@ -553,8 +466,8 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         modelviz.color.a = 0.5;
         modelviz.color.r = 0;
-        modelviz.color.g = 1;
-        modelviz.color.b = 0;
+        modelviz.color.g = 0;
+        modelviz.color.b = 1;
 
         marker_array.markers.push_back(modelviz);
 
@@ -582,8 +495,8 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         modelviz.color.a = 0.5;
         modelviz.color.r = 0;
-        modelviz.color.g = 1;
-        modelviz.color.b = 0;
+        modelviz.color.g = 0;
+        modelviz.color.b = 1;
 
         marker_array.markers.push_back(modelviz);
 
@@ -618,8 +531,8 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         modelviz.color.a = 0.5;
         modelviz.color.r = 0;
-        modelviz.color.g = 1;
-        modelviz.color.b = 0;
+        modelviz.color.g = 0;
+        modelviz.color.b = 1;
 
         marker_array.markers.push_back(modelviz);
 
@@ -647,8 +560,8 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         modelviz.color.a = 0.5;
         modelviz.color.r = 0;
-        modelviz.color.g = 1;
-        modelviz.color.b = 0;
+        modelviz.color.g = 0;
+        modelviz.color.b = 1;
 
         marker_array.markers.push_back(modelviz);
 
@@ -663,9 +576,9 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
         modelviz.mesh_resource = "package://amigo_whole_body_controller/data/cone.dae";
         modelviz.id = id;
 
-        modelviz.scale.x = 2*x;
-        modelviz.scale.y = z;
-        modelviz.scale.z = 2*y;
+        modelviz.scale.x = 2.3*x;
+        modelviz.scale.y = 1.5*z;
+        modelviz.scale.z = 2.3*y;
 
         btTransform rotXfromZtoY;
         btTransform fromZto;
@@ -683,8 +596,8 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         modelviz.color.a = 0.5;
         modelviz.color.r = 0;
-        modelviz.color.g = 1;
-        modelviz.color.b = 0;
+        modelviz.color.g = 0;
+        modelviz.color.b = 1;
 
         marker_array.markers.push_back(modelviz);
 
@@ -694,8 +607,9 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
 void CollisionAvoidance::bulletTest()
 {
-    btConvexShape* A = new btSphereShape(0.0000000001);
-    btConvexShape* B = new btCylinderShape(btVector3(1,2,1));
+    btConvexShape* A = new btSphereShape(1);
+    btConvexShape* B = new btSphereShape(1);
+    //btConvexShape* B = new btConeShapeZ(5-.04,1);
     btTransform At;
     btTransform Bt;
     btPointCollector d;
@@ -703,7 +617,7 @@ void CollisionAvoidance::bulletTest()
     At.setOrigin(btVector3(0,0,0));
     At.setRotation(btQuaternion(0,0,0,1));
 
-    Bt.setOrigin(btVector3(0,10,0));
+    Bt.setOrigin(btVector3(2,0,0));
     Bt.setRotation(btQuaternion(0,0,0,1));
 
     distanceCalculation(*A,*B,At,Bt,d);
@@ -711,5 +625,118 @@ void CollisionAvoidance::bulletTest()
     std::cout << "distance = " << d.m_distance << std::endl;
     std::cout << "point on B = " << d.m_pointInWorld.getX() << " " << d.m_pointInWorld.getY() << " " << d.m_pointInWorld.getZ() << std::endl;
     std::cout << "normal on B = " << d.m_normalOnBInWorld.getX() << " " << d.m_normalOnBInWorld.getY() << " " << d.m_normalOnBInWorld.getZ() << std::endl;
+
+}
+
+void CollisionAvoidance::pickMinimumDistance(std::vector<Distance> &calculatedDistances, std::vector<Distance> &minimumDistances)
+{
+    Distance dmin;
+    dmin.bt_distance.m_distance = 10000.0;
+    for (std::vector<Distance>::iterator itrDistance = calculatedDistances.begin(); itrDistance != calculatedDistances.end(); ++itrDistance)
+    {
+        Distance &distance = *itrDistance;
+        if ( distance.bt_distance.m_distance < dmin.bt_distance.m_distance )
+        {
+            dmin = distance;
+        }
+    }
+
+    // Store all minimum distances;
+    minimumDistances.push_back(dmin);
+}
+
+void CollisionAvoidance::calculateReactionForce(std::vector<Distance> &minimumDistances, std::vector<ReactionForce> &reactionForces)
+{
+    ReactionForce F;
+    for (std::vector<Distance>::iterator itrMinDist = minimumDistances.begin(); itrMinDist != minimumDistances.end(); ++itrMinDist)
+    {
+        Distance &dmin = *itrMinDist;
+        if (dmin.bt_distance.m_distance <= ca_param_.self_collision.d_threshold )
+        {
+            F.frame_id = dmin.frame_id;
+            F.direction = dmin.bt_distance.m_normalOnBInWorld;
+            F.pointOnA = dmin.bt_distance.m_pointInWorld + dmin.bt_distance.m_distance * dmin.bt_distance.m_normalOnBInWorld;
+            F.amplitude = ca_param_.self_collision.f_max / pow(ca_param_.self_collision.d_threshold,ca_param_.self_collision.order) * pow((ca_param_.self_collision.d_threshold - dmin.bt_distance.m_distance),ca_param_.self_collision.order) ;
+
+            // Store all minimum distances;
+            reactionForces.push_back(F);
+        }
+    }
+}
+
+void CollisionAvoidance::outputWrenches(std::vector<Wrench> &wrenches)
+{
+    for (std::vector<Wrench>::iterator itrW = wrenches.begin(); itrW != wrenches.end(); ++itrW)
+    {
+        Wrench W = *itrW;
+        if (chain_left_->hasLink(W.frame_id))
+        {
+            chain_left_->addCartesianWrench(W.frame_id,W.wrench);
+        }
+        else
+        {
+            chain_right_->addCartesianWrench(W.frame_id,W.wrench);
+        }
+
+        /*
+        for (std::vector<Chain*>::iterator itrChain = robot_state_.chains_.begin(); itrChain != robot_state_.chains_.end(); ++itrChain)
+        {
+            Chain* chain = *itrChain;
+
+            if (chain->hasLink(W.frame_id))
+            {
+                chain->addCartesianWrench(W.frame_id,W.wrench);
+                //std::cout << "chain has link " << W.frame_id << ", wrench is added" << std::endl;
+                break;
+            }
+        }
+        */
+
+    }
+}
+
+void CollisionAvoidance::visualizeReactionForce(Distance &d_min,int id) const
+{
+    visualization_msgs::MarkerArray marker_array;
+    visualization_msgs::Marker RFviz;
+    geometry_msgs::Point pA;
+    geometry_msgs::Point pB;
+
+    RFviz.type = visualization_msgs::Marker::ARROW;
+    RFviz.header.frame_id = "/base_link";
+    RFviz.header.stamp = ros::Time::now();
+    RFviz.id = id++;
+
+    RFviz.scale.x = 0.02;
+    RFviz.scale.y = 0.04;
+    RFviz.scale.z = 0.04;
+
+    pA.x = d_min.bt_distance.m_pointInWorld.getX();
+    pA.y = d_min.bt_distance.m_pointInWorld.getY();
+    pA.z = d_min.bt_distance.m_pointInWorld.getZ();
+    RFviz.points.push_back(pA);
+
+    pB.x = d_min.bt_distance.m_pointInWorld.getX() + d_min.bt_distance.m_distance * d_min.bt_distance.m_normalOnBInWorld.getX();
+    pB.y = d_min.bt_distance.m_pointInWorld.getY() + d_min.bt_distance.m_distance * d_min.bt_distance.m_normalOnBInWorld.getY();
+    pB.z = d_min.bt_distance.m_pointInWorld.getZ() + d_min.bt_distance.m_distance * d_min.bt_distance.m_normalOnBInWorld.getZ();
+    RFviz.points.push_back(pB);
+
+    if (d_min.bt_distance.m_distance <= ca_param_.self_collision.d_threshold )
+    {     RFviz.color.a = 1;
+        RFviz.color.r = 1;
+        RFviz.color.g = 0;
+        RFviz.color.b = 0;
+    }
+    else if (d_min.bt_distance.m_distance > ca_param_.self_collision.d_threshold )
+    {
+        RFviz.color.a = 1;
+        RFviz.color.r = 0;
+        RFviz.color.g = 1;
+        RFviz.color.b = 0;
+    }
+
+    marker_array.markers.push_back(RFviz);
+
+    pub_marker_.publish(marker_array);
 
 }

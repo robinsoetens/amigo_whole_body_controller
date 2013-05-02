@@ -7,12 +7,17 @@
 #ifndef ROBOTSTATE_H
 #define ROBOTSTATE_H
 
+#include <map>
+#include "Chain.h"
+#include <XmlRpc.h>
+
 // Messages
 #include <geometry_msgs/PoseStamped.h>
 
 // KDL
-#include "Chain.h"
-#include <XmlRpc.h>
+#include <kdl/chain.hpp>
+#include <kdl/chainfksolverpos_recursive.hpp>
+#include <kdl/frames.hpp>
 
 // Bullet
 #include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
@@ -29,6 +34,8 @@ public:
 
     //Destructor
     virtual ~RobotState();
+
+    std::map<std::string, geometry_msgs::PoseStamped> fk_poses_;
 
     // Collision Model
     struct CollisionBody
@@ -78,30 +85,31 @@ public:
             fix_pose.pose.orientation.y = orientation["y"];
             fix_pose.pose.orientation.z = orientation["z"];
             fix_pose.pose.orientation.w = orientation["w"];
-
-            /*
-            std::cout << "name = " << name_collision_body << std::endl;
-            std::cout << "frame_id = " << fix_pose.header.frame_id << std::endl;
-            std::cout << "x = " << fix_pose.pose.position.x << std::endl;
-            std::cout << "y = " << fix_pose.pose.position.y << std::endl;
-            std::cout << "z = " << fix_pose.pose.position.z << std::endl;
-            std::cout << "X = " << fix_pose.pose.orientation.x << std::endl;
-            std::cout << "Y = " << fix_pose.pose.orientation.y << std::endl;
-            std::cout << "Z = " << fix_pose.pose.orientation.z << std::endl;
-            std::cout << "W = " << fix_pose.pose.orientation.w << std::endl;
-            */
         }
     } collision_body;
 
-    struct Robot {
+    struct Exclusion
+    {
+        std::string frame_id_A;
+        std::string frame_id_B;
+
+        void fromXmlRpc(XmlRpc::XmlRpcValue& value)
+        {
+            frame_id_A = static_cast<std::string>(value["FrameIdBodyA"]);
+            frame_id_B = static_cast<std::string>(value["FrameIdBodyB"]);
+        }
+
+    } exclusion;
+
+    struct Robot
+    {
         std::vector< std::vector<CollisionBody> > groups;
     } robot_;
 
-
-    struct Distance {
-        std::string frame_id;
-        btPointCollector bt_distance;
-    };
+    struct ExclusionChecks
+    {
+        std::vector<Exclusion> checks;
+    } exclusion_checks;
 
 
     geometry_msgs::PoseStamped poseGrippointLeft_;
@@ -109,6 +117,43 @@ public:
 
     Chain* chain_left_;
     Chain* chain_right_;
+    std::vector<Chain*> chains_;
+
+    /**
+      * Forward Kinematics Solver
+      */
+    std::vector<KDL::ChainFkSolverPos_recursive*> fk_solvers;
+    KDL::ChainFkSolverPos_recursive* fk_solver_left;
+    KDL::ChainFkSolverPos_recursive* fk_solver_right;
+
+    /**
+      * Store all FK solutions in a map
+      */
+    void collectFKSolutions(std::vector<Chain*> &chains, std::map<std::string, geometry_msgs::PoseStamped> &fk_poses);
+
+    /**
+      * computeForwardKinematics
+      */
+    void computeForwardKinematics(KDL::Frame &FK_end_effector_pose, const std::string &chain_side, int segmentNr, RobotState &robot_state);
+
+    /**
+     * Create the forward kinematics solvers for both chains
+     */
+    void separateChains(const std::vector<Chain *> &chains, RobotState &robot_state);
+
+    /**
+      * Returns the current FK solution
+      *
+      */
+    void getFKsolution(KDL::Frame& FK_pose, geometry_msgs::PoseStamped &pose);
+
+    /**
+      * Function returns the positions of the end-effectors
+      */
+    void getFK(std::vector<geometry_msgs::PoseStamped>& poses);
+
+
+    int getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment_name) ;
 
 };
 

@@ -155,8 +155,6 @@ void CartesianImpedance::apply(RobotState &robotstate) {
         status_ = 1;
         ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
     }
-
-
 }
 
 

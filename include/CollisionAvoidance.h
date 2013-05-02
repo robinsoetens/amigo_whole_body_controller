@@ -17,6 +17,8 @@
 #include <Eigen/Core>
 
 #include "MotionObjective.h"
+#include "ChainParser.h"
+#include "Chain.h"
 
 // Bullet GJK Closest Point calculation
 #include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
@@ -43,14 +45,25 @@ class CollisionAvoidance : public MotionObjective {
         Eigen::Vector3d max_;
     };
 
+
 public:
+
+    struct collisionAvoidanceParameters
+    {
+        struct selfCollision
+        {
+            double f_max;
+            double d_threshold;
+            double order;
+        } self_collision;
+    } ca_param_;
 
     //ToDo: make configure, start- and stophook. Components can be started/stopped in an actionlib kind of fashion
 
     /**
      * Constructor
      */
-    CollisionAvoidance(const double Ts, const std::string& end_effector_frame, tf::TransformListener* tf_listener);
+    CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts, tf::TransformListener* tf_listener);
 
     /**
      * Deconstructor
@@ -66,45 +79,45 @@ public:
 
     void apply(RobotState& robotstate);
 
-    void visualize(const tf::Stamped<tf::Pose> &tf_end_effector_pose_MAP, const Eigen::VectorXd& wrench) const;
-
-    void visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id)  const;
-    //! for spheres length, width and height are equal to the radius
-    //! for cylinders length and width are equal to the radius
-
 protected:
 
     //! Sampling time
     double Ts_;
 
-    Chain* chain_;
+    Chain* chain_left_;
+    Chain* chain_right_;
 
     RobotState robot_state_;
 
-    std::string end_effector_frame_;
-
     tf::TransformListener& listener_;
-
-    std::vector<Box*> boxes_;
 
     ros::Publisher pub_marker_;
 
-    geometry_msgs::PoseStamped end_effector_msg_;
-    tf::Stamped<tf::Pose> tf_end_effector_pose_;
-    tf::Stamped<tf::Pose> tf_end_effector_pose_MAP_;
+    std::vector< std::vector<RobotState::CollisionBody> > active_groups_;
+    std::vector< std::vector<RobotState::CollisionBody> > collision_groups_;
 
-    geometry_msgs::PoseStamped contactpoint_msg_;
+    struct Distance {
+        std::string frame_id;
+        btPointCollector bt_distance;
+    } ;
+
+    struct ReactionForce {
+        std::string frame_id;
+        btVector3 pointOnA;
+        btVector3 direction;
+        btScalar amplitude;
+    } ;
+
+    struct Wrench {
+        std::string frame_id;
+        Eigen::VectorXd wrench;
+    } ;
 
     void getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY);
 
-    void transformWench(geometry_msgs::PoseStamped& pose, Eigen::Vector3d &wrench_in, Eigen::VectorXd& wrench_out);
+    void calculateWrenches(std::vector<ReactionForce> &reaction_forces, std::vector<Wrench> &wrenches_out);
 
-    void stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame, Eigen::Vector3d& RPY);
-
-    void selfCollision(geometry_msgs::PoseStamped end_effector,geometry_msgs::PoseStamped contactpoint, Eigen::VectorXd& wrench_self_collision);
-
-    void environmentCollision(tf::Stamped<tf::Pose>& tf_end_effector_pose_MAP, Eigen::VectorXd& wrench_out);
-
+    void selfCollision(std::vector<Distance> &min_distances, std::vector<ReactionForce> &reaction_forces);
 
     void initializeCollisionModel(RobotState &robotstate);
 
@@ -114,13 +127,19 @@ protected:
 
     void distanceCalculation(btConvexShape &shapeA, btConvexShape &shapeB, btTransform& transformA, btTransform& transformB, btPointCollector& distance_out);
 
+    void pickMinimumDistance(std::vector<Distance> &calculatedDistances, std::vector<Distance> &minimumDistances);
+
+    void calculateReactionForce(std::vector<Distance> &minimumDistances, std::vector<ReactionForce> &reactionForces);
+
     void bulletTest();
 
-    std::vector<RobotState::CollisionBody>  active_group_;
-    std::vector< std::vector<RobotState::CollisionBody> > collision_groups_;
+    void outputWrenches(std::vector<Wrench> &wrenches);
 
-    std::vector<RobotState::Distance> distances_;
+    void visualize(std::vector<Distance> &min_distances) const;
 
+    void visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id)  const;
+
+    void visualizeReactionForce(Distance &d_min, int id) const;
 };
 
 #endif

@@ -30,11 +30,6 @@
 // Vector
 #include <vector>
 
-// KDL
-#include <kdl/chain.hpp>
-#include <kdl/chainfksolverpos_recursive.hpp>
-#include <kdl/frames.hpp>
-
 class WholeBodyController {
 
 public:
@@ -42,7 +37,7 @@ public:
     /**
      * Constructor
      */
-    WholeBodyController(const double Ts);
+    WholeBodyController(const double Ts, RobotState robot_state);
 
     /**
      * Deconstructor
@@ -61,17 +56,6 @@ public:
     const std::vector<std::string>& getJointNames() const;
 
     bool addMotionObjective(MotionObjective* motionobjective);
-
-    /**
-      * Returns the current FK solution
-      *
-      */
-    void getFKsolution(KDL::Frame& FK_pose, geometry_msgs::PoseStamped &pose);
-
-    /**
-      * Function returns the positions of the end-effectors
-      */
-    void getFK(std::vector<geometry_msgs::PoseStamped>& poses);
 
     /**
       * Returns the current "cost", i.e., the absolute value of the torque of every single plugin
@@ -152,32 +136,10 @@ protected:
     void publishReferences();
 
     /**
-      * computeForwardKinematics
-      */
-    void computeForwardKinematics(KDL::Frame &FK_end_effector_pose, const std::string &chain_side, int segmentNr);
-
-    /**
-      * Forward Kinematics Solver
-      */
-    KDL::ChainFkSolverPos_recursive* fk_solver;
-    KDL::ChainFkSolverPos_recursive* fk_solver_left;
-    KDL::ChainFkSolverPos_recursive* fk_solver_right;
-
-    /**
       * End-effector pose based on forward kinematics computation
       */
     KDL::Frame end_effector_pose_;
     KDL::Frame FK_end_effector_pose_;
-
-    /**
-     * Create the forward kinematics solvers for both chains
-     */
-    void createFKsolvers(const std::vector<Chain *> &chains);
-
-
-    int getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment_name) ;
-
-
 
 };
 

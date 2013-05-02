@@ -4,7 +4,8 @@
 
 using namespace std;
 
-WholeBodyController::WholeBodyController(const double Ts)
+WholeBodyController::WholeBodyController(const double Ts, RobotState robot_state)
+    : robot_state_(robot_state)
 {
     initialize(Ts);
 }
@@ -24,7 +25,7 @@ bool WholeBodyController::initialize(const double Ts)
     // ToDo: Parameterize
     Ts_ = Ts;
 
-    ChainParser::parse(chains_, joint_name_to_index_, index_to_joint_name_, q_min_, q_max_);
+    ChainParser::parse(robot_state_.chains_, joint_name_to_index_, index_to_joint_name_, q_min_, q_max_);
     num_joints_ = joint_name_to_index_.size();
 
     cout << "Number of joints: " << num_joints_ << endl;
@@ -55,45 +56,19 @@ bool WholeBodyController::initialize(const double Ts)
         ROS_INFO("Damping joint %s = %f",iter->first.c_str(),admittance_damping[iter->second]);
     }
 
+    robot_state_.separateChains(robot_state_.chains_,robot_state_);
 
-    typedef std::map<std::string, XmlRpc::XmlRpcValue>::iterator XmlRpcIterator;
-    try
+    for(std::vector<Chain*>::const_iterator it_chain = robot_state_.chains_.begin(); it_chain != robot_state_.chains_.end(); ++it_chain)
     {
-        // ROBOT
-        XmlRpc::XmlRpcValue groups;
-        n.getParam(ns+"/collision_model", groups);
-        for(XmlRpcIterator itrGroups = groups.begin(); itrGroups != groups.end(); ++itrGroups)
-        {
-            std::vector< RobotState::CollisionBody > robot_state_group;
-            // COLLISION GROUP
-            XmlRpc::XmlRpcValue group = itrGroups->second;
-            for(XmlRpcIterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
-            {
-                // COLLISION BODY
-                XmlRpc::XmlRpcValue collisionBody = itrBodies->second;
-                //cout << collisionBody["name"] << endl;
-
-                RobotState::CollisionBody robotstate_collision_body;
-                robotstate_collision_body.fromXmlRpc(collisionBody);
-
-                // add the collision bodies to the group
-                robot_state_group.push_back(robotstate_collision_body);
-            }
-
-            // add group of collision bodies to the robot
-            robot_state_.robot_.groups.push_back(robot_state_group);
-        }
-
-    } catch(XmlRpc::XmlRpcException& ex)
-    {
-        cout << ex.getMessage() << endl;
+        Chain* chain = *it_chain;
+        KDL::ChainFkSolverPos_recursive* fkSolver = new KDL::ChainFkSolverPos_recursive(chain->kdl_chain_);
+        robot_state_.fk_solvers.push_back(fkSolver);
     }
 
+    //std::cout << robot_state_.fk_solvers.size() << std::endl;
 
-    createFKsolvers(chains_);
-
-    fk_solver_left = new KDL::ChainFkSolverPos_recursive(robot_state_.chain_left_->kdl_chain_);
-    fk_solver_right = new KDL::ChainFkSolverPos_recursive(robot_state_.chain_right_->kdl_chain_);
+    robot_state_.fk_solver_left = new KDL::ChainFkSolverPos_recursive(robot_state_.chain_left_->kdl_chain_);
+    robot_state_.fk_solver_right = new KDL::ChainFkSolverPos_recursive(robot_state_.chain_right_->kdl_chain_);
 
     // Initialize admittance controller
     AdmitCont_.initialize(Ts_,q_min_, q_max_, admittance_mass, admittance_damping);
@@ -174,7 +149,7 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     //std::cout << "q_current_ = " << std::endl;
     //std::cout << q_current_(joint_name_to_index_[wrist_yaw_joint_left]).data << std::endl;
 
-    for(std::vector<Chain*>::iterator it_chain = chains_.begin(); it_chain != chains_.end(); ++it_chain)
+    for(std::vector<Chain*>::iterator it_chain = robot_state_.chains_.begin(); it_chain != robot_state_.chains_.end(); ++it_chain)
     {
         Chain* chain = *it_chain;
         chain->removeCartesianWrenches();
@@ -183,12 +158,27 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
 
     KDL::Frame kdlFrameEndEffectorLeft;
     KDL::Frame kdlFrameEndEffectorRight;
-    computeForwardKinematics(kdlFrameEndEffectorLeft,"left",getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"grippoint_left"));
-    getFKsolution(kdlFrameEndEffectorLeft, robot_state_.poseGrippointLeft_);
-    computeForwardKinematics(kdlFrameEndEffectorRight,"right",getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"grippoint_right"));
-    getFKsolution(kdlFrameEndEffectorRight, robot_state_.poseGrippointRight_);
+    robot_state_.computeForwardKinematics(kdlFrameEndEffectorLeft,"left",robot_state_.getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"grippoint_left"),robot_state_);
+    robot_state_.getFKsolution(kdlFrameEndEffectorLeft, robot_state_.poseGrippointLeft_);
+    robot_state_.computeForwardKinematics(kdlFrameEndEffectorRight,"right",robot_state_.getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"grippoint_right"),robot_state_);
+    robot_state_.getFKsolution(kdlFrameEndEffectorRight, robot_state_.poseGrippointRight_);
 
     //std::cout << "LEFT end-effector x,y,z: " << robot_state_.poseGrippointLeft_.pose.position.x << " " << robot_state_.poseGrippointLeft_.pose.position.y << " " << robot_state_.poseGrippointLeft_.pose.position.z << std::endl;
+
+    robot_state_.collectFKSolutions(robot_state_.chains_,robot_state_.fk_poses_);
+
+    /*
+    std::cout << "==================================" << std::endl;
+    for (std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robot_state_.fk_poses_.begin(); itrFK != robot_state_.fk_poses_.end(); ++itrFK)
+    {
+        std::pair<std::string, geometry_msgs::PoseStamped> FK = *itrFK;
+        std::cout << "frame = " << FK.first << std::endl;
+        std::cout << "X = " <<  FK.second.pose.position.x << std::endl;
+        std::cout << "Y = " <<  FK.second.pose.position.y << std::endl;
+        std::cout << "Z = " <<  FK.second.pose.position.z << std::endl;
+    }
+    */
+
 
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
     {
@@ -217,13 +207,13 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
             {
                 if (collisionBody.chain_side == "left")
                 {
-                    computeForwardKinematics(kdlFrame, collisionBody.chain_side, getNrOfSegment(robot_state_.chain_left_->kdl_chain_, collisionBody.fix_pose.header.frame_id));
-                    getFKsolution(kdlFrame, collisionBody.fk_pose);
+                    robot_state_.computeForwardKinematics(kdlFrame, collisionBody.chain_side, robot_state_.getNrOfSegment(robot_state_.chain_left_->kdl_chain_, collisionBody.fix_pose.header.frame_id),robot_state_);
+                    robot_state_.getFKsolution(kdlFrame, collisionBody.fk_pose);
                 }
                 else if (collisionBody.chain_side == "right")
                 {
-                    computeForwardKinematics(kdlFrame, collisionBody.chain_side, getNrOfSegment(robot_state_.chain_right_->kdl_chain_, collisionBody.fix_pose.header.frame_id));
-                    getFKsolution(kdlFrame, collisionBody.fk_pose);
+                    robot_state_.computeForwardKinematics(kdlFrame, collisionBody.chain_side, robot_state_.getNrOfSegment(robot_state_.chain_right_->kdl_chain_, collisionBody.fix_pose.header.frame_id),robot_state_);
+                    robot_state_.getFKsolution(kdlFrame, collisionBody.fk_pose);
                 }
             }
         }
@@ -231,7 +221,6 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
 
     for(std::vector<MotionObjective*>::iterator it_motionobjective = motionobjectives_.begin(); it_motionobjective != motionobjectives_.end(); ++it_motionobjective)
     {
-
         MotionObjective* motionobjective = *it_motionobjective;
         //ROS_INFO("Motion Objective: %p", motionobjective);
         if (motionobjective->isActive()) {
@@ -243,9 +232,9 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     Eigen::MatrixXd jacobian_full(0, num_joints_);
     jacobian_full.setZero();
 
-    for(unsigned int i_chain = 0; i_chain < chains_.size(); ++i_chain)
+    for(unsigned int i_chain = 0; i_chain < robot_state_.chains_.size(); ++i_chain)
     {
-        Chain* chain = chains_[i_chain];
+        Chain* chain = robot_state_.chains_[i_chain];
         chain->fillCartesianWrench(all_wrenches);
         chain->fillJacobian(jacobian_full);
 
@@ -261,10 +250,10 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     //ROS_INFO("Nullspace updated");
     //cout << "nullspace = " << endl << N_ << endl;
 
-    JointLimitAvoidance_.update(q_current_, tau_nullspace_);
+    JointLimitAvoidance_.update(q_current_,tau_nullspace_);
     ///ROS_INFO("Joint limit avoidance updated");
 
-    PostureControl_.update(q_current_, tau_nullspace_);
+    PostureControl_.update(q_current_,tau_nullspace_);
     ///ROS_INFO("Posture control updated");
 
     tau_ += N_ * tau_nullspace_;
@@ -297,64 +286,8 @@ const std::vector<std::string>& WholeBodyController::getJointNames() const
     return index_to_joint_name_;
 }
 
-
-void WholeBodyController::createFKsolvers(const std::vector<Chain*>& chains)
-{
-    //chain_left_ = 0;
-    //chain_right_ = 0;
-    for(std::vector<Chain*>::const_iterator it_chain = chains.begin(); it_chain != chains.end(); ++it_chain)
-    {
-        Chain* chain = *it_chain;
-
-        if (chain->hasLink("grippoint_left")) {
-            //std::cout << "Chain has end-effector frame: " << end_effector_frame_ << std::endl;
-            robot_state_.chain_left_ = chain;
-        }
-        else if (chain->hasLink("grippoint_right")) {
-            //std::cout << "Chain has end-effector frame: " << end_effector_frame_ << std::endl;
-            robot_state_.chain_right_ = chain;
-        }
-    }
-
-    //return (chain_left_ != 0 && chain_right_ != 0) ;
-}
-
-
-void WholeBodyController::computeForwardKinematics(KDL::Frame& kdl_frame, const std::string& chain_side,int segmentNr)
-{
-    // Compute forward kinematics
-    if (chain_side == "left") {
-        if (fk_solver_left->JntToCart(robot_state_.chain_left_->joint_positions_,kdl_frame,segmentNr) < 0 ) ROS_WARN("Problems with FK computation for the LEFT chain");
-    }
-    else if (chain_side == "right") {
-        if (fk_solver_right->JntToCart(robot_state_.chain_right_->joint_positions_,kdl_frame,segmentNr) < 0 ) ROS_WARN("Problems with FK computation for the RIGHT chain");
-    }
-    // Add 0.055 since base and base_link frame are not at exactly the same pose
-    kdl_frame.p.z(kdl_frame.p.z()+0.055);
-    ///ROS_INFO("Return value = %i",ret);
-}
-
-
-void WholeBodyController::getFKsolution(KDL::Frame& FK_pose, geometry_msgs::PoseStamped& pose)
-{
-
-    // ToDo: get rid of hardcoding
-    pose.header.frame_id = "/base_link";
-    // Position
-    pose.pose.position.x = FK_pose.p.x();
-    pose.pose.position.y = FK_pose.p.y();
-    pose.pose.position.z = FK_pose.p.z();
-    // Orientation
-    FK_pose.M.GetQuaternion(pose.pose.orientation.x,
-                            pose.pose.orientation.y,
-                            pose.pose.orientation.z,
-                            pose.pose.orientation.w);
-
-}
-
 double WholeBodyController::getCost()
 {
-
     // Set to zero
     double current_cost = 0;
 
@@ -370,21 +303,4 @@ double WholeBodyController::getCost()
     // Singularity avoidance
 
     return current_cost;
-
-}
-
-int WholeBodyController::getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment_name)
-{
-    int segmentNr = -1;
-    for(unsigned int i = 0; i < kdl_chain_.getNrOfSegments(); i++)
-    {
-        //cout << kdl_chain_.getSegment(i).getName().data() << endl;
-        if (kdl_chain_.getSegment(i).getName().data() == segment_name)
-        {
-            //cout << "segment " << segment_name << " found" << endl;
-            segmentNr = i+1;
-            break;
-        }
-    }
-    return segmentNr;
 }
