@@ -37,7 +37,7 @@ public:
     /**
      * Constructor
      */
-    WholeBodyController(const double Ts, RobotState robot_state);
+    WholeBodyController(const double Ts);
 
     /**
      * Deconstructor
@@ -134,6 +134,8 @@ protected:
      * Publish reference positions
      */
     void publishReferences();
+
+    void loadParameterFiles(RobotState &robot_state_);
 
     /**
       * End-effector pose based on forward kinematics computation

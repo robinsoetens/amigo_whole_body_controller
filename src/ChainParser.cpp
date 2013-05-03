@@ -10,7 +10,14 @@ ChainParser::~ChainParser() {
 
 }
 
-bool ChainParser::parse(std::vector<Chain*>& chains, std::map<std::string, unsigned int>& joint_name_to_index, std::vector<std::string>& index_to_joint_name, KDL::JntArray& q_min, KDL::JntArray& q_max) {
+bool ChainParser::parse(std::vector<Chain*>& chains,
+                        KDL::Tree& tree,
+                        std::map<std::string,
+                        unsigned int>& joint_name_to_index,
+                        std::vector<std::string>& index_to_joint_name,
+                        KDL::JntArray& q_min,
+                        KDL::JntArray& q_max)
+{
     ros::NodeHandle n("~");
     std::string ns = n.getNamespace();
 
@@ -31,7 +38,6 @@ bool ChainParser::parse(std::vector<Chain*>& chains, std::map<std::string, unsig
     }
 
     urdf::Model robot_model;
-    KDL::Tree tree;
 
     // Is this necessary?
     if (!robot_model.initString(result_string)) {
@@ -171,7 +177,7 @@ Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, const KDL
     }
     */
 
-    chain->jnt_to_jac_solver_ = new KDL::ChainJntToJacSolver(chain->kdl_chain_);
+    chain->chain_jnt_to_jac_solver_ = new KDL::ChainJntToJacSolver(chain->kdl_chain_);
 
     return chain;
 }

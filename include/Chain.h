@@ -5,6 +5,7 @@
 #include <map>
 
 #include <kdl/chainjnttojacsolver.hpp>
+#include <kdl/treejnttojacsolver.hpp>
 
 class Component;
 
@@ -53,8 +54,7 @@ public:
      */
     void removeCartesianWrenches();
 
-    KDL::ChainJntToJacSolver* jnt_to_jac_solver_;
-
+    KDL::ChainJntToJacSolver* chain_jnt_to_jac_solver_;
     KDL::Chain kdl_chain_;
 
     /**

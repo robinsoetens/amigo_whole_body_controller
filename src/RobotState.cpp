@@ -102,7 +102,6 @@ void RobotState::separateChains(const std::vector<Chain*>& chains, RobotState &r
     //return (chain_left_ != 0 && chain_right_ != 0) ;
 }
 
-
 void RobotState::computeForwardKinematics(KDL::Frame& kdl_frame, const std::string& chain_side,int segmentNr, RobotState &robot_state)
 {
     // Compute forward kinematics
@@ -117,10 +116,8 @@ void RobotState::computeForwardKinematics(KDL::Frame& kdl_frame, const std::stri
     //ROS_INFO("Return value = %i",ret);
 }
 
-
 void RobotState::getFKsolution(KDL::Frame& FK_pose, geometry_msgs::PoseStamped& pose)
 {
-
     // ToDo: get rid of hardcoding
     pose.header.frame_id = "base_link";
     // Position
@@ -132,7 +129,6 @@ void RobotState::getFKsolution(KDL::Frame& FK_pose, geometry_msgs::PoseStamped& 
                             pose.pose.orientation.y,
                             pose.pose.orientation.z,
                             pose.pose.orientation.w);
-
 }
 
 int RobotState::getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment_name)
@@ -149,4 +145,9 @@ int RobotState::getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment
         }
     }
     return segmentNr;
+}
+
+void RobotState::calcPartialJacobian(std::string& frame_id, KDL::TreeJntToJacSolver* jac_solver_, Eigen::MatrixXd& jacobian)
+{
+    //jac_solver_->JntToJac(joint_positions_, jacobian);
 }

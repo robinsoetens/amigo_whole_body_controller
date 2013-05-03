@@ -3,11 +3,11 @@
 
 using namespace std;
 
-Chain::Chain() : jnt_to_jac_solver_(0), joint_positions_(0) {
+Chain::Chain() : chain_jnt_to_jac_solver_(0), joint_positions_(0) {
 }
 
 Chain::~Chain() {
-    delete jnt_to_jac_solver_;
+    delete chain_jnt_to_jac_solver_;
 }
 
 void Chain::addJoint(const std::string& joint_name, const std::string& link_name, unsigned int full_joint_index) {
@@ -46,7 +46,7 @@ void Chain::fillJacobian(Eigen::MatrixXd& jacobian) const {
 
     KDL::Jacobian chain_jacobian;
     chain_jacobian.resize(kdl_chain_.getNrOfJoints());
-    jnt_to_jac_solver_->JntToJac(joint_positions_, chain_jacobian);
+    chain_jnt_to_jac_solver_->JntToJac(joint_positions_, chain_jacobian);
 
     //cout << "joint_positions_ = " << endl;
     //cout << joint_positions_.data << endl;

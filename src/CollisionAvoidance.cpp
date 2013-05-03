@@ -80,7 +80,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
 
     // Output
     visualize(min_distances_total);
-    outputWrenches(wrenches_total);
+    //outputWrenches(wrenches_total);
 
     /*
     std::cout << "==============================================" << std::endl;
@@ -207,12 +207,10 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 
                         if (distance.bt_distance.m_distance < 0)
                         {
-                            /*
                             std::cout << "COLLISION" << std::endl;
                             std::cout << "Frame A:" << currentBody.name_collision_body << std::endl;
                             std::cout << "Frame B:" << collisionBody.name_collision_body << std::endl;
                             std::cout << "Distance:" << distance.bt_distance.m_distance << std::endl;
-                            */
                         }
                     }
                 }
@@ -266,7 +264,6 @@ void CollisionAvoidance::calculateWrenches(std::vector<ReactionForce> &reaction_
             }
         }
 
-
         dpx = RF.pointOnA.getX() - p0.pose.position.x;
         dpy = RF.pointOnA.getY() - p0.pose.position.y;
         dpz = RF.pointOnA.getZ() - p0.pose.position.z;
@@ -287,11 +284,13 @@ void CollisionAvoidance::calculateWrenches(std::vector<ReactionForce> &reaction_
 
         wrenches_out.push_back(W);
 
+        /*
         std::cout << "----------------------------------------------" << std::endl;
         std::cout << "Frame ID = " << W.frame_id << std::endl;
         std::cout << "dp = " << dpx << " " << dpy << " " << dpz << std::endl;
         std::cout << "f = " << W.wrench[0] << " " << W.wrench[1] << " " << W.wrench[2] << std::endl;
         std::cout << "T = " << W.wrench[3] << " " << W.wrench[4] << " " << W.wrench[5] << std::endl;
+        */
     }
 }
 
@@ -671,10 +670,16 @@ void CollisionAvoidance::outputWrenches(std::vector<Wrench> &wrenches)
         Wrench W = *itrW;
         if (chain_left_->hasLink(W.frame_id))
         {
+            //Eigen::VectorXd wrench_calc(6);
+            //wrench_calc.setZero();
+            //chain_left_->addCartesianWrench("grippoint_left",wrench_calc);
             chain_left_->addCartesianWrench(W.frame_id,W.wrench);
         }
         else
         {
+            //Eigen::VectorXd wrench_calc(6);
+            //wrench_calc.setZero();
+            //chain_right_->addCartesianWrench("grippoint_right",wrench_calc);
             chain_right_->addCartesianWrench(W.frame_id,W.wrench);
         }
 

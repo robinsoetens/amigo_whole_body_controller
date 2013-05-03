@@ -111,67 +111,13 @@ void rightGoalCB() {
     setTarget(goal, end_effector_frame);
 }
 
-void loadParameterFiles(CollisionAvoidance::collisionAvoidanceParameters &ca_param, RobotState &robot_state_)
+void loadParameterFiles(CollisionAvoidance::collisionAvoidanceParameters &ca_param)
 {
     ros::NodeHandle n("~");
     std::string ns = ros::this_node::getName();
     n.param<double> (ns+"/collision_avoidance/self_collision/F_max", ca_param.self_collision.f_max, 1.0);
     n.param<double> (ns+"/collision_avoidance/self_collision/d_threshold", ca_param.self_collision.d_threshold, 1.0);
     n.param<double> (ns+"/collision_avoidance/self_collision/order", ca_param.self_collision.order, 1.0);
-
-    XmlRpc::XmlRpcValue groups;
-    typedef std::map<std::string, XmlRpc::XmlRpcValue>::iterator XmlRpcIterator;
-    try
-    {
-        // ROBOT
-
-        n.getParam(ns+"/collision_model", groups);
-        for(XmlRpcIterator itrGroups = groups.begin(); itrGroups != groups.end(); ++itrGroups)
-        {
-            // COLLISION GROUP
-            std::vector< RobotState::CollisionBody > robot_state_group;
-            XmlRpc::XmlRpcValue group = itrGroups->second;
-            for(XmlRpcIterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
-            {
-                // COLLISION BODY
-                XmlRpc::XmlRpcValue collisionBody = itrBodies->second;
-                //cout << collisionBody["name"] << endl;
-
-                RobotState::CollisionBody robotstate_collision_body;
-                robotstate_collision_body.fromXmlRpc(collisionBody);
-
-                // add the collision bodies to the group
-                robot_state_group.push_back(robotstate_collision_body);
-            }
-
-            // add group of collision bodies to the robot
-            robot_state_.robot_.groups.push_back(robot_state_group);
-        }
-        if (robot_state_.robot_.groups.size() == 0)
-        {
-            ROS_WARN("No collision model loaded");
-        }
-
-        XmlRpc::XmlRpcValue exclusions;
-        n.getParam(ns+"/exlusions_collision_calculation", exclusions);
-        for(XmlRpcIterator itrExcl = exclusions.begin(); itrExcl != exclusions.end(); ++itrExcl)
-        {
-            XmlRpc::XmlRpcValue Excl = itrExcl->second;
-            RobotState::Exclusion exclusion;
-            exclusion.fromXmlRpc(Excl);
-
-            robot_state_.exclusion_checks.checks.push_back(exclusion);
-        }
-
-        if (robot_state_.exclusion_checks.checks.size() == 0)
-        {
-            ROS_WARN("No exclusions from self-collision avoindance checks");
-        }
-
-    } catch(XmlRpc::XmlRpcException& ex)
-    {
-        cout << ex.getMessage() << endl;
-    }
 
 }
 
@@ -208,11 +154,10 @@ int main(int argc, char **argv) {
 
 
     // Load parameter files
-    RobotState robot_state;
     CollisionAvoidance::collisionAvoidanceParameters ca_param;
-    loadParameterFiles(ca_param,robot_state);
+    loadParameterFiles(ca_param);
 
-    wbc = new WholeBodyController(1/loop_rate_, robot_state);
+    wbc = new WholeBodyController(1/loop_rate_);
 
     ros::Rate r(loop_rate_);
 

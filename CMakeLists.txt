@@ -11,7 +11,7 @@ add_definitions(${EIGEN_DEFINITIONS})
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-set(ROS_BUILD_TYPE Release)
+set(ROS_BUILD_TYPE Debug)
 
 rosbuild_find_ros_package(actionlib_msgs)
 include(${actionlib_msgs_PACKAGE_PATH}/cmake/actionbuild.cmake)
@@ -48,7 +48,8 @@ rosbuild_add_library(wholebodycontroller
                                         src/Chain.cpp
                                         src/ChainParser.cpp
                                         src/MotionObjective.cpp
-					src/RobotState.cpp
+                                        src/RobotState.cpp
+                                        src/Tree.cpp
 )
 #                                        src/JointTrajectoryAction.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)

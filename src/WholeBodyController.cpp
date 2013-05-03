@@ -4,8 +4,7 @@
 
 using namespace std;
 
-WholeBodyController::WholeBodyController(const double Ts, RobotState robot_state)
-    : robot_state_(robot_state)
+WholeBodyController::WholeBodyController(const double Ts)
 {
     initialize(Ts);
 }
@@ -25,7 +24,7 @@ bool WholeBodyController::initialize(const double Ts)
     // ToDo: Parameterize
     Ts_ = Ts;
 
-    ChainParser::parse(robot_state_.chains_, joint_name_to_index_, index_to_joint_name_, q_min_, q_max_);
+    ChainParser::parse(robot_state_.chains_,robot_state_.tree_, joint_name_to_index_, index_to_joint_name_, q_min_, q_max_);
     num_joints_ = joint_name_to_index_.size();
 
     cout << "Number of joints: " << num_joints_ << endl;
@@ -56,8 +55,10 @@ bool WholeBodyController::initialize(const double Ts)
         ROS_INFO("Damping joint %s = %f",iter->first.c_str(),admittance_damping[iter->second]);
     }
 
-    robot_state_.separateChains(robot_state_.chains_,robot_state_);
+    loadParameterFiles(robot_state_);
 
+    // Construct the forward kinematics solvers
+    robot_state_.separateChains(robot_state_.chains_,robot_state_);
     for(std::vector<Chain*>::const_iterator it_chain = robot_state_.chains_.begin(); it_chain != robot_state_.chains_.end(); ++it_chain)
     {
         Chain* chain = *it_chain;
@@ -69,6 +70,9 @@ bool WholeBodyController::initialize(const double Ts)
 
     robot_state_.fk_solver_left = new KDL::ChainFkSolverPos_recursive(robot_state_.chain_left_->kdl_chain_);
     robot_state_.fk_solver_right = new KDL::ChainFkSolverPos_recursive(robot_state_.chain_right_->kdl_chain_);
+
+    // Construct the Jacobian solvers
+    robot_state_.jac_solver_ = new KDL::TreeJntToJacSolver(robot_state_.tree_);
 
     // Initialize admittance controller
     AdmitCont_.initialize(Ts_,q_min_, q_max_, admittance_mass, admittance_damping);
@@ -134,6 +138,10 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
 {
 
     //ROS_INFO("WholeBodyController::update()");
+
+    //cout << "Tree : " << robot_state_.tree_.getNrOfJoints() << endl;
+    // cout << "Chain Left : " << robot_state_.chain_left_->kdl_chain_.getNrOfJoints() << endl;
+    // cout << "Chain Right : " << robot_state_.chain_right_->kdl_chain_.getNrOfJoints() << endl;
 
     // Set some variables to zero
     tau_.setZero();
@@ -223,7 +231,8 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     {
         MotionObjective* motionobjective = *it_motionobjective;
         //ROS_INFO("Motion Objective: %p", motionobjective);
-        if (motionobjective->isActive()) {
+        if (motionobjective->isActive())
+        {
             motionobjective->apply(robot_state_);
         }
     }
@@ -239,6 +248,11 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
         chain->fillJacobian(jacobian_full);
 
     }
+
+    //Eigen::MatrixXd jacobian(0, num_joints_);
+    KDL::Jacobian kdl_jac;
+    //robot_state_.calcPartialJacobian("grippoint_left", robot_state_.jac_solver_, kdl_jac);
+
 
     //cout << "jacobian = " << endl << jacobian_full << endl;
     //cout << "all_wrenches = " << endl << all_wrenches << endl;
@@ -303,4 +317,64 @@ double WholeBodyController::getCost()
     // Singularity avoidance
 
     return current_cost;
+}
+
+void WholeBodyController::loadParameterFiles(RobotState &robot_state_)
+{
+    ros::NodeHandle n("~");
+    std::string ns = ros::this_node::getName();
+    XmlRpc::XmlRpcValue groups;
+    typedef std::map<std::string, XmlRpc::XmlRpcValue>::iterator XmlRpcIterator;
+    try
+    {
+        // ROBOT
+
+        n.getParam(ns+"/collision_model", groups);
+        for(XmlRpcIterator itrGroups = groups.begin(); itrGroups != groups.end(); ++itrGroups)
+        {
+            // COLLISION GROUP
+            std::vector< RobotState::CollisionBody > robot_state_group;
+            XmlRpc::XmlRpcValue group = itrGroups->second;
+            for(XmlRpcIterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
+            {
+                // COLLISION BODY
+                XmlRpc::XmlRpcValue collisionBody = itrBodies->second;
+                //cout << collisionBody["name"] << endl;
+
+                RobotState::CollisionBody robotstate_collision_body;
+                robotstate_collision_body.fromXmlRpc(collisionBody);
+
+                // add the collision bodies to the group
+                robot_state_group.push_back(robotstate_collision_body);
+            }
+
+            // add group of collision bodies to the robot
+            robot_state_.robot_.groups.push_back(robot_state_group);
+        }
+        if (robot_state_.robot_.groups.size() == 0)
+        {
+            ROS_WARN("No collision model loaded");
+        }
+
+        XmlRpc::XmlRpcValue exclusions;
+        n.getParam(ns+"/exlusions_collision_calculation", exclusions);
+        for(XmlRpcIterator itrExcl = exclusions.begin(); itrExcl != exclusions.end(); ++itrExcl)
+        {
+            XmlRpc::XmlRpcValue Excl = itrExcl->second;
+            RobotState::Exclusion exclusion;
+            exclusion.fromXmlRpc(Excl);
+
+            robot_state_.exclusion_checks.checks.push_back(exclusion);
+        }
+
+        if (robot_state_.exclusion_checks.checks.size() == 0)
+        {
+            ROS_WARN("No exclusions from self-collision avoindance checks");
+        }
+
+    } catch(XmlRpc::XmlRpcException& ex)
+    {
+        cout << ex.getMessage() << endl;
+    }
+
 }

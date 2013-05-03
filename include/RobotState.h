@@ -9,13 +9,13 @@
 
 #include <map>
 #include "Chain.h"
+#include "Tree.h"
 #include <XmlRpc.h>
 
 // Messages
 #include <geometry_msgs/PoseStamped.h>
 
 // KDL
-#include <kdl/chain.hpp>
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <kdl/frames.hpp>
 
@@ -115,6 +115,13 @@ public:
     geometry_msgs::PoseStamped poseGrippointLeft_;
     geometry_msgs::PoseStamped poseGrippointRight_;
 
+    /**
+     * Jacobian Solver
+     */
+    KDL::Tree tree_;
+    KDL::TreeJntToJacSolver* jac_solver_;
+    std::vector<KDL::TreeJntToJacSolver*> jac_solvers_;
+
     Chain* chain_left_;
     Chain* chain_right_;
     std::vector<Chain*> chains_;
@@ -153,7 +160,9 @@ public:
     void getFK(std::vector<geometry_msgs::PoseStamped>& poses);
 
 
-    int getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment_name) ;
+    int getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment_name);
+
+    void calcPartialJacobian(std::string& frame_id, KDL::TreeJntToJacSolver *jac_solver_, Eigen::MatrixXd& jacobian);
 
 };
 
