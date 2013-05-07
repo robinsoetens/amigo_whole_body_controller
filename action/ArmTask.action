@@ -9,3 +9,9 @@ WholeBodyControllerStatus status_code
 ---
 # Define a feedback message
 float64[6] pose_error 
+
+# Problems with arm_navigation_msgs PositionConstraint
+# What does offset mean? Can we define pre-grasp with that?
+# Constraint region shape cannot define all the right shapes (e.g. a torus is often important)
+# Constraint region orientation?
+# Weight is not the same as priority, this should be included
