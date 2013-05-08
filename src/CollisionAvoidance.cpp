@@ -20,7 +20,7 @@ CollisionAvoidance::~CollisionAvoidance()
 
 bool CollisionAvoidance::initialize(RobotState &robotstate)
 {
-    robot_state_ = robotstate;
+    robot_state_ = &robotstate;
 
     ROS_INFO_STREAM("Initializing Obstacle Avoidance, ");
 
@@ -48,11 +48,11 @@ bool CollisionAvoidance::isActive()
 void CollisionAvoidance::apply(RobotState &robotstate)
 {
 
-    robot_state_ = robotstate;
+    robot_state_ = &robotstate;
     calculateTransform();
 
-    chain_left_ = robot_state_.chain_left_;
-    chain_right_ = robot_state_.chain_right_;
+    chain_left_ = robot_state_->chain_left_;
+    chain_right_ = robot_state_->chain_right_;
 
     /*
     // Transform frame to map frame
@@ -80,7 +80,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
 
     // Output
     visualize(min_distances_total);
-    //outputWrenches(wrenches_total);
+    outputWrenches(wrenches_total);
 
     /*
     std::cout << "==============================================" << std::endl;
@@ -103,7 +103,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
     active_groups_.clear();
     collision_groups_.clear();
 
-    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_.robot_.groups.begin(); itrGroups != robot_state_.robot_.groups.end(); ++itrGroups)
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
     {
         std::vector<RobotState::CollisionBody> &group = *itrGroups;
 
@@ -150,7 +150,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 
                         // Check for exclusions
                         bool skip_check = false;
-                        for (std::vector<RobotState::Exclusion> ::iterator itrExcl = robot_state_.exclusion_checks.checks.begin(); itrExcl != robot_state_.exclusion_checks.checks.end(); ++itrExcl)
+                        for (std::vector<RobotState::Exclusion> ::iterator itrExcl = robot_state_->exclusion_checks.checks.begin(); itrExcl != robot_state_->exclusion_checks.checks.end(); ++itrExcl)
                         {
                             RobotState::Exclusion &excluded_bodies = *itrExcl;
                             if ( currentBody.fix_pose.header.frame_id == excluded_bodies.frame_id_A
@@ -185,7 +185,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 
                     // Check for exclusions
                     bool skip_check = false;
-                    for (std::vector<RobotState::Exclusion> ::iterator itrExcl = robot_state_.exclusion_checks.checks.begin(); itrExcl != robot_state_.exclusion_checks.checks.end(); ++itrExcl)
+                    for (std::vector<RobotState::Exclusion> ::iterator itrExcl = robot_state_->exclusion_checks.checks.begin(); itrExcl != robot_state_->exclusion_checks.checks.end(); ++itrExcl)
                     {
                         RobotState::Exclusion &excluded_bodies = *itrExcl;
                         if ( currentBody.fix_pose.header.frame_id == excluded_bodies.frame_id_A
@@ -251,7 +251,7 @@ void CollisionAvoidance::calculateWrenches(std::vector<ReactionForce> &reaction_
         geometry_msgs::PoseStamped p0 = FK.second;
         */
 
-        for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_.robot_.groups.begin(); itrGroups != robot_state_.robot_.groups.end(); ++itrGroups)
+        for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
         {
             std::vector<RobotState::CollisionBody> &group = *itrGroups;
             for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
@@ -297,7 +297,7 @@ void CollisionAvoidance::calculateWrenches(std::vector<ReactionForce> &reaction_
 void CollisionAvoidance::visualize(std::vector<Distance> &min_distances) const
 {
     int id = 0;
-    for (std::vector< std::vector<RobotState::CollisionBody> >::const_iterator itrGroups = robot_state_.robot_.groups.begin(); itrGroups != robot_state_.robot_.groups.end(); ++itrGroups)
+    for (std::vector< std::vector<RobotState::CollisionBody> >::const_iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
     {
         std::vector<RobotState::CollisionBody> group = *itrGroups;
         for (std::vector<RobotState::CollisionBody>::iterator itrsBodies = group.begin(); itrsBodies != group.end(); ++itrsBodies)
@@ -353,7 +353,7 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
 
 void CollisionAvoidance::calculateTransform()
 {
-    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_->robot_.groups.begin(); it != robot_state_->robot_.groups.end(); ++it)
     {
         std::vector<RobotState::CollisionBody> &group = *it;
 
@@ -372,7 +372,7 @@ void CollisionAvoidance::setTransform(btTransform& transform_out, geometry_msgs:
     btTransform fixTransform;
 
     // Get FK solution
-    std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robot_state_.fk_poses_.find(fixPose.header.frame_id);
+    std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robot_state_->fk_poses_.find(fixPose.header.frame_id);
     std::pair<std::string, geometry_msgs::PoseStamped> FK = *itrFK;
     geometry_msgs::PoseStamped p = FK.second;
     /*
@@ -668,6 +668,12 @@ void CollisionAvoidance::outputWrenches(std::vector<Wrench> &wrenches)
     for (std::vector<Wrench>::iterator itrW = wrenches.begin(); itrW != wrenches.end(); ++itrW)
     {
         Wrench W = *itrW;
+
+        robot_state_->tree_.addCartesianWrench(W.frame_id,W.wrench);
+
+        //std::cout << "chain has link " << W.frame_id << ", wrench is added" << std::endl;
+
+        /*
         if (chain_left_->hasLink(W.frame_id))
         {
             //Eigen::VectorXd wrench_calc(6);
@@ -682,6 +688,7 @@ void CollisionAvoidance::outputWrenches(std::vector<Wrench> &wrenches)
             //chain_right_->addCartesianWrench("grippoint_right",wrench_calc);
             chain_right_->addCartesianWrench(W.frame_id,W.wrench);
         }
+        */
 
         /*
         for (std::vector<Chain*>::iterator itrChain = robot_state_.chains_.begin(); itrChain != robot_state_.chains_.end(); ++itrChain)

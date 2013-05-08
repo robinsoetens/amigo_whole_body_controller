@@ -11,9 +11,8 @@ ChainParser::~ChainParser() {
 }
 
 bool ChainParser::parse(std::vector<Chain*>& chains,
-                        KDL::Tree& tree,
-                        std::map<std::string,
-                        unsigned int>& joint_name_to_index,
+                        Tree& tree,
+                        std::map<std::string,unsigned int>& joint_name_to_index,
                         std::vector<std::string>& index_to_joint_name,
                         KDL::JntArray& q_min,
                         KDL::JntArray& q_max)
@@ -47,7 +46,7 @@ bool ChainParser::parse(std::vector<Chain*>& chains,
     }
     ROS_INFO("Robot model initialized");
 
-    if (!kdl_parser::treeFromString(result_string, tree)) {
+    if (!kdl_parser::treeFromString(result_string, tree.kdl_tree_)) {
         ROS_ERROR("Could not initialize tree object");
         //error = true;
         return false;
@@ -92,7 +91,7 @@ bool ChainParser::parse(std::vector<Chain*>& chains,
     return true;
 }
 
-Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, const KDL::Tree& tree, urdf::Model& robot_model,
+Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, Tree tree, urdf::Model& robot_model,
                                std::map<std::string, unsigned int>& joint_name_to_index,
                                std::vector<std::string>& index_to_joint_name,
                                vector<double>& q_min, vector<double>& q_max) {
@@ -122,8 +121,8 @@ Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, const KDL
 
     Chain* chain = new Chain();
 
-    //if (!tree.getChain(root_link_name, tip_link_name, chain->kdl_chain_)) {
-    if (!tree.getChain("base", tip_link_name, chain->kdl_chain_)) {
+    //if (!tree.kdl_tree.getChain(root_link_name, tip_link_name, chain->kdl_chain_)) {
+    if (!tree.kdl_tree_.getChain("base", tip_link_name, chain->kdl_chain_)) {
         ROS_FATAL("Could not initialize chain object");
         return 0;
     }
@@ -132,7 +131,8 @@ Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, const KDL
         const KDL::Segment& segment = chain->kdl_chain_.getSegment(i);
         const KDL::Joint& joint = segment.getJoint();
 
-        if (joint.getType() != KDL::Joint::None) {
+        if (joint.getType() != KDL::Joint::None)
+        {
             cout << "Segment: " << segment.getName() << endl;
             cout << "Joint:   " << joint.getName() << endl;
 

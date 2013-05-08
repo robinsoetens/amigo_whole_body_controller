@@ -131,6 +131,7 @@ void RobotState::getFKsolution(KDL::Frame& FK_pose, geometry_msgs::PoseStamped& 
                             pose.pose.orientation.w);
 }
 
+
 int RobotState::getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment_name)
 {
     int segmentNr = -1;
@@ -147,7 +148,4 @@ int RobotState::getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment
     return segmentNr;
 }
 
-void RobotState::calcPartialJacobian(std::string& frame_id, KDL::TreeJntToJacSolver* jac_solver_, Eigen::MatrixXd& jacobian)
-{
-    //jac_solver_->JntToJac(joint_positions_, jacobian);
-}
+

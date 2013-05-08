@@ -16,6 +16,7 @@
 #include <vector>
 #include <map>
 
+#include "Tree.h"
 #include "Chain.h"
 #include "Component.h"
 
@@ -28,13 +29,15 @@ public:
     virtual ~ChainParser();
 
     static bool parse(std::vector<Chain*>& chains,
-                      KDL::Tree& tree,
+                      Tree& tree,
                       std::map<std::string, unsigned int>& joint_name_to_index,
                       std::vector<std::string>& index_to_joint_name,
                       KDL::JntArray& q_min,
                       KDL::JntArray& q_max);
 
-    static Chain* parseChain(XmlRpc::XmlRpcValue& chain_params, const KDL::Tree& tree, urdf::Model& robot_model,
+    static Chain* parseChain(XmlRpc::XmlRpcValue& chain_params,
+                             Tree tree,
+                             urdf::Model& robot_model,
                              std::map<std::string, unsigned int>& joint_name_to_index,
                              std::vector<std::string>& index_to_joint_name, std::vector<double>& q_min, std::vector<double>& q_max);
 

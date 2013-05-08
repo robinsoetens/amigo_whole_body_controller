@@ -19,6 +19,7 @@
 #include "MotionObjective.h"
 #include "ChainParser.h"
 #include "Chain.h"
+#include "Tree.h"
 
 // Bullet GJK Closest Point calculation
 #include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
@@ -87,7 +88,9 @@ protected:
     Chain* chain_left_;
     Chain* chain_right_;
 
-    RobotState robot_state_;
+    Tree tree_;
+
+    RobotState* robot_state_;
 
     tf::TransformListener& listener_;
 

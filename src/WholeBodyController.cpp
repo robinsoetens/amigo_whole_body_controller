@@ -26,8 +26,10 @@ bool WholeBodyController::initialize(const double Ts)
 
     ChainParser::parse(robot_state_.chains_,robot_state_.tree_, joint_name_to_index_, index_to_joint_name_, q_min_, q_max_);
     num_joints_ = joint_name_to_index_.size();
+    robot_state_.tree_.getJointNames(joint_name_to_index_,robot_state_.tree_.joint_name_to_index_);
+    robot_state_.tree_.getTreeJointIndex(robot_state_.tree_.kdl_tree_, robot_state_.tree_.tree_joint_index_);
 
-    cout << "Number of joints: " << num_joints_ << endl;
+    //cout << "Number of joints: " << num_joints_ << endl;
 
     q_current_.resize(num_joints_);
     for(unsigned int i = 0; i < q_current_.rows(); ++i)
@@ -72,7 +74,7 @@ bool WholeBodyController::initialize(const double Ts)
     robot_state_.fk_solver_right = new KDL::ChainFkSolverPos_recursive(robot_state_.chain_right_->kdl_chain_);
 
     // Construct the Jacobian solvers
-    robot_state_.jac_solver_ = new KDL::TreeJntToJacSolver(robot_state_.tree_);
+    robot_state_.tree_.jac_solver_ = new KDL::TreeJntToJacSolver(robot_state_.tree_.kdl_tree_);
 
     // Initialize admittance controller
     AdmitCont_.initialize(Ts_,q_min_, q_max_, admittance_mass, admittance_damping);
@@ -139,9 +141,9 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
 
     //ROS_INFO("WholeBodyController::update()");
 
-    //cout << "Tree : " << robot_state_.tree_.getNrOfJoints() << endl;
-    // cout << "Chain Left : " << robot_state_.chain_left_->kdl_chain_.getNrOfJoints() << endl;
-    // cout << "Chain Right : " << robot_state_.chain_right_->kdl_chain_.getNrOfJoints() << endl;
+    //cout << "Tree : " << robot_state_.tree_.kdl_tree_.getNrOfJoints() << endl;
+    //cout << "Chain Left : " << robot_state_.chain_left_->kdl_chain_.getNrOfJoints() << endl;
+    //cout << "Chain Right : " << robot_state_.chain_right_->kdl_chain_.getNrOfJoints() << endl;
 
     // Set some variables to zero
     tau_.setZero();
@@ -240,6 +242,8 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     Eigen::VectorXd all_wrenches;
     Eigen::MatrixXd jacobian_full(0, num_joints_);
     jacobian_full.setZero();
+    Eigen::MatrixXd jacobian_tree(0, num_joints_);
+    jacobian_tree.setZero();
 
     for(unsigned int i_chain = 0; i_chain < robot_state_.chains_.size(); ++i_chain)
     {
@@ -250,14 +254,14 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     }
 
     //Eigen::MatrixXd jacobian(0, num_joints_);
-    KDL::Jacobian kdl_jac;
-    //robot_state_.calcPartialJacobian("grippoint_left", robot_state_.jac_solver_, kdl_jac);
 
+    robot_state_.tree_.fillCartesianWrench(all_wrenches);
+    robot_state_.tree_.fillJacobian(q_current_,jacobian_tree);
 
-    //cout << "jacobian = " << endl << jacobian_full << endl;
+    //cout << "jacobian = " << endl << jacobian_tree << endl;
     //cout << "all_wrenches = " << endl << all_wrenches << endl;
 
-    tau_ = jacobian_full.transpose() * all_wrenches;
+    tau_ = jacobian_tree.transpose() * all_wrenches;
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
 
     ComputeNullspace_.update(jacobian_full, N_);
