@@ -1,14 +1,24 @@
 # Define the goal
-std_msgs/String reference_frame
-std_msgs/String end_effector_frame
-geometry_msgs/Pose goal_pose
-bool[6] constraint_dofs
+# How do we abstract this message type from data in the WBC
+
+# Semantic description of the goal (e.g. grasp, pre-grasp, lift, etc)
+string goal_type
+
+# Position constraint
+# Or should we use Constraints and fill these up?
+arm_navigation_msgs/PositionConstraint position_constraint
+
+# Stiffness 
+# Should we define a separate message containing two Vector3's (Twist and Wrench are identical)
+# With respect to what frame is this?
+geometry_msgs/Wrench stiffness
+
 ---
 # Define the result
 WholeBodyControllerStatus status_code 
 ---
 # Define a feedback message
-float64[6] pose_error 
+geometry_msgs/Twist pose_error 
 
 # Problems with arm_navigation_msgs PositionConstraint
 # What does offset mean? Can we define pre-grasp with that?
