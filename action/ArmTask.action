@@ -6,7 +6,9 @@ string goal_type
 
 # Position constraint
 # Or should we use Constraints and fill these up?
-arm_navigation_msgs/PositionConstraint position_constraint
+#arm_navigation_msgs/PositionConstraint position_constraint
+#arm_navigation_msgs/OrientationContraint orientation_constraint
+arm_navigation_msgs/Constraints goal_constraints
 
 # Stiffness 
 # Should we define a separate message containing two Vector3's (Twist and Wrench are identical)
