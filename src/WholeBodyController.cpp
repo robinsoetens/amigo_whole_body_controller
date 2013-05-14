@@ -159,6 +159,7 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     //std::cout << "q_current_ = " << std::endl;
     //std::cout << q_current_(joint_name_to_index_[wrist_yaw_joint_left]).data << std::endl;
 
+    robot_state_.tree_.removeCartesianWrenches();
     for(std::vector<Chain*>::iterator it_chain = robot_state_.chains_.begin(); it_chain != robot_state_.chains_.end(); ++it_chain)
     {
         Chain* chain = *it_chain;
@@ -258,8 +259,8 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     robot_state_.tree_.fillCartesianWrench(all_wrenches);
     robot_state_.tree_.fillJacobian(q_current_,jacobian_tree);
 
-    //cout << "jacobian = " << endl << jacobian_tree << endl;
-    //cout << "all_wrenches = " << endl << all_wrenches << endl;
+    cout << "jacobian = " << endl << jacobian_tree << endl;
+    cout << "all_wrenches = " << endl << all_wrenches << endl;
 
     tau_ = jacobian_tree.transpose() * all_wrenches;
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));

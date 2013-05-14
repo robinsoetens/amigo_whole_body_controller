@@ -1,6 +1,5 @@
 #include "Tree.h"
 
-
 using namespace std;
 
 Tree::Tree() {
@@ -28,9 +27,9 @@ void Tree::fillJacobian(KDL::JntArray &joint_positions_, Eigen::MatrixXd& jacobi
         partial_jacobian.setZero();
         calcPartialJacobian(wrench.first,joint_positions_,partial_jacobian);
 
+        unsigned int link_start_index = jacobian.rows();
         Eigen::MatrixXd jacobian_new(jacobian.rows() + 6, jacobian.cols());
         jacobian_new.setZero();
-        unsigned int link_start_index = jacobian.rows();
 
         // Add 6 new rows to the current whole body jacobian (TODO: could be much more efficient)
         for(unsigned int i = 0; i < jacobian.rows(); ++i) {
@@ -40,14 +39,13 @@ void Tree::fillJacobian(KDL::JntArray &joint_positions_, Eigen::MatrixXd& jacobi
         }
         jacobian = jacobian_new;
 
-        for(unsigned int i = 0; i < cartesian_wrenches_.size(); ++i)
+        for(unsigned int i = 0; i < partial_jacobian.rows(); ++i)
         {
-            for(unsigned int j = 0; j < 6; ++j)
+            for(unsigned int j = 0; j < partial_jacobian.cols(); ++j)
             {
-                jacobian(link_start_index + j, i) = partial_jacobian(j, i);
+                jacobian(link_start_index + i, j) = partial_jacobian(i,j);
             }
         }
-
     }
 }
 
@@ -99,12 +97,13 @@ void Tree::removeCartesianWrenches() {
 
 void Tree::calcPartialJacobian(std::string& link_name,
                                KDL::JntArray& q_in,
-                               Eigen::MatrixXd jacobian)
+                               Eigen::MatrixXd& jacobian)
 {
     KDL::Jacobian kdl_jacobian;
     KDL::JntArray q_tree;
     kdl_jacobian.resize(kdl_tree_.getNrOfJoints());
     q_tree.resize(kdl_tree_.getNrOfJoints());
+
     //std::cout << q_tree.data.size() << std::endl;
     //std::cout << tree_joint_index_.size() << std::endl;
     uint i = 0;
@@ -113,7 +112,7 @@ void Tree::calcPartialJacobian(std::string& link_name,
         int index = *it_index;
         if (index < 0 )
         {
-            q_tree.data[i] = 1;
+            q_tree.data[i] = 1; //0;
         }
         else if (index >= 0 )
         {
@@ -121,10 +120,18 @@ void Tree::calcPartialJacobian(std::string& link_name,
         }
     }
 
-    jac_solver_->JntToJac(q_in,kdl_jacobian,link_name);
+
+    jac_solver_->JntToJac(q_tree,kdl_jacobian,link_name);
 
     //std::cout << kdl_jacobian.rows() << std::endl;
     //std::cout << kdl_jacobian.columns() << std::endl;
+    /*
+    std::cout << "tree_joint_index_" << std::endl;
+    for (std::vector<int>::iterator it = tree_joint_index_.begin(); it != tree_joint_index_.end(); ++it)
+    {
+        std::cout << *it << std::endl;
+    }
+    */
 
     for(unsigned int i = 0; i < kdl_jacobian.rows(); ++i)
     {
@@ -137,6 +144,7 @@ void Tree::calcPartialJacobian(std::string& link_name,
         }
     }
 
+    /*
     Eigen::MatrixXd printJ(kdl_jacobian.rows(),kdl_jacobian.columns());
     for(unsigned int i = 0; i < kdl_jacobian.rows(); ++i)
     {
@@ -145,9 +153,16 @@ void Tree::calcPartialJacobian(std::string& link_name,
             printJ(i, j) = kdl_jacobian(i, j);
         }
     }
+
+    //std::map<std::string,KDL::TreeElement>::const_iterator it_segment = kdl_tree_.getRootSegment();
+    //std::pair<std::string,KDL::TreeElement> pair = *it_segment;
+
+    //cout << "root segment = " << pair.first << std::endl;
     //cout << "link_name = " << link_name << std::endl;
+    //cout << "q_in = " << endl << q_tree.data << endl;
     //cout << "printJ = " << endl << printJ << endl;
-    //cout << "jacobian = " << endl << jacobian << endl;
+    //cout << "partial_jacobian = " << endl << jacobian << endl;
+    */
 }
 
 void Tree::getJointNames(std::map<string, unsigned int> &jnt_name_to_index_in,std::map<string, unsigned int> &jnt_name_to_index_out)
@@ -162,6 +177,7 @@ void Tree::getTreeJointIndex(KDL::Tree& tree, std::vector<int>& tree_joint_index
     std::map<std::string,KDL::TreeElement> segments_map = tree.getSegments();
 
     tree_joint_index.clear();
+    tree_joint_index.resize(tree.getNrOfJoints());
 
     for(std::map<std::string,KDL::TreeElement>::const_iterator it_segment = segments_map.begin(); it_segment != segments_map.end(); ++it_segment)
     {
@@ -169,8 +185,7 @@ void Tree::getTreeJointIndex(KDL::Tree& tree, std::vector<int>& tree_joint_index
         std::map<std::string,KDL::TreeElement>::const_iterator segment_itr = tree.getSegment(pair.first);
         std::pair<std::string,KDL::TreeElement> segment = *segment_itr;
 
-        //std::cout << segment.second.segment.getName() << std::endl;
-
+        uint q_nr = segment.second.q_nr;
         const KDL::Joint joint = segment.second.segment.getJoint();
 
         if (joint.getType() != KDL::Joint::None)
@@ -178,14 +193,14 @@ void Tree::getTreeJointIndex(KDL::Tree& tree, std::vector<int>& tree_joint_index
             std::map<std::string, unsigned int>::iterator it_names = joint_name_to_index_.find(joint.getName());
             if (it_names == joint_name_to_index_.end())
             {
-                tree_joint_index.push_back(-1);
-                std::cout << joint.getName() << ": " << -1 << std::endl;
+                tree_joint_index[q_nr] = -1;
+                //std::cout << joint.getName() << ": " << -1 << std::endl;
             }
             else
             {
                 std::pair<std::string, unsigned int> name = *it_names;
-                tree_joint_index.push_back(name.second);
-                std::cout << joint.getName() << ": " << name.second << std::endl;
+                tree_joint_index[q_nr] = name.second;
+                //std::cout << joint.getName() << ": " << name.second << std::endl;
             }
         }
     }

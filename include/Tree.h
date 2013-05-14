@@ -41,7 +41,7 @@ public:
      */
     void removeCartesianWrenches();
 
-    void calcPartialJacobian(std::string& link_name, KDL::JntArray& q_in, Eigen::MatrixXd jacobian);
+    void calcPartialJacobian(std::string& link_name, KDL::JntArray& q_in, Eigen::MatrixXd &jacobian);
 
     void getJointNames(std::map<std::string, unsigned int>& jnt_name_to_index_in, std::map<std::string, unsigned int> &jnt_name_to_index_out);
 
