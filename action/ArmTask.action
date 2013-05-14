@@ -1,14 +1,23 @@
 # Define the goal
 # How do we abstract this message type from data in the WBC
 
+## TEUN ##
+# Define the frame for the specified waypoints
+Header header
+
+# The name of the group of joints on which this planner is operating (or will a frame be enough?)
+string group_name
+
+# A sequence (or should it be a single waypoint?) to be followed by a specified frame
+geometry_msgs/PoseStamped[] waypoints
+## TEUN ##
+
 # Semantic description of the goal (e.g. grasp, pre-grasp, lift, etc)
 string goal_type
 
 # Position constraint
 # Or should we use Constraints and fill these up?
-#arm_navigation_msgs/PositionConstraint position_constraint
-#arm_navigation_msgs/OrientationContraint orientation_constraint
-arm_navigation_msgs/Constraints goal_constraints
+arm_navigation_msgs/PositionConstraint position_constraint
 
 # Stiffness 
 # Should we define a separate message containing two Vector3's (Twist and Wrench are identical)
@@ -18,12 +27,8 @@ geometry_msgs/Wrench stiffness
 ---
 # Define the result
 WholeBodyControllerStatus status_code 
+#TEUN# Don't you want something like the return of a list of joint values?
 ---
 # Define a feedback message
 geometry_msgs/Twist pose_error 
 
-# Problems with arm_navigation_msgs PositionConstraint
-# What does offset mean? Can we define pre-grasp with that?
-# Constraint region shape cannot define all the right shapes (e.g. a torus is often important)
-# Constraint region orientation?
-# Weight is not the same as priority, this should be included
