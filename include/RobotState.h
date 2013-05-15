@@ -90,13 +90,13 @@ public:
 
     struct Exclusion
     {
-        std::string frame_id_A;
-        std::string frame_id_B;
+        std::string name_body_A;
+        std::string name_body_B;
 
         void fromXmlRpc(XmlRpc::XmlRpcValue& value)
         {
-            frame_id_A = static_cast<std::string>(value["FrameIdBodyA"]);
-            frame_id_B = static_cast<std::string>(value["FrameIdBodyB"]);
+            name_body_A = static_cast<std::string>(value["NameBodyA"]);
+            name_body_B = static_cast<std::string>(value["NameBodyB"]);
         }
 
     } exclusion;

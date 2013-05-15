@@ -153,8 +153,8 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                         for (std::vector<RobotState::Exclusion> ::iterator itrExcl = robot_state_->exclusion_checks.checks.begin(); itrExcl != robot_state_->exclusion_checks.checks.end(); ++itrExcl)
                         {
                             RobotState::Exclusion &excluded_bodies = *itrExcl;
-                            if ( currentBody.fix_pose.header.frame_id == excluded_bodies.frame_id_A
-                                 && checkBody.fix_pose.header.frame_id == excluded_bodies.frame_id_B )
+                            if ( currentBody.name_collision_body == excluded_bodies.name_body_A
+                                 && checkBody.name_collision_body == excluded_bodies.name_body_B )
                             {
                                 skip_check = true;
                             }
@@ -188,8 +188,9 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                     for (std::vector<RobotState::Exclusion> ::iterator itrExcl = robot_state_->exclusion_checks.checks.begin(); itrExcl != robot_state_->exclusion_checks.checks.end(); ++itrExcl)
                     {
                         RobotState::Exclusion &excluded_bodies = *itrExcl;
-                        if ( currentBody.fix_pose.header.frame_id == excluded_bodies.frame_id_A
-                             && collisionBody.fix_pose.header.frame_id == excluded_bodies.frame_id_B )
+
+                        if ( currentBody.name_collision_body == excluded_bodies.name_body_A
+                             && collisionBody.name_collision_body == excluded_bodies.name_body_B )
                         {
                             skip_check = true;
                         }

@@ -139,11 +139,19 @@ collision_model:
 
 exlusions_collision_calculation:
     group_arm_left:
-        FrameIdBodyA: "fore_arm_left"
-        FrameIdBodyB: "upper_arm_left"
+        exclusion1:
+            NameBodyA: "ForeArmLeft"
+            NameBodyB: "UpperArmLeft"
+        exclusion2:
+            NameBodyA: "ForeArmLeft"
+            NameBodyB: "Clavicles"
     group_arm_right:
-        FrameIdBodyA: "fore_arm_right"
-        FrameIdBodyB: "upper_arm_right"
+        exclusion1:
+            NameBodyA: "ForeArmRight"
+            NameBodyB: "UpperArmRight"
+        exclusion2:
+            NameBodyA: "ForeArmRight"
+            NameBodyB: "Clavicles"
 
 
 

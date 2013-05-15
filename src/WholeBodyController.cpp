@@ -259,8 +259,8 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     robot_state_.tree_.fillCartesianWrench(all_wrenches);
     robot_state_.tree_.fillJacobian(q_current_,jacobian_tree);
 
-    cout << "jacobian = " << endl << jacobian_tree << endl;
-    cout << "all_wrenches = " << endl << all_wrenches << endl;
+    //cout << "jacobian = " << endl << jacobian_tree << endl;
+    //cout << "all_wrenches = " << endl << all_wrenches << endl;
 
     tau_ = jacobian_tree.transpose() * all_wrenches;
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
@@ -361,20 +361,34 @@ void WholeBodyController::loadParameterFiles(RobotState &robot_state_)
             ROS_WARN("No collision model loaded");
         }
 
-        XmlRpc::XmlRpcValue exclusions;
-        n.getParam(ns+"/exlusions_collision_calculation", exclusions);
-        for(XmlRpcIterator itrExcl = exclusions.begin(); itrExcl != exclusions.end(); ++itrExcl)
+        XmlRpc::XmlRpcValue exclusion_groups;
+        n.getParam(ns+"/exlusions_collision_calculation", exclusion_groups);
+        for(XmlRpcIterator itrExclGr = exclusion_groups.begin(); itrExclGr != exclusion_groups.end(); ++itrExclGr)
         {
-            XmlRpc::XmlRpcValue Excl = itrExcl->second;
-            RobotState::Exclusion exclusion;
-            exclusion.fromXmlRpc(Excl);
+            XmlRpc::XmlRpcValue ExclGroup = itrExclGr->second;
+            for(XmlRpcIterator itrExcl = ExclGroup.begin(); itrExcl != ExclGroup.end(); ++itrExcl)
+            {
+                XmlRpc::XmlRpcValue Excl = itrExcl->second;
+                RobotState::Exclusion exclusion;
+                exclusion.fromXmlRpc(Excl);
 
-            robot_state_.exclusion_checks.checks.push_back(exclusion);
+                robot_state_.exclusion_checks.checks.push_back(exclusion);
+            }
         }
 
         if (robot_state_.exclusion_checks.checks.size() == 0)
         {
             ROS_WARN("No exclusions from self-collision avoindance checks");
+        }
+        else if (robot_state_.exclusion_checks.checks.size() > 0)
+        {
+            ROS_INFO("Exclusions from self-collision checks are: ");
+            for (std::vector<RobotState::Exclusion>::iterator it = robot_state_.exclusion_checks.checks.begin(); it != robot_state_.exclusion_checks.checks.end(); ++it)
+            {
+                    RobotState::Exclusion excl = *it;
+                    ROS_INFO("Name body A = %s", excl.name_body_A.c_str());
+                    ROS_INFO("Name body B = %s", excl.name_body_B.c_str());
+            }
         }
 
     } catch(XmlRpc::XmlRpcException& ex)

@@ -112,7 +112,7 @@ void Tree::calcPartialJacobian(std::string& link_name,
         int index = *it_index;
         if (index < 0 )
         {
-            q_tree.data[i] = 1; //0;
+            q_tree.data[i] = 0; // Unused joint values are set to zero
         }
         else if (index >= 0 )
         {
