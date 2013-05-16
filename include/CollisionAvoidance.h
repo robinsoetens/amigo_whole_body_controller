@@ -51,12 +51,14 @@ public:
 
     struct collisionAvoidanceParameters
     {
-        struct selfCollision
+        struct Parameters
         {
             double f_max;
             double d_threshold;
-            double order;
-        } self_collision;
+            int order;
+        } ;
+        Parameters self_collision;
+        Parameters environment_collision;
     } ca_param_;
 
     //ToDo: make configure, start- and stophook. Components can be started/stopped in an actionlib kind of fashion

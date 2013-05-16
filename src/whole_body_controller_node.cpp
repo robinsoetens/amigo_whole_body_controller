@@ -117,10 +117,12 @@ void loadParameterFiles(CollisionAvoidance::collisionAvoidanceParameters &ca_par
     std::string ns = ros::this_node::getName();
     n.param<double> (ns+"/collision_avoidance/self_collision/F_max", ca_param.self_collision.f_max, 1.0);
     n.param<double> (ns+"/collision_avoidance/self_collision/d_threshold", ca_param.self_collision.d_threshold, 1.0);
-    n.param<double> (ns+"/collision_avoidance/self_collision/order", ca_param.self_collision.order, 1.0);
+    n.param<int> (ns+"/collision_avoidance/self_collision/order", ca_param.self_collision.order, 1);
 
+    n.param<double> (ns+"/collision_avoidance/self_collision/F_max", ca_param.environment_collision.f_max, 1.0);
+    n.param<double> (ns+"/collision_avoidance/self_collision/d_threshold", ca_param.environment_collision.d_threshold, 1.0);
+    n.param<int> (ns+"/collision_avoidance/self_collision/order", ca_param.environment_collision.order, 1);
 }
-
 
 int main(int argc, char **argv) {
 
