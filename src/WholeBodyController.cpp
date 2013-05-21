@@ -251,7 +251,6 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
         Chain* chain = robot_state_.chains_[i_chain];
         chain->fillCartesianWrench(all_wrenches);
         chain->fillJacobian(jacobian_full);
-
     }
 
     //Eigen::MatrixXd jacobian(0, num_joints_);
@@ -265,7 +264,7 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     tau_ = jacobian_tree.transpose() * all_wrenches;
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
 
-    ComputeNullspace_.update(jacobian_full, N_);
+    ComputeNullspace_.update(jacobian_tree, N_);
     //ROS_INFO("Nullspace updated");
     //cout << "nullspace = " << endl << N_ << endl;
 
@@ -280,7 +279,6 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     //cout << "tau_ = " << endl << tau_ << endl;
 
     AdmitCont_.update(tau_, qdot_reference_, q_current_, q_reference_);
-
     //for (uint i = 0; i < qdot_reference_.rows(); i++) ROS_INFO("qd joint %i = %f",i,qdot_reference_(i));
     //for (uint i = 0; i < q_current_.rows(); i++) ROS_INFO("Position joint %i = %f",i,q_current_(i));
     //for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));

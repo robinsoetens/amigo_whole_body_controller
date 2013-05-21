@@ -1,22 +1,22 @@
 <?xml version="1.0"?>
 
 <launch>
-	
-	<!-- Localization -->
-	<include file="$(find amigo_launch_files)/launch/middleware/localization.launch" />
+    
+    <!-- Localization -->
+    <include file="$(find amigo_launch_files)/launch/middleware/localization.launch" />
 
-	<!-- Navigation -->
-	<include file="$(find amigo_launch_files)/launch/middleware/base_navigation_3d.launch"/>
-	<!--<include file="$(find tue_move_base)/launch/base_navigation.launch" />-->
-	
-	<!-- Arm & gripper control -->
-	<!--<include file="$(find amigo_launch_files)/launch/middleware/arms.launch" />-->
-	<include file="$(find amigo_gripper_server)/launch/start.launch" />
-	
-	<!-- Head control -->
-	<include file="$(find amigo_launch_files)/launch/middleware/head.launch" />	
+    <!-- Navigation -->
+    <include file="$(find amigo_launch_files)/launch/middleware/base_navigation_3d.launch"/>
+    <!--<include file="$(find tue_move_base)/launch/base_navigation.launch" />-->
+    
+    <!-- Arm & gripper control -->
+    <!--<include file="$(find amigo_launch_files)/launch/middleware/arms.launch" />-->
+    <include file="$(find amigo_gripper_server)/launch/start.launch" />
+    
+    <!-- Head control -->
+    <include file="$(find amigo_launch_files)/launch/middleware/head.launch" /> 
 
-	<!-- Spindle -->
-	<include file="$(find amigo_launch_files)/launch/middleware/spindle.launch" />	
-	
+    <!-- Spindle -->
+    <include file="$(find amigo_launch_files)/launch/middleware/spindle.launch" />  
+    
 </launch>

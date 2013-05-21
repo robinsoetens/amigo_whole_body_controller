@@ -53,6 +53,9 @@ CartesianImpedance::CartesianImpedance(const std::string& end_effector_frame) :
 }
 
 bool CartesianImpedance::initialize(RobotState &robotstate) {
+
+    robot_state_ = &robotstate;
+
     return true;
 }
 
@@ -88,11 +91,11 @@ void CartesianImpedance::apply(RobotState &robotstate) {
 
     if (end_effector_frame_ == "grippoint_left") {
         end_effector_pose_ = robotstate.poseGrippointLeft_;
-        chain_ = robotstate.chain_left_;
+        chain_ = robot_state_->chain_left_;
     }
     else if (end_effector_frame_ == "grippoint_right") {
         end_effector_pose_ = robotstate.poseGrippointRight_;
-        chain_ = robotstate.chain_right_;
+        chain_ = robot_state_->chain_right_;
     }
 
     KDL::Frame end_effector_kdl_frame;
@@ -132,7 +135,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     //ROS_INFO("F_task = %f,\t%f,\t%f,\t%f,\t%f,\t%f",F_task(0),F_task(1),F_task(2),F_task(3),F_task(4),F_task(5));
 
     // add the wrench to the end effector of the kinematic chain
-    chain_->addCartesianWrench(end_effector_frame_, F_task);
+    robot_state_->tree_.addCartesianWrench(end_effector_frame_, F_task);
 
 
     // ToDo: Include boundaries in action message

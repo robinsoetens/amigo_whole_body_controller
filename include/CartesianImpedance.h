@@ -93,6 +93,8 @@ protected:
     bool pre_grasp_;
     double pre_grasp_delta_;
 
+    RobotState* robot_state_;
+
 
 };
 
