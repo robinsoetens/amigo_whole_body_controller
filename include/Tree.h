@@ -21,7 +21,7 @@ public:
      * the computed chain jacobian
      * @param jacobian The whole body jacobian that needs to be filled
      */
-    void fillJacobian(KDL::JntArray& joint_positions_, Eigen::MatrixXd& jacobian);
+    void fillJacobian(Eigen::MatrixXd& jacobian);
 
     /**
      * @brief Adds all wrenches applied to this chain to a vector containing all wrenches of all chains
@@ -41,11 +41,13 @@ public:
      */
     void removeCartesianWrenches();
 
-    void calcPartialJacobian(std::string& link_name, KDL::JntArray& q_in, Eigen::MatrixXd &jacobian);
+    void calcPartialJacobian(std::string& link_name, Eigen::MatrixXd &jacobian);
 
     void getJointNames(std::map<std::string, unsigned int>& jnt_name_to_index_in, std::map<std::string, unsigned int> &jnt_name_to_index_out);
 
     void getTreeJointIndex(KDL::Tree& tree, std::vector<int>& tree_joint_index);
+
+    void rearrangeJntArrayToTree(KDL::JntArray &q_in);
 
     KDL::Tree kdl_tree_;
 
@@ -62,16 +64,13 @@ public:
     std::vector<int> tree_joint_index_;
 
     /**
-     * @brief Names of the joints in this chain
+     * @brief Names of the joints in this tree
      */
     std::vector<std::string> joint_names_;
 
-protected:
+    KDL::JntArray q_tree_;
 
-    /**
-     * @brief Names of the links in the tree
-     */
-    std::vector<std::string> link_names_;
+protected:
 
     std::map<std::string, Eigen::VectorXd> cartesian_wrenches_;
 

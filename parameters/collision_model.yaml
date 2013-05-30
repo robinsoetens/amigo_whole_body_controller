@@ -8,7 +8,7 @@ collision_model:
           transform:
                 chain_side: "left"
                 frame_id: "base_link"
-                origin: {x: 0.0, y: 0.0, z: 0.07 }
+                origin: {x: 0.0, y: 0.0, z: 0.125 } # 0.07 + 0.055
                 orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
         BaseFront:
           name: "BaseFront"
@@ -19,7 +19,7 @@ collision_model:
                 chain_side: "left"
                 chain_side: "left"
                 frame_id: "base_link"
-                origin: {x: 0.25, y: 0.0, z: 0.235 } # z = 0.14+0.5*0.19
+                origin: {x: 0.25, y: 0.0, z: 0.29 } # z = 0.14+0.5*0.19+0.055
                 orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
         BaseBack:
           name: "BaseBack"
@@ -30,7 +30,7 @@ collision_model:
                 chain_side: "left"
                 chain_side: "left"
                 frame_id: "base_link"
-                origin: {x: -0.25, y: 0.0, z: 0.22 } # z = 0.14+0.5*0.19
+                origin: {x: -0.25, y: 0.0, z: 0.275 } # z = 0.14+0.5*0.19+0.055
                 orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
         BaseTop:
           name: "BaseTop"
@@ -40,7 +40,7 @@ collision_model:
           transform:
                 chain_side: "left"
                 frame_id: "base_link"
-                origin: {x: 0.02, y: 0.0, z: 0.6 }
+                origin: {x: 0.02, y: 0.0, z: 0.655 }
                 orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
         Sliders:
           name: "Sliders"

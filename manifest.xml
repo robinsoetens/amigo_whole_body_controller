@@ -19,15 +19,16 @@
   <depend package="amigo_msgs"/>
   <depend package="geometry_msgs"/>
   <depend package="sensor_msgs"/>
+  <depend package="octomap_msgs"/>
   <depend package="code_profiler"/>
   
   <depend package="tf"/>
-  
   <depend package="kdl"/>
   <depend package="kdl_parser"/>
   
   <depend package="amigo_arm_navigation"/>
   <depend package="amigo_joint_interface_converter"/>
+  <depend package="tue_map_3d"/>
   
   <depend package="visualization_msgs"/>
 

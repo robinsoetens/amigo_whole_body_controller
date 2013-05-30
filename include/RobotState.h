@@ -16,13 +16,15 @@
 #include <geometry_msgs/PoseStamped.h>
 
 // KDL
-#include <kdl/chainfksolverpos_recursive.hpp>
+#include <kdl/treefksolverpos_recursive.hpp>
 #include <kdl/frames.hpp>
 
 // Bullet
 #include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
 #include <BulletCollision/NarrowPhaseCollision/btPointCollector.h>
 
+// tf
+#include <tf/transform_listener.h>
 
 class RobotState
 {
@@ -122,37 +124,16 @@ public:
     /**
       * Forward Kinematics Solver
       */
-    std::vector<KDL::ChainFkSolverPos_recursive*> fk_solvers;
-    KDL::ChainFkSolverPos_recursive* fk_solver_left;
-    KDL::ChainFkSolverPos_recursive* fk_solver_right;
+    KDL::TreeFkSolverPos_recursive* fk_solver_;
 
     /**
       * Store all FK solutions in a map
       */
-    void collectFKSolutions(std::vector<Chain*> &chains, std::map<std::string, geometry_msgs::PoseStamped> &fk_poses);
-
-    /**
-      * computeForwardKinematics
-      */
-    void computeForwardKinematics(KDL::Frame &FK_end_effector_pose, const std::string &chain_side, int segmentNr, RobotState &robot_state);
-
-    /**
-     * Create the forward kinematics solvers for both chains
-     */
-    void separateChains(const std::vector<Chain *> &chains, RobotState &robot_state);
-
-    /**
-      * Returns the current FK solution
-      *
-      */
-    void getFKsolution(KDL::Frame& FK_pose, geometry_msgs::PoseStamped &pose);
-
-    /**
-      * Function returns the positions of the end-effectors
-      */
-    void getFK(std::vector<geometry_msgs::PoseStamped>& poses);
+    void collectFKSolutions(tf::TransformListener &listener);
 
     int getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment_name);
+
+    void getFKsolution(KDL::Frame& FK_pose, geometry_msgs::PoseStamped& pose);
 
 };
 

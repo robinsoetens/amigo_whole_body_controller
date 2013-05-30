@@ -8,7 +8,7 @@ Tree::Tree() {
 Tree::~Tree() {
 }
 
-void Tree::fillJacobian(KDL::JntArray &joint_positions_, Eigen::MatrixXd& jacobian)
+void Tree::fillJacobian(Eigen::MatrixXd& jacobian)
 {
     //std::cout << cartesian_wrenches_.size() << std::endl;
     if (cartesian_wrenches_.empty()) {
@@ -25,7 +25,7 @@ void Tree::fillJacobian(KDL::JntArray &joint_positions_, Eigen::MatrixXd& jacobi
 
         Eigen::MatrixXd partial_jacobian(6, number_of_joints_);
         partial_jacobian.setZero();
-        calcPartialJacobian(wrench.first,joint_positions_,partial_jacobian);
+        calcPartialJacobian(wrench.first,partial_jacobian);
 
         unsigned int link_start_index = jacobian.rows();
         Eigen::MatrixXd jacobian_new(jacobian.rows() + 6, jacobian.cols());
@@ -96,32 +96,17 @@ void Tree::removeCartesianWrenches() {
 }
 
 void Tree::calcPartialJacobian(std::string& link_name,
-                               KDL::JntArray& q_in,
                                Eigen::MatrixXd& jacobian)
 {
     KDL::Jacobian kdl_jacobian;
-    KDL::JntArray q_tree;
     kdl_jacobian.resize(kdl_tree_.getNrOfJoints());
-    q_tree.resize(kdl_tree_.getNrOfJoints());
 
     //std::cout << q_tree.data.size() << std::endl;
     //std::cout << tree_joint_index_.size() << std::endl;
-    uint i = 0;
-    for(std::vector<int>::iterator it_index = tree_joint_index_.begin(); it_index != tree_joint_index_.end(); ++it_index, ++i)
-    {
-        int index = *it_index;
-        if (index < 0 )
-        {
-            q_tree.data[i] = 0; // Unused joint values are set to zero
-        }
-        else if (index >= 0 )
-        {
-            q_tree.data[i] = q_in.data[index];
-        }
-    }
 
 
-    jac_solver_->JntToJac(q_tree,kdl_jacobian,link_name);
+
+    jac_solver_->JntToJac(q_tree_,kdl_jacobian,link_name);
 
     //std::cout << kdl_jacobian.rows() << std::endl;
     //std::cout << kdl_jacobian.columns() << std::endl;
@@ -202,6 +187,25 @@ void Tree::getTreeJointIndex(KDL::Tree& tree, std::vector<int>& tree_joint_index
                 tree_joint_index[q_nr] = name.second;
                 //std::cout << joint.getName() << ": " << name.second << std::endl;
             }
+        }
+    }
+}
+
+void Tree::rearrangeJntArrayToTree(KDL::JntArray& q_in)
+{
+    q_tree_.resize(kdl_tree_.getNrOfJoints());
+    uint i = 0;
+
+    for(std::vector<int>::iterator it_index = tree_joint_index_.begin(); it_index != tree_joint_index_.end(); ++it_index, ++i)
+    {
+        int index = *it_index;
+        if (index < 0 )
+        {
+            q_tree_.data[i] = 0; // Unused joint values are set to zero
+        }
+        else if (index >= 0 )
+        {
+            q_tree_.data[i] = q_in.data[index];
         }
     }
 }

@@ -1,6 +1,6 @@
 #include "WholeBodyController.h"
 #include "ChainParser.h"
-#include <XmlRpcException.h>
+#include <tf/transform_datatypes.h>
 
 using namespace std;
 
@@ -20,6 +20,7 @@ bool WholeBodyController::initialize(const double Ts)
     //ROS_INFO("Nodehandle %s",n.getNamespace().c_str());
     ROS_INFO("Initializing whole body controller");
 
+    tf::TransformListener listener_(ros::Duration(4.0));
 
     // ToDo: Parameterize
     Ts_ = Ts;
@@ -59,21 +60,12 @@ bool WholeBodyController::initialize(const double Ts)
 
     loadParameterFiles(robot_state_);
 
-    // Construct the forward kinematics solvers
-    robot_state_.separateChains(robot_state_.chains_,robot_state_);
-    for(std::vector<Chain*>::const_iterator it_chain = robot_state_.chains_.begin(); it_chain != robot_state_.chains_.end(); ++it_chain)
-    {
-        Chain* chain = *it_chain;
-        KDL::ChainFkSolverPos_recursive* fkSolver = new KDL::ChainFkSolverPos_recursive(chain->kdl_chain_);
-        robot_state_.fk_solvers.push_back(fkSolver);
-    }
-
     //std::cout << robot_state_.fk_solvers.size() << std::endl;
 
-    robot_state_.fk_solver_left = new KDL::ChainFkSolverPos_recursive(robot_state_.chain_left_->kdl_chain_);
-    robot_state_.fk_solver_right = new KDL::ChainFkSolverPos_recursive(robot_state_.chain_right_->kdl_chain_);
+    //robot_state_.tree_.q_tree_.resize(robot_state_.tree_.kdl_tree_.getNrOfJoints());
 
-    // Construct the Jacobian solvers
+    // Construct the FK and Jacobian solvers
+    robot_state_.fk_solver_ = new KDL::TreeFkSolverPos_recursive(robot_state_.tree_.kdl_tree_);
     robot_state_.tree_.jac_solver_ = new KDL::TreeJntToJacSolver(robot_state_.tree_.kdl_tree_);
 
     // Initialize admittance controller
@@ -142,8 +134,6 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     //ROS_INFO("WholeBodyController::update()");
 
     //cout << "Tree : " << robot_state_.tree_.kdl_tree_.getNrOfJoints() << endl;
-    //cout << "Chain Left : " << robot_state_.chain_left_->kdl_chain_.getNrOfJoints() << endl;
-    //cout << "Chain Right : " << robot_state_.chain_right_->kdl_chain_.getNrOfJoints() << endl;
 
     // Set some variables to zero
     tau_.setZero();
@@ -159,24 +149,12 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     //std::cout << "q_current_ = " << std::endl;
     //std::cout << q_current_(joint_name_to_index_[wrist_yaw_joint_left]).data << std::endl;
 
+    robot_state_.tree_.rearrangeJntArrayToTree(q_current_);
+
     robot_state_.tree_.removeCartesianWrenches();
-    for(std::vector<Chain*>::iterator it_chain = robot_state_.chains_.begin(); it_chain != robot_state_.chains_.end(); ++it_chain)
-    {
-        Chain* chain = *it_chain;
-        chain->removeCartesianWrenches();
-        chain->setMeasuredJointPositions(q_current_);
-    }
-
-    KDL::Frame kdlFrameEndEffectorLeft;
-    KDL::Frame kdlFrameEndEffectorRight;
-    robot_state_.computeForwardKinematics(kdlFrameEndEffectorLeft,"left",robot_state_.getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"grippoint_left"),robot_state_);
-    robot_state_.getFKsolution(kdlFrameEndEffectorLeft, robot_state_.poseGrippointLeft_);
-    robot_state_.computeForwardKinematics(kdlFrameEndEffectorRight,"right",robot_state_.getNrOfSegment(robot_state_.chain_left_->kdl_chain_,"grippoint_right"),robot_state_);
-    robot_state_.getFKsolution(kdlFrameEndEffectorRight, robot_state_.poseGrippointRight_);
-
     //std::cout << "LEFT end-effector x,y,z: " << robot_state_.poseGrippointLeft_.pose.position.x << " " << robot_state_.poseGrippointLeft_.pose.position.y << " " << robot_state_.poseGrippointLeft_.pose.position.z << std::endl;
 
-    robot_state_.collectFKSolutions(robot_state_.chains_,robot_state_.fk_poses_);
+    robot_state_.collectFKSolutions(listener_);
 
     /*
     std::cout << "==================================" << std::endl;
@@ -190,6 +168,7 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     }
     */
 
+    // Get base_link frame using tf
 
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
     {
@@ -198,37 +177,12 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
         for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
         {
             RobotState::CollisionBody &collisionBody = *it;
-            KDL::Frame kdlFrame;
-
-            // TO-DO GET RID OF HARD CODED
-            if (collisionBody.fix_pose.header.frame_id == "base_link")
-            {
-                //computeForwardKinematics(kdlFrame,collisionBody.chain_side, getNrOfSegment(robot_state_.chain_left_->kdl_chain_,collisionBody.fix_pose.header.frame_id));
-                //getFKsolution(kdlFrame, collisionBody.fk_pose);
-                collisionBody.fk_pose.header.frame_id = "base_link";
-                collisionBody.fk_pose.pose.position.x = 0;
-                collisionBody.fk_pose.pose.position.y = 0;
-                collisionBody.fk_pose.pose.position.z = 0.055;
-                collisionBody.fk_pose.pose.orientation.x = 0;
-                collisionBody.fk_pose.pose.orientation.y = 0;
-                collisionBody.fk_pose.pose.orientation.z = 0;
-                collisionBody.fk_pose.pose.orientation.w = 1;
-            }
-            else
-            {
-                if (collisionBody.chain_side == "left")
-                {
-                    robot_state_.computeForwardKinematics(kdlFrame, collisionBody.chain_side, robot_state_.getNrOfSegment(robot_state_.chain_left_->kdl_chain_, collisionBody.fix_pose.header.frame_id),robot_state_);
-                    robot_state_.getFKsolution(kdlFrame, collisionBody.fk_pose);
-                }
-                else if (collisionBody.chain_side == "right")
-                {
-                    robot_state_.computeForwardKinematics(kdlFrame, collisionBody.chain_side, robot_state_.getNrOfSegment(robot_state_.chain_right_->kdl_chain_, collisionBody.fix_pose.header.frame_id),robot_state_);
-                    robot_state_.getFKsolution(kdlFrame, collisionBody.fk_pose);
-                }
-            }
+            std::map<std::string, geometry_msgs::PoseStamped>::iterator itr = robot_state_.fk_poses_.find(collisionBody.fix_pose.header.frame_id);
+            geometry_msgs::PoseStamped fk_pose = (*itr).second;
+            collisionBody.fk_pose = fk_pose;
         }
     }
+
 
     for(std::vector<MotionObjective*>::iterator it_motionobjective = motionobjectives_.begin(); it_motionobjective != motionobjectives_.end(); ++it_motionobjective)
     {
@@ -246,17 +200,10 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     Eigen::MatrixXd jacobian_tree(0, num_joints_);
     jacobian_tree.setZero();
 
-    for(unsigned int i_chain = 0; i_chain < robot_state_.chains_.size(); ++i_chain)
-    {
-        Chain* chain = robot_state_.chains_[i_chain];
-        chain->fillCartesianWrench(all_wrenches);
-        chain->fillJacobian(jacobian_full);
-    }
-
     //Eigen::MatrixXd jacobian(0, num_joints_);
 
     robot_state_.tree_.fillCartesianWrench(all_wrenches);
-    robot_state_.tree_.fillJacobian(q_current_,jacobian_tree);
+    robot_state_.tree_.fillJacobian(jacobian_tree);
 
     //cout << "jacobian = " << endl << jacobian_tree << endl;
     //cout << "all_wrenches = " << endl << all_wrenches << endl;
@@ -383,9 +330,9 @@ void WholeBodyController::loadParameterFiles(RobotState &robot_state_)
             ROS_INFO("Exclusions from self-collision checks are: ");
             for (std::vector<RobotState::Exclusion>::iterator it = robot_state_.exclusion_checks.checks.begin(); it != robot_state_.exclusion_checks.checks.end(); ++it)
             {
-                    RobotState::Exclusion excl = *it;
-                    ROS_INFO("Name body A = %s", excl.name_body_A.c_str());
-                    ROS_INFO("Name body B = %s", excl.name_body_B.c_str());
+                RobotState::Exclusion excl = *it;
+                ROS_INFO("Name body A = %s", excl.name_body_A.c_str());
+                ROS_INFO("Name body B = %s", excl.name_body_B.c_str());
             }
         }
 

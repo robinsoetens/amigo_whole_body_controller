@@ -9,6 +9,7 @@ const double loop_rate_ = 50;
 
 CartesianImpedance* cart_imp_left_;
 CartesianImpedance* cart_imp_right_;
+CollisionAvoidance* collision_avoidance;
 
 typedef actionlib::SimpleActionServer<amigo_arm_navigation::grasp_precomputeAction> action_server;
 action_server* server_left_;
@@ -31,14 +32,23 @@ struct JointRefPublisher {
 
 map<string, JointRefPublisher*> JOINT_NAME_TO_PUB;
 
-void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg) {
-    for(unsigned int i = 0; i < msg->name.size(); ++i) {
+void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg)
+{
+    for(unsigned int i = 0; i < msg->name.size(); ++i)
+    {
         wbc->setMeasuredJointPosition(msg->name[i], msg->position[i]);
     }
 }
 
-void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std::string>& joint_names) {
-    for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
+void octoMapCallback(const octomap_msgs::OctomapBinary::ConstPtr& msg)
+{
+    collision_avoidance->setOctoMap(*msg);
+}
+
+void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std::string>& joint_names)
+{
+    for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub)
+    {
         it_pub->second->msg_ = sensor_msgs::JointState();
     }
 
@@ -49,22 +59,26 @@ void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std:
         //cout << joint_names[i] << ": " << joint_refs[i] << endl;
     }
 
-    for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
+    for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub)
+    {
         it_pub->second->pub_.publish(it_pub->second->msg_);
     }
 }
 
-void leftCancelCB() {
+void leftCancelCB()
+{
     //is_active_ = false;
     server_left_->setPreempted();
 }
 
-void rightCancelCB() {
+void rightCancelCB()
+{
     //is_active_ = false;
     server_right_->setPreempted();
 }
 
-void setTarget(const amigo_arm_navigation::grasp_precomputeGoal& goal, const std::string& end_effector_frame) {
+void setTarget(const amigo_arm_navigation::grasp_precomputeGoal& goal, const std::string& end_effector_frame)
+{
 
     geometry_msgs::PoseStamped goal_pose;
 
@@ -119,9 +133,14 @@ void loadParameterFiles(CollisionAvoidance::collisionAvoidanceParameters &ca_par
     n.param<double> (ns+"/collision_avoidance/self_collision/d_threshold", ca_param.self_collision.d_threshold, 1.0);
     n.param<int> (ns+"/collision_avoidance/self_collision/order", ca_param.self_collision.order, 1);
 
-    n.param<double> (ns+"/collision_avoidance/self_collision/F_max", ca_param.environment_collision.f_max, 1.0);
-    n.param<double> (ns+"/collision_avoidance/self_collision/d_threshold", ca_param.environment_collision.d_threshold, 1.0);
-    n.param<int> (ns+"/collision_avoidance/self_collision/order", ca_param.environment_collision.order, 1);
+    n.param<double> (ns+"/collision_avoidance/environment_collision/F_max", ca_param.environment_collision.f_max, 1.0);
+    n.param<double> (ns+"/collision_avoidance/environment_collision/d_threshold", ca_param.environment_collision.d_threshold, 1.0);
+    n.param<int> (ns+"/collision_avoidance/environment_collision/order", ca_param.environment_collision.order, 1);
+    n.getParam(ns+"/collision_avoidance/environment_collision/BBX/x", ca_param.environment_collision.BBX.x);
+    n.getParam(ns+"/collision_avoidance/environment_collision/BBX/y", ca_param.environment_collision.BBX.y);
+    n.getParam(ns+"/collision_avoidance/environment_collision/BBX/z", ca_param.environment_collision.BBX.z);
+    n.getParam("/map_3d/resolution", ca_param.environment_collision.octomap_resolution);
+
 }
 
 int main(int argc, char **argv) {
@@ -133,6 +152,8 @@ int main(int argc, char **argv) {
     ros::Subscriber sub_left_arm  = nh_private.subscribe<sensor_msgs::JointState>("/arm_left_controller/measurements", 10, &jointMeasurementCallback);
     ros::Subscriber sub_right_arm = nh_private.subscribe<sensor_msgs::JointState>("/arm_right_controller/measurements", 10, &jointMeasurementCallback);
     ros::Subscriber sub_torso     = nh_private.subscribe<sensor_msgs::JointState>("/torso_controller/measurements", 10, &jointMeasurementCallback);
+    ros::Subscriber sub_octomap   = nh_private.subscribe<octomap_msgs::OctomapBinary>("/octomap_binary", 10, &octoMapCallback);
+
 
     JointRefPublisher* pub_left_arm = new JointRefPublisher("/arm_left_controller/references");
     JointRefPublisher* pub_right_arm = new JointRefPublisher("/arm_right_controller/references");
@@ -174,8 +195,6 @@ int main(int argc, char **argv) {
     server_left_->start();
     server_right_->start();
 
-    tf::TransformListener tf_listener;
-
     cart_imp_left_ = new CartesianImpedance("grippoint_left");
     if (!wbc->addMotionObjective(cart_imp_left_)) {
         ROS_ERROR("Could not initialize cartesian impedance for left arm");
@@ -188,7 +207,7 @@ int main(int argc, char **argv) {
         exit(-1);
     }
 
-    CollisionAvoidance* collision_avoidance = new CollisionAvoidance(ca_param, 1/loop_rate_, &tf_listener);
+    collision_avoidance = new CollisionAvoidance(ca_param, 1/loop_rate_);
     if (!wbc->addMotionObjective(collision_avoidance)) {
         ROS_ERROR("Could not initialize collision avoidance");
         exit(-1);
@@ -214,6 +233,7 @@ int main(int argc, char **argv) {
 
     delete cart_imp_right_;
     delete cart_imp_left_;
+    delete collision_avoidance;
 
     delete server_left_;
     delete server_right_;

@@ -7,7 +7,9 @@ collision_avoidance:
         d_threshold: 0.1 
         F_max: 300 
         order: 2 
+        BBX: {x: 1.5, y: 1.5, z: 2 } # x,y,z
 
 # d_threshold:   Threshold from which the repulsive force starts acting, in [m]
 # F_max:         Maximum amplitude of the repulsive force in [N] (when d=0 [m])
 # order:         Order of the repulsive force polynomial
+# BBX:           Bounding box dimensions in [m] around within which the closest distance to the present OctoMap cells is calculated (robot base frame will act as center point of the ground field)

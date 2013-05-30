@@ -10,16 +10,18 @@
 // ROS
 #include "ros/ros.h"
 
-// tf
-#include <tf/transform_listener.h>
-
 // Eigen
 #include <Eigen/Core>
 
+// Plugins
 #include "MotionObjective.h"
 #include "ChainParser.h"
 #include "Chain.h"
 #include "Tree.h"
+
+// Map
+#include <tue_map_3d/Map3D.h>
+
 
 // Bullet GJK Closest Point calculation
 #include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
@@ -34,20 +36,24 @@
 
 /////
 
-class CollisionAvoidance : public MotionObjective {
+class CollisionAvoidance : public MotionObjective
+{
 
-    struct Box {
-
+    struct Box
+    {
         Box(const Eigen::Vector3d& min, const Eigen::Vector3d& max)
-            : min_(min), max_(max) {
+            : min_(min), max_(max)
+        {
         }
-
         Eigen::Vector3d min_;
         Eigen::Vector3d max_;
     };
 
 
 public:
+
+    /// Define the type of OctoMap as timestamped
+    typedef octomap::OcTreeStamped OctreeType;
 
     struct collisionAvoidanceParameters
     {
@@ -56,6 +62,13 @@ public:
             double f_max;
             double d_threshold;
             int order;
+            double octomap_resolution;
+            struct
+            {
+                double x;
+                double y;
+                double z;
+            } BBX;
         } ;
         Parameters self_collision;
         Parameters environment_collision;
@@ -66,7 +79,7 @@ public:
     /**
      * Constructor
      */
-    CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts, tf::TransformListener* tf_listener);
+    CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts);
 
     /**
      * Deconstructor
@@ -82,6 +95,8 @@ public:
 
     void apply(RobotState& robotstate);
 
+    void setOctoMap(const octomap_msgs::OctomapBinary&  octomap_msg);
+
 protected:
 
     //! Sampling time
@@ -94,13 +109,17 @@ protected:
 
     RobotState* robot_state_;
 
-    tf::TransformListener& listener_;
+
 
     ros::Publisher pub_marker_;
 
     std::vector< std::vector<RobotState::CollisionBody> > active_groups_;
     std::vector< std::vector<RobotState::CollisionBody> > collision_groups_;
 
+    struct Voxel {
+        geometry_msgs::PoseStamped center_point;
+        double size_voxel;
+    };
     struct Distance {
         std::string frame_id;
         btPointCollector bt_distance;
@@ -118,23 +137,34 @@ protected:
         Eigen::VectorXd wrench;
     } ;
 
+    geometry_msgs::PoseStamped no_fix_;
+
+    //octomap::OcTreeStamped* octomap_;
+    octomap::OcTree* octomap_;
+
+    // Minimum and maximum point of the BBX
+    octomath::Vector3 min_;
+    octomath::Vector3 max_;
+
     void getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY);
 
     void calculateWrenches(std::vector<ReactionForce> &reaction_forces, std::vector<Wrench> &wrenches_out);
 
     void selfCollision(std::vector<Distance> &min_distances, std::vector<ReactionForce> &reaction_forces);
 
+    void environmentCollision(std::vector<Distance> &min_distances, std::vector<ReactionForce> &reaction_forces);
+
     void initializeCollisionModel(RobotState &robotstate);
 
     void calculateTransform();
 
-    void setTransform(btTransform& transform_out, geometry_msgs::PoseStamped& fkPose, geometry_msgs::PoseStamped& fixPose);
+    void setTransform(btTransform& transform_out, geometry_msgs::PoseStamped &fkPose, geometry_msgs::PoseStamped& fixPose);
 
     void distanceCalculation(btConvexShape &shapeA, btConvexShape &shapeB, btTransform& transformA, btTransform& transformB, btPointCollector& distance_out);
 
     void pickMinimumDistance(std::vector<Distance> &calculatedDistances, std::vector<Distance> &minimumDistances);
 
-    void calculateReactionForce(std::vector<Distance> &minimumDistances, std::vector<ReactionForce> &reactionForces);
+    void calculateReactionForce(std::vector<Distance> &minimumDistances, std::vector<ReactionForce> &reactionForces, collisionAvoidanceParameters::Parameters &param);
 
     void bulletTest();
 
@@ -145,6 +175,9 @@ protected:
     void visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id)  const;
 
     void visualizeReactionForce(Distance &d_min, int id) const;
+
+    void visualizeBBX(int id) const;
+
 };
 
 #endif

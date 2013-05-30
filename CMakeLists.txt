@@ -11,7 +11,13 @@ add_definitions(${EIGEN_DEFINITIONS})
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-set(ROS_BUILD_TYPE Debug)
+set(ROS_BUILD_TYPE RelWithDebInfo)
+
+find_package(octomap 1.5 REQUIRED)
+include_directories(BEFORE ${OCTOMAP_INCLUDE_DIRS})
+link_directories(${OCTOMAP_LIBRARY_DIRS})
+link_libraries(${OCTOMAP_LIBRARY_DIRS}/liboctomap.so ${OCTOMAP_LIBRARY_DIRS}/liboctomath.so)
+MESSAGE(STATUS "OctoMap paths:" ${OCTOMAP_INCLUDE_DIRS} " " ${OCTOMAP_LIBRARY_DIRS})
 
 rosbuild_find_ros_package(actionlib_msgs)
 include(${actionlib_msgs_PACKAGE_PATH}/cmake/actionbuild.cmake)
@@ -37,11 +43,11 @@ add_definitions(${EIGEN_DEFINITIONS})
 #common commands for building c++ executables and libraries
 # OBSOLETE???: src/TreeDescription.cpp
 rosbuild_add_library(wholebodycontroller 
-					src/WholeBodyController.cpp
-					src/CartesianImpedance.cpp
-					src/AdmittanceController.cpp
-					src/ComputeNullspace.cpp
-					src/CollisionAvoidance.cpp
+                                        src/WholeBodyController.cpp
+                                        src/CartesianImpedance.cpp
+                                        src/AdmittanceController.cpp
+                                        src/ComputeNullspace.cpp
+                                        src/CollisionAvoidance.cpp
                                         src/JointLimitAvoidance.cpp
                                         src/PostureControl.cpp
                                         src/Component.cpp

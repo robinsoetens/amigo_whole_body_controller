@@ -1,5 +1,4 @@
 #include "CollisionAvoidance.h"
-#include <tf/transform_datatypes.h>
 #include <math.h>
 
 #include "visualization_msgs/MarkerArray.h"
@@ -8,14 +7,13 @@
 
 using namespace std;
 
-CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts, tf::TransformListener *tf_listener)
-    : ca_param_(parameters), Ts_ (Ts), listener_(*tf_listener)
+CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts)
+    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL)
 {
 }
 
 CollisionAvoidance::~CollisionAvoidance()
 {
-
 }
 
 bool CollisionAvoidance::initialize(RobotState &robotstate)
@@ -30,8 +28,16 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
     pub_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_avoidance_markers/", 10);
 
-    //bool wait_for_transform = listener_.waitForTransform(end_effector_frame_, "/map", ros::Time::now(), ros::Duration(1.0));
-    //if (!wait_for_transform) ROS_WARN("Transform between %s and /map is not available", end_effector_frame_.c_str());
+    octomap_ = new octomap::OcTree(ca_param_.environment_collision.octomap_resolution);
+
+    no_fix_.header.frame_id = "none";
+    no_fix_.pose.position.x = 0;
+    no_fix_.pose.position.y = 0;
+    no_fix_.pose.position.z = 0;
+    no_fix_.pose.orientation.x = 0;
+    no_fix_.pose.orientation.y = 0;
+    no_fix_.pose.orientation.z = 0;
+    no_fix_.pose.orientation.w = 1;
 
     initializeCollisionModel(robotstate);
 
@@ -47,35 +53,27 @@ bool CollisionAvoidance::isActive()
 
 void CollisionAvoidance::apply(RobotState &robotstate)
 {
-
     robot_state_ = &robotstate;
     calculateTransform();
 
     chain_left_ = robot_state_->chain_left_;
     chain_right_ = robot_state_->chain_right_;
 
-    /*
-    // Transform frame to map frame
-    tf::poseStampedMsgToTF(end_effector_msg_, tf_end_effector_pose_);
-
-    try
-    {
-        listener_.transformPose("/map", tf_end_effector_pose_, tf_end_effector_pose_MAP_);
-    } catch (tf::TransformException& e)
-    {
-        ROS_ERROR("CollisionAvoidance: %s", e.what());
-        return;
-    }
-    */
-
-    // Calculate the wrenches as a result of self-collision avoidance
+    // Calculate the wrenches as a result of (self-)collision avoidance
     std::vector<Distance> min_distances_total;
     std::vector<ReactionForce> reaction_forces_total;
     std::vector<Wrench> wrenches_total;
-    min_distances_total.clear();
     reaction_forces_total.clear();
     wrenches_total.clear();
-    selfCollision(min_distances_total, reaction_forces_total);
+
+    selfCollision(min_distances_total,reaction_forces_total);
+
+    //std::cout << "OctoMap size : " << octomap_->size() << std::endl;
+    if (octomap_->size() > 0)
+    {
+        environmentCollision(min_distances_total,reaction_forces_total);
+    }
+
     calculateWrenches(reaction_forces_total, wrenches_total);
 
     // Output
@@ -102,18 +100,19 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 {
     active_groups_.clear();
     collision_groups_.clear();
-
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
     {
         std::vector<RobotState::CollisionBody> &group = *itrGroups;
 
+        // Determine if group has tip frame
+        // ToDo: get rid of hardcoding
         bool group_check = false;
         for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
         {
             RobotState::CollisionBody &collisionBody = *itrBodies;
             //std::cout << collisionBody.bt_shape->getName() << std::endl;
-            if ( collisionBody.fix_pose.header.frame_id == chain_left_->kdl_chain_.getSegment(chain_left_->kdl_chain_.getNrOfSegments()-1).getName().data()
-                 || collisionBody.fix_pose.header.frame_id == chain_right_->kdl_chain_.getSegment(chain_right_->kdl_chain_.getNrOfSegments()-1).getName().data())
+            if ( collisionBody.fix_pose.header.frame_id == "grippoint_left"
+                 || collisionBody.fix_pose.header.frame_id == "grippoint_right")
             {
                 group_check = true;
             }
@@ -205,7 +204,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                         distanceCollection.push_back(distance);
                         //ThreadProfiler::Stop("DistanceCalc");
 
-
+                        /*
                         if (distance.bt_distance.m_distance < 0)
                         {
                             std::cout << "COLLISION" << std::endl;
@@ -213,6 +212,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                             std::cout << "Frame B:" << collisionBody.name_collision_body << std::endl;
                             std::cout << "Distance:" << distance.bt_distance.m_distance << std::endl;
                         }
+                        */
                     }
                 }
             }
@@ -221,7 +221,127 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
         }
     }
     // Calculate the reaction forces
-    calculateReactionForce(min_distances,reaction_forces);
+    calculateReactionForce(min_distances,reaction_forces,ca_param_.self_collision);
+}
+
+void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distances, std::vector<ReactionForce> &reaction_forces)
+{
+    // Find the Voxels that are in range
+    std::map<std::string, geometry_msgs::PoseStamped>::iterator itrBase = robot_state_->fk_poses_.find("base_link");
+    geometry_msgs::PoseStamped fk_base = (*itrBase).second;
+
+    double xmin_octomap,ymin_octomap,zmin_octomap;
+    double xmax_octomap,ymax_octomap,zmax_octomap;
+    double xmin_bbx,ymin_bbx,zmin_bbx;
+    double xmax_bbx,ymax_bbx,zmax_bbx;
+    octomap_->getMetricMin(xmin_octomap,ymin_octomap,zmin_octomap);
+    octomap_->getMetricMax(xmax_octomap,ymax_octomap,zmax_octomap);
+
+    // Check whether the BBX is inside the OctoMap, otherwise take OctoMap dimensions
+    if (xmin_octomap > fk_base.pose.position.x - 0.5*ca_param_.environment_collision.BBX.x ) {
+        xmin_bbx = xmin_octomap;
+    } else {
+        xmin_bbx = fk_base.pose.position.x - 0.5*ca_param_.environment_collision.BBX.x;
+    }
+    if (ymin_octomap > fk_base.pose.position.y - 0.5*ca_param_.environment_collision.BBX.y ) {
+        ymin_bbx = ymin_octomap;
+    } else {
+        ymin_bbx = fk_base.pose.position.y - 0.5*ca_param_.environment_collision.BBX.y;
+    }
+    if (zmin_octomap > 0.0 ) {
+        zmin_bbx = xmin_octomap;
+    } else {
+        zmin_bbx = 0.0;
+    }
+
+    if (xmax_octomap < fk_base.pose.position.x + 0.5*ca_param_.environment_collision.BBX.x ) {
+        xmax_bbx = xmax_octomap;
+    } else {
+        xmax_bbx = fk_base.pose.position.x + 0.5*ca_param_.environment_collision.BBX.x;
+    }
+    if (ymax_octomap < fk_base.pose.position.y + 0.5*ca_param_.environment_collision.BBX.y ) {
+        ymax_bbx = ymax_octomap;
+    } else {
+        ymax_bbx = fk_base.pose.position.y + 0.5*ca_param_.environment_collision.BBX.y;
+    }
+    if (zmax_octomap < ca_param_.environment_collision.BBX.z ) {
+        zmax_bbx = zmax_octomap;
+    } else {
+        zmax_bbx = ca_param_.environment_collision.BBX.z;
+    }
+
+    // Set bounding box using its minimum and maximum coordinate
+    min_ = octomath::Vector3(xmin_bbx,
+                                              ymin_bbx,
+                                              zmin_bbx);
+
+    max_ = octomath::Vector3(xmax_bbx,
+                                              ymax_bbx,
+                                              zmax_bbx);
+
+    // Find and store all occupied voxels
+    std::vector<Voxel> in_range_voxels;
+    for(octomap::OcTree::leaf_bbx_iterator it = octomap_->begin_leafs_bbx(min_,max_), end=octomap_->end_leafs_bbx(); it!= end; ++it)
+    {
+        Voxel vox;
+        if (octomap_->isNodeOccupied(*it))
+        {
+            vox.center_point.pose.position.x = it.getX();
+            vox.center_point.pose.position.y = it.getY();
+            vox.center_point.pose.position.z = it.getZ();
+            vox.center_point.pose.orientation.x = 0;
+            vox.center_point.pose.orientation.y = 0;
+            vox.center_point.pose.orientation.z = 0;
+            vox.center_point.pose.orientation.w = 1;
+
+            //std::cout << "voxel center position: " << vox.center_point.pose.position.x << " " << vox.center_point.pose.position.y << " " << vox.center_point.pose.position.z << std::endl;
+
+            // Get Voxel size
+            vox.size_voxel = octomap_->getNodeSize(it.getDepth());
+
+            in_range_voxels.push_back(vox);
+        }
+    }
+    //std::cout << "in_range_voxels: " << in_range_voxels.size() << std::endl;
+
+    // Calculate closest distances using Bullet
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
+    {
+        std::vector<RobotState::CollisionBody> &group = *itrGroups;
+
+        for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
+        {
+            Distance distance;
+            RobotState::CollisionBody &collisionBody = *itrBodies;
+            std::vector<Distance> distanceCollection;
+            for (std::vector<Voxel>::iterator itrVox = in_range_voxels.begin(); itrVox != in_range_voxels.end(); ++itrVox)
+            {
+                Voxel vox = *itrVox;
+                RobotState::CollisionBody envBody;
+
+                // Construct a Bullet Convex Shape of every Voxel within range
+                envBody.bt_shape = new btBoxShape(btVector3(0.5*vox.size_voxel,0.5*vox.size_voxel,0.5*vox.size_voxel));
+                setTransform(envBody.bt_transform, vox.center_point, no_fix_);
+
+                distance.frame_id = collisionBody.fix_pose.header.frame_id;
+                distanceCalculation(*collisionBody.bt_shape,*envBody.bt_shape,collisionBody.bt_transform,envBody.bt_transform,distance.bt_distance);
+                distanceCollection.push_back(distance);
+
+                //std::cout << "Distance:" << distance.bt_distance.m_distance << std::endl;
+                /*
+                if (distance.bt_distance.m_distance < 0)
+                {
+                    std::cout << "COLLISION" << std::endl;
+                    std::cout << "Frame A:" << currentBody.name_collision_body << std::endl;
+                    std::cout << "Frame B:" << collisionBody.name_collision_body << std::endl;
+                    std::cout << "Distance:" << distance.bt_distance.m_distance << std::endl;
+                }
+                */
+            }
+            pickMinimumDistance(distanceCollection,min_distances);
+        }
+    }
+    calculateReactionForce(min_distances,reaction_forces,ca_param_.environment_collision);
 }
 
 void CollisionAvoidance::getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY)
@@ -248,8 +368,7 @@ void CollisionAvoidance::calculateWrenches(std::vector<ReactionForce> &reaction_
 
         /*
         std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robot_state_.fk_poses_.find(RF.frame_id);
-        std::pair<std::string, geometry_msgs::PoseStamped> FK = *itrFK;
-        geometry_msgs::PoseStamped p0 = FK.second;
+        geometry_msgs::PoseStamped p0 = (*itrFK).second;
         */
 
         for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
@@ -313,6 +432,8 @@ void CollisionAvoidance::visualize(std::vector<Distance> &min_distances) const
         Distance dmin = *itrdmin;
         visualizeReactionForce(dmin,id++);
     }
+
+    visualizeBBX(id++);
 }
 
 void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
@@ -361,7 +482,8 @@ void CollisionAvoidance::calculateTransform()
         for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
         {
             RobotState::CollisionBody &collisionBody = *it;
-            CollisionAvoidance::setTransform(collisionBody.bt_transform, collisionBody.fk_pose, collisionBody.fix_pose);
+
+            setTransform(collisionBody.bt_transform, collisionBody.fk_pose, collisionBody.fix_pose);
         }
     }
 }
@@ -371,20 +493,6 @@ void CollisionAvoidance::setTransform(btTransform& transform_out, geometry_msgs:
     //cout << "FKPOSE: x = " << fkPose.pose.position.x << "y = " << fkPose.pose.position.y << "z = " << fkPose.pose.position.z << endl;
     btTransform fkTransform;
     btTransform fixTransform;
-
-    // Get FK solution
-    std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robot_state_->fk_poses_.find(fixPose.header.frame_id);
-    std::pair<std::string, geometry_msgs::PoseStamped> FK = *itrFK;
-    geometry_msgs::PoseStamped p = FK.second;
-    /*
-    fkTransform.setOrigin(btVector3(p.pose.position.x,
-                                    p.pose.position.y,
-                                    p.pose.position.z));
-    fkTransform.setRotation(btQuaternion(p.pose.orientation.x,
-                                         p.pose.orientation.y,
-                                         p.pose.orientation.z,
-                                         p.pose.orientation.w));
-    */
     fkTransform.setOrigin(btVector3(fkPose.pose.position.x,
                                     fkPose.pose.position.y,
                                     fkPose.pose.position.z));
@@ -393,6 +501,7 @@ void CollisionAvoidance::setTransform(btTransform& transform_out, geometry_msgs:
                                          fkPose.pose.orientation.z,
                                          fkPose.pose.orientation.w));
 
+
     fixTransform.setOrigin(btVector3(fixPose.pose.position.x,
                                      fixPose.pose.position.y,
                                      fixPose.pose.position.z));
@@ -400,8 +509,8 @@ void CollisionAvoidance::setTransform(btTransform& transform_out, geometry_msgs:
                                           fixPose.pose.orientation.y,
                                           fixPose.pose.orientation.z,
                                           fixPose.pose.orientation.w));
-
     transform_out.mult(fkTransform,fixTransform);
+
 
     /*
     std::cout << "--------------------------------------" << std::endl;
@@ -426,8 +535,6 @@ void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA, btConvexShap
     btGjkPairDetector::ClosestPointInput input;
     input.m_transformA = transformA;
     input.m_transformB = transformB;
-    //std::cout << "A: " << transformA.getOrigin().getX() << " " << transformA.getOrigin().getY() << " " << transformA.getOrigin().getZ() << std::endl;
-    //std::cout << "B: " << transformB.getOrigin().getX() << " " << transformB.getOrigin().getY() << " " << transformB.getOrigin().getZ() << std::endl;
     convexConvex.getClosestPoints(input, distance_out, 0);
 }
 
@@ -645,18 +752,18 @@ void CollisionAvoidance::pickMinimumDistance(std::vector<Distance> &calculatedDi
     minimumDistances.push_back(dmin);
 }
 
-void CollisionAvoidance::calculateReactionForce(std::vector<Distance> &minimumDistances, std::vector<ReactionForce> &reactionForces)
+void CollisionAvoidance::calculateReactionForce(std::vector<Distance> &minimumDistances, std::vector<ReactionForce> &reactionForces, collisionAvoidanceParameters::Parameters &param)
 {
     ReactionForce F;
     for (std::vector<Distance>::iterator itrMinDist = minimumDistances.begin(); itrMinDist != minimumDistances.end(); ++itrMinDist)
     {
         Distance &dmin = *itrMinDist;
-        if (dmin.bt_distance.m_distance <= ca_param_.self_collision.d_threshold )
+        if (dmin.bt_distance.m_distance <= param.d_threshold )
         {
             F.frame_id = dmin.frame_id;
             F.direction = dmin.bt_distance.m_normalOnBInWorld;
             F.pointOnA = dmin.bt_distance.m_pointInWorld + dmin.bt_distance.m_distance * dmin.bt_distance.m_normalOnBInWorld;
-            F.amplitude = ca_param_.self_collision.f_max / pow(ca_param_.self_collision.d_threshold,ca_param_.self_collision.order) * pow((ca_param_.self_collision.d_threshold - dmin.bt_distance.m_distance),ca_param_.self_collision.order) ;
+            F.amplitude = param.f_max / pow(param.d_threshold,param.order) * pow((param.d_threshold - dmin.bt_distance.m_distance),param.order) ;
 
             // Store all minimum distances;
             reactionForces.push_back(F);
@@ -669,42 +776,7 @@ void CollisionAvoidance::outputWrenches(std::vector<Wrench> &wrenches)
     for (std::vector<Wrench>::iterator itrW = wrenches.begin(); itrW != wrenches.end(); ++itrW)
     {
         Wrench W = *itrW;
-
         robot_state_->tree_.addCartesianWrench(W.frame_id,W.wrench);
-
-        //std::cout << "chain has link " << W.frame_id << ", wrench is added" << std::endl;
-
-        /*
-        if (chain_left_->hasLink(W.frame_id))
-        {
-            //Eigen::VectorXd wrench_calc(6);
-            //wrench_calc.setZero();
-            //chain_left_->addCartesianWrench("grippoint_left",wrench_calc);
-            chain_left_->addCartesianWrench(W.frame_id,W.wrench);
-        }
-        else
-        {
-            //Eigen::VectorXd wrench_calc(6);
-            //wrench_calc.setZero();
-            //chain_right_->addCartesianWrench("grippoint_right",wrench_calc);
-            chain_right_->addCartesianWrench(W.frame_id,W.wrench);
-        }
-        */
-
-        /*
-        for (std::vector<Chain*>::iterator itrChain = robot_state_.chains_.begin(); itrChain != robot_state_.chains_.end(); ++itrChain)
-        {
-            Chain* chain = *itrChain;
-
-            if (chain->hasLink(W.frame_id))
-            {
-                chain->addCartesianWrench(W.frame_id,W.wrench);
-                //std::cout << "chain has link " << W.frame_id << ", wrench is added" << std::endl;
-                break;
-            }
-        }
-        */
-
     }
 }
 
@@ -716,9 +788,10 @@ void CollisionAvoidance::visualizeReactionForce(Distance &d_min,int id) const
     geometry_msgs::Point pB;
 
     RFviz.type = visualization_msgs::Marker::ARROW;
-    RFviz.header.frame_id = "/base_link";
+    RFviz.header.frame_id = "map"; //"/base_link";
     RFviz.header.stamp = ros::Time::now();
     RFviz.id = id++;
+
 
     RFviz.scale.x = 0.02;
     RFviz.scale.y = 0.04;
@@ -752,4 +825,46 @@ void CollisionAvoidance::visualizeReactionForce(Distance &d_min,int id) const
 
     pub_marker_.publish(marker_array);
 
+}
+
+void CollisionAvoidance::visualizeBBX(int id) const
+{
+    visualization_msgs::MarkerArray marker_array;
+    visualization_msgs::Marker BBXviz;
+
+    BBXviz.type = visualization_msgs::Marker::CUBE;
+    BBXviz.header.frame_id = "map"; //"/base_link";
+    BBXviz.header.stamp = ros::Time::now();
+    BBXviz.id = id++;
+
+    BBXviz.scale.x = max_(0) - min_(0);
+    BBXviz.scale.y = max_(1) - min_(1);
+    BBXviz.scale.z = max_(2) - min_(2);
+
+    BBXviz.pose.position.x = min_(0) + (max_(0) - min_(0))/2;
+    BBXviz.pose.position.y = min_(1) + (max_(1) - min_(1))/2;
+    BBXviz.pose.position.z = min_(2) + (max_(2) - min_(2))/2;
+
+    BBXviz.pose.orientation.x = 0;
+    BBXviz.pose.orientation.y = 0;
+    BBXviz.pose.orientation.z = 0;
+    BBXviz.pose.orientation.w = 1;
+
+
+    BBXviz.color.a = 0.2;
+    BBXviz.color.r = 1;
+    BBXviz.color.g = 1;
+    BBXviz.color.b = 1;
+
+    marker_array.markers.push_back(BBXviz);
+
+    pub_marker_.publish(marker_array);
+
+}
+
+void CollisionAvoidance::setOctoMap(const octomap_msgs::OctomapBinary& octomap_msg)
+{
+    // Only OctomapBinary is provided as a message in Fuerte
+    // In Groovy a general Octomap message will be provided, so for now we'll have to do with the Binary
+    octomap_ = octomap_msgs::binaryMsgDataToMap(octomap_msg.data);
 }

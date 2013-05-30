@@ -30,6 +30,8 @@
 // Vector
 #include <vector>
 
+#include <XmlRpcException.h>
+
 class WholeBodyController {
 
 public:
@@ -65,6 +67,8 @@ public:
     RobotState robot_state_;
 
 protected:
+
+    tf::TransformListener listener_;
 
     std::vector<Chain*> chains_;
 
