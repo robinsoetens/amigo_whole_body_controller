@@ -4,7 +4,7 @@ collision_model:
           name: "BaseBottom"
           shape:
                 shape_type: "CylinderZ"
-                dimensions: {x: 0.36, y: 0.36, z: 0.24 } # radius,radius,height
+                dimensions: {x: 0.36, y: 0.36, z: 0.12 } # radius,radius,0.5*height
           transform:
                 chain_side: "left"
                 frame_id: "base_link"
@@ -14,7 +14,7 @@ collision_model:
           name: "BaseFront"
           shape:
                 shape_type: "Box"
-                dimensions: {x: 0.2, y: 0.28, z: 0.19 } # x,y,z
+                dimensions: {x: 0.1, y: 0.14, z: 0.095 } # 0.5*x,0.5*y,0.5*z
           transform:
                 chain_side: "left"
                 chain_side: "left"
@@ -25,7 +25,7 @@ collision_model:
           name: "BaseBack"
           shape:
                 shape_type: "Box"
-                dimensions: {x: 0.16, y: 0.16, z: 0.08 } # x,y,z
+                dimensions: {x: 0.08, y: 0.08, z: 0.04 } # 0.5*x,0.5*y,0.5*z
           transform:
                 chain_side: "left"
                 chain_side: "left"
@@ -36,7 +36,7 @@ collision_model:
           name: "BaseTop"
           shape:
                 shape_type: "Cone"
-                dimensions: {x: 0.18, y: 0.18, z: 0.57 } # radius,radius,height
+                dimensions: {x: 0.18, y: 0.18, z: 0.285 } # radius,radius,0.5*height
           transform:
                 chain_side: "left"
                 frame_id: "base_link"
@@ -46,7 +46,7 @@ collision_model:
           name: "Sliders"
           shape:
                 shape_type: "Box"
-                dimensions: {x: 0.7, y: 0.23, z: 0.15 } # x,y,z
+                dimensions: {x: 0.35, y: 0.115, z: 0.075 } # 0.5*x,0.5*y,0.5*z
           transform:
                 chain_side: "left"
                 frame_id: "torso_slider"
@@ -66,7 +66,7 @@ collision_model:
           name: "Clavicles"
           shape:
                 shape_type: "Box"
-                dimensions: {x: 0.1, y: 0.6, z: 0.16 } # x,y,z
+                dimensions: {x: 0.05, y: 0.3, z: 0.08} # 0.5*x,0.5*y,0.5*z
           transform:
                 chain_side: "left"
                 frame_id: "torso"
@@ -76,7 +76,7 @@ collision_model:
           name: "UpperArmLeft"
           shape:
                 shape_type: "CylinderY"
-                dimensions: {x: 0.07, y: 0.35, z: 0.07 } # radius,height,radius
+                dimensions: {x: 0.07, y: 0.175, z: 0.07 } # radius,0.5*height,radius
           transform:
                 chain_side: "left"
                 frame_id: "upper_arm_left"
@@ -86,7 +86,7 @@ collision_model:
           name: "UpperArmRight"
           shape:
                 shape_type: "CylinderY"
-                dimensions: {x: 0.07, y: 0.35, z: 0.07 } # radius,height,radius
+                dimensions: {x: 0.07, y: 0.175, z: 0.07 } # radius,0.5*height,radius
           transform:
                 chain_side: "right"
                 frame_id: "upper_arm_right"
@@ -98,7 +98,7 @@ collision_model:
           name: "ForeArmLeft"
           shape:
                 shape_type: "CylinderY"
-                dimensions: {x: 0.05, y: 0.32, z: 0.05 } # radius,height,radius
+                dimensions: {x: 0.05, y: 0.16, z: 0.05 } # radius,0.5*height,radius
           transform:
                 chain_side: "left"
                 frame_id: "fore_arm_left"
@@ -108,7 +108,7 @@ collision_model:
           name: "GripperLeft"
           shape:
                 shape_type: "Box"
-                dimensions: {x: 0.2, y: 0.17, z: 0.05 } # x,y,z
+                dimensions: {x: 0.1, y: 0.085, z: 0.025 } # 0.5*x,0.5*y,0.5*z
           transform:
                 chain_side: "left"
                 frame_id: "grippoint_left"
@@ -120,7 +120,7 @@ collision_model:
           name: "ForeArmRight"
           shape:
                 shape_type: "CylinderY"
-                dimensions: {x: 0.05, y: 0.32, z: 0.05 } # radius,height,radius
+                dimensions: {x: 0.05, y: 0.16, z: 0.05 } # radius,0.5*height,radius
           transform:
                 chain_side: "right"
                 frame_id: "fore_arm_right"
@@ -130,7 +130,7 @@ collision_model:
           name: "GripperRight"
           shape:
                 shape_type: "Box"
-                dimensions: {x: 0.2, y: 0.17, z: 0.05 } # x,y,z
+                dimensions: {x: 0.1, y: 0.085, z: 0.025 } # 0.5*x,0.5*y,0.5*z
           transform:
                 chain_side: "right"
                 frame_id: "grippoint_right"

@@ -136,9 +136,6 @@ void loadParameterFiles(CollisionAvoidance::collisionAvoidanceParameters &ca_par
     n.param<double> (ns+"/collision_avoidance/environment_collision/F_max", ca_param.environment_collision.f_max, 1.0);
     n.param<double> (ns+"/collision_avoidance/environment_collision/d_threshold", ca_param.environment_collision.d_threshold, 1.0);
     n.param<int> (ns+"/collision_avoidance/environment_collision/order", ca_param.environment_collision.order, 1);
-    n.getParam(ns+"/collision_avoidance/environment_collision/BBX/x", ca_param.environment_collision.BBX.x);
-    n.getParam(ns+"/collision_avoidance/environment_collision/BBX/y", ca_param.environment_collision.BBX.y);
-    n.getParam(ns+"/collision_avoidance/environment_collision/BBX/z", ca_param.environment_collision.BBX.z);
     n.getParam("/map_3d/resolution", ca_param.environment_collision.octomap_resolution);
 
 }

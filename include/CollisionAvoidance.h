@@ -63,12 +63,6 @@ public:
             double d_threshold;
             int order;
             double octomap_resolution;
-            struct
-            {
-                double x;
-                double y;
-                double z;
-            } BBX;
         } ;
         Parameters self_collision;
         Parameters environment_collision;
@@ -143,8 +137,8 @@ protected:
     octomap::OcTree* octomap_;
 
     // Minimum and maximum point of the BBX
-    octomath::Vector3 min_;
-    octomath::Vector3 max_;
+    std::vector<octomath::Vector3> min_;
+    std::vector<octomath::Vector3> max_;
 
     void getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY);
 
@@ -176,7 +170,9 @@ protected:
 
     void visualizeReactionForce(Distance &d_min, int id) const;
 
-    void visualizeBBX(int id) const;
+    void visualizeBBX(octomath::Vector3 min, octomath::Vector3 max, int id) const;
+
+    void findOuterPoints(RobotState::CollisionBody& collisionBody, btVector3 min, btVector3 max);
 
 };
 

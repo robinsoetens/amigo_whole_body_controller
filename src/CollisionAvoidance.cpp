@@ -53,6 +53,7 @@ bool CollisionAvoidance::isActive()
 
 void CollisionAvoidance::apply(RobotState &robotstate)
 {
+    ThreadProfiler::Start("CA");
     robot_state_ = &robotstate;
     calculateTransform();
 
@@ -68,7 +69,6 @@ void CollisionAvoidance::apply(RobotState &robotstate)
 
     selfCollision(min_distances_total,reaction_forces_total);
 
-    //std::cout << "OctoMap size : " << octomap_->size() << std::endl;
     if (octomap_->size() > 0)
     {
         environmentCollision(min_distances_total,reaction_forces_total);
@@ -79,21 +79,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     // Output
     visualize(min_distances_total);
     outputWrenches(wrenches_total);
-
-    /*
-    std::cout << "==============================================" << std::endl;
-    std::cout << "Size Reaction Force Vector = " << reaction_forces_total.size() << std::endl;
-    std::cout << "==============================================" << std::endl;
-    for (std::vector<ReactionForce>::iterator itrRF = reaction_forces_total.begin(); itrRF != reaction_forces_total.end(); ++itrRF)
-    {
-        ReactionForce &RF = *itrRF;
-        std::cout << "----------------------------------------------" << std::endl;
-        std::cout << "Frame ID = " << RF.frame_id << std::endl;
-        std::cout << "point on A = " << RF.pointOnA.getX() << " " << RF.pointOnA.getY() << " " << RF.pointOnA.getZ() << std::endl;
-        std::cout << "Direction of the force on A = " << RF.direction.getX() << " " << RF.direction.getY() << " " << RF.direction.getZ() << std::endl;
-        std::cout << "Amplitude = " << RF.amplitude << std::endl;
-    }
-    */
+    ThreadProfiler::Stop("CA");
 }
 
 void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std::vector<ReactionForce> &reaction_forces)
@@ -199,10 +185,8 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                     {
                         Distance distance;
                         distance.frame_id = currentBody.fix_pose.header.frame_id;
-                        //ThreadProfiler::Start("DistanceCalc");
                         distanceCalculation(*currentBody.bt_shape,*collisionBody.bt_shape,currentBody.bt_transform,collisionBody.bt_transform,distance.bt_distance);
                         distanceCollection.push_back(distance);
-                        //ThreadProfiler::Stop("DistanceCalc");
 
                         /*
                         if (distance.bt_distance.m_distance < 0)
@@ -226,83 +210,12 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 
 void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distances, std::vector<ReactionForce> &reaction_forces)
 {
-    // Find the Voxels that are in range
-    std::map<std::string, geometry_msgs::PoseStamped>::iterator itrBase = robot_state_->fk_poses_.find("base_link");
-    geometry_msgs::PoseStamped fk_base = (*itrBase).second;
-
     double xmin_octomap,ymin_octomap,zmin_octomap;
     double xmax_octomap,ymax_octomap,zmax_octomap;
-    double xmin_bbx,ymin_bbx,zmin_bbx;
-    double xmax_bbx,ymax_bbx,zmax_bbx;
     octomap_->getMetricMin(xmin_octomap,ymin_octomap,zmin_octomap);
     octomap_->getMetricMax(xmax_octomap,ymax_octomap,zmax_octomap);
-
-    // Check whether the BBX is inside the OctoMap, otherwise take OctoMap dimensions
-    if (xmin_octomap > fk_base.pose.position.x - 0.5*ca_param_.environment_collision.BBX.x ) {
-        xmin_bbx = xmin_octomap;
-    } else {
-        xmin_bbx = fk_base.pose.position.x - 0.5*ca_param_.environment_collision.BBX.x;
-    }
-    if (ymin_octomap > fk_base.pose.position.y - 0.5*ca_param_.environment_collision.BBX.y ) {
-        ymin_bbx = ymin_octomap;
-    } else {
-        ymin_bbx = fk_base.pose.position.y - 0.5*ca_param_.environment_collision.BBX.y;
-    }
-    if (zmin_octomap > 0.0 ) {
-        zmin_bbx = xmin_octomap;
-    } else {
-        zmin_bbx = 0.0;
-    }
-
-    if (xmax_octomap < fk_base.pose.position.x + 0.5*ca_param_.environment_collision.BBX.x ) {
-        xmax_bbx = xmax_octomap;
-    } else {
-        xmax_bbx = fk_base.pose.position.x + 0.5*ca_param_.environment_collision.BBX.x;
-    }
-    if (ymax_octomap < fk_base.pose.position.y + 0.5*ca_param_.environment_collision.BBX.y ) {
-        ymax_bbx = ymax_octomap;
-    } else {
-        ymax_bbx = fk_base.pose.position.y + 0.5*ca_param_.environment_collision.BBX.y;
-    }
-    if (zmax_octomap < ca_param_.environment_collision.BBX.z ) {
-        zmax_bbx = zmax_octomap;
-    } else {
-        zmax_bbx = ca_param_.environment_collision.BBX.z;
-    }
-
-    // Set bounding box using its minimum and maximum coordinate
-    min_ = octomath::Vector3(xmin_bbx,
-                                              ymin_bbx,
-                                              zmin_bbx);
-
-    max_ = octomath::Vector3(xmax_bbx,
-                                              ymax_bbx,
-                                              zmax_bbx);
-
-    // Find and store all occupied voxels
-    std::vector<Voxel> in_range_voxels;
-    for(octomap::OcTree::leaf_bbx_iterator it = octomap_->begin_leafs_bbx(min_,max_), end=octomap_->end_leafs_bbx(); it!= end; ++it)
-    {
-        Voxel vox;
-        if (octomap_->isNodeOccupied(*it))
-        {
-            vox.center_point.pose.position.x = it.getX();
-            vox.center_point.pose.position.y = it.getY();
-            vox.center_point.pose.position.z = it.getZ();
-            vox.center_point.pose.orientation.x = 0;
-            vox.center_point.pose.orientation.y = 0;
-            vox.center_point.pose.orientation.z = 0;
-            vox.center_point.pose.orientation.w = 1;
-
-            //std::cout << "voxel center position: " << vox.center_point.pose.position.x << " " << vox.center_point.pose.position.y << " " << vox.center_point.pose.position.z << std::endl;
-
-            // Get Voxel size
-            vox.size_voxel = octomap_->getNodeSize(it.getDepth());
-
-            in_range_voxels.push_back(vox);
-        }
-    }
-    //std::cout << "in_range_voxels: " << in_range_voxels.size() << std::endl;
+    min_.clear();
+    max_.clear();
 
     // Calculate closest distances using Bullet
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
@@ -311,8 +224,134 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
 
         for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
         {
-            Distance distance;
             RobotState::CollisionBody &collisionBody = *itrBodies;
+
+            // Find the Voxels that are in range of collision body
+            double xmin_bbx,ymin_bbx,zmin_bbx;
+            double xmax_bbx,ymax_bbx,zmax_bbx;
+            Distance distance;
+            btVector3 bbx_dim;
+            //btVector3 min_cb = btVector3(0,0,0);
+            //btVector3 max_cb = btVector3(0,0,0);
+
+            //findOuterPoints(collisionBody, min_cb, max_cb);
+
+            /*
+            xmin_bbx = min_cb[0];
+            ymin_bbx = min_cb[1];
+            zmin_bbx = min_cb[2];
+
+            xmax_bbx = max_cb[0];
+            ymax_bbx = max_cb[1];
+            zmax_bbx = max_cb[2];
+            */
+
+            // Find largest dimension of the collision body
+            double l = collisionBody.collision_shape.dimensions.x;
+            if (l < collisionBody.collision_shape.dimensions.y) {
+                l = collisionBody.collision_shape.dimensions.y;
+            }
+            if (l < collisionBody.collision_shape.dimensions.z) {
+                l = collisionBody.collision_shape.dimensions.z;
+            }
+
+            btVector3 cb_im = btVector3(l+2*ca_param_.environment_collision.d_threshold,
+                                        l+2*ca_param_.environment_collision.d_threshold,
+                                        l+2*ca_param_.environment_collision.d_threshold);
+
+            bbx_dim = collisionBody.bt_transform.getIdentity() * cb_im;
+
+
+            xmin_bbx = collisionBody.bt_transform.getOrigin()[0] - bbx_dim[0];
+            ymin_bbx = collisionBody.bt_transform.getOrigin()[1] - bbx_dim[1];
+            zmin_bbx = collisionBody.bt_transform.getOrigin()[2] - bbx_dim[2];
+
+            xmax_bbx = collisionBody.bt_transform.getOrigin()[0] + bbx_dim[0];
+            ymax_bbx = collisionBody.bt_transform.getOrigin()[1] + bbx_dim[1];
+            zmax_bbx = collisionBody.bt_transform.getOrigin()[2] + bbx_dim[2];
+
+
+            /*
+            // Check whether the BBX is inside the OctoMap, otherwise take OctoMap dimensions
+            if (xmin_octomap > min_cb[0]) {
+                xmin_bbx = xmin_octomap;
+            } else {
+                xmin_bbx = min_cb[0];
+            }
+            if (ymin_octomap > min_cb[1]) {
+                ymin_bbx = ymin_octomap;
+            } else {
+                ymin_bbx = min_cb[1];
+            }
+            if (zmin_octomap > min_cb[2]) {
+                zmin_bbx = xmin_octomap;
+            } else {
+                zmin_bbx = min_cb[2];
+            }
+
+            if (xmax_octomap < max_cb[0]) {
+                xmax_bbx = xmax_octomap;
+            } else {
+                xmax_bbx = max_cb[0];
+            }
+            if (ymax_octomap < max_cb[1]) {
+                ymax_bbx = ymax_octomap;
+            } else {
+                ymax_bbx = max_cb[1];
+            }
+            if (zmax_octomap < max_cb[2]) {
+                zmax_bbx = zmax_octomap;
+            } else {
+                zmax_bbx = max_cb[2];
+            }
+            */
+
+
+            // Set bounding box using its minimum and maximum coordinate
+            octomath::Vector3 min = octomath::Vector3(xmin_bbx,
+                                                      ymin_bbx,
+                                                      zmin_bbx);
+
+            octomath::Vector3 max = octomath::Vector3(xmax_bbx,
+                                                      ymax_bbx,
+                                                      zmax_bbx);
+
+
+            //if (collisionBody.name_collision_body == "GripperRight")
+            //{
+                // Store bbx min max in vector for visualization
+                min_.push_back(min);
+                max_.push_back(max);
+            //}
+
+
+            // Find and store all occupied voxels
+            std::vector<Voxel> in_range_voxels;
+            for(octomap::OcTree::leaf_bbx_iterator it = octomap_->begin_leafs_bbx(min,max), end=octomap_->end_leafs_bbx(); it!= end; ++it)
+            {
+                Voxel vox;
+                if (octomap_->isNodeOccupied(*it))
+                {
+                    vox.center_point.pose.position.x = it.getX();
+                    vox.center_point.pose.position.y = it.getY();
+                    vox.center_point.pose.position.z = it.getZ();
+                    vox.center_point.pose.orientation.x = 0;
+                    vox.center_point.pose.orientation.y = 0;
+                    vox.center_point.pose.orientation.z = 0;
+                    vox.center_point.pose.orientation.w = 1;
+
+                    //std::cout << "voxel center position: " << vox.center_point.pose.position.x << " " << vox.center_point.pose.position.y << " " << vox.center_point.pose.position.z << std::endl;
+
+                    // Get Voxel size
+                    vox.size_voxel = octomap_->getNodeSize(it.getDepth());
+
+                    in_range_voxels.push_back(vox);
+                }
+            }
+            //std::cout << "in_range_voxels: " << in_range_voxels.size() << std::endl;
+
+
+
             std::vector<Distance> distanceCollection;
             for (std::vector<Voxel>::iterator itrVox = in_range_voxels.begin(); itrVox != in_range_voxels.end(); ++itrVox)
             {
@@ -433,7 +472,10 @@ void CollisionAvoidance::visualize(std::vector<Distance> &min_distances) const
         visualizeReactionForce(dmin,id++);
     }
 
-    visualizeBBX(id++);
+    for (unsigned int i = 0; i < min_.size(); i++)
+    {
+        visualizeBBX(min_[i], max_[i], id++);
+    }
 }
 
 void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
@@ -451,7 +493,7 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
 
             if (type=="Box")
             {
-                collisionBody.bt_shape = new btBoxShape(btVector3(0.5*x,0.5*y,0.5*z));
+                collisionBody.bt_shape = new btBoxShape(btVector3(x,y,z));
             }
             else if (type == "Sphere")
             {
@@ -459,15 +501,15 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
             }
             else if (type == "Cone")
             {
-                collisionBody.bt_shape = new btConeShapeZ(x-0.05,z);
+                collisionBody.bt_shape = new btConeShapeZ(x-0.05,2*z);
             }
             else if (type == "CylinderY")
             {
-                collisionBody.bt_shape = new btCylinderShape(btVector3(x,0.5*y,z));
+                collisionBody.bt_shape = new btCylinderShape(btVector3(x,y,z));
             }
             else if (type == "CylinderZ")
             {
-                collisionBody.bt_shape = new btCylinderShapeZ(btVector3(x,y,0.5*z));
+                collisionBody.bt_shape = new btCylinderShapeZ(btVector3(x,y,z));
             }
         }
     }
@@ -558,9 +600,9 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
         modelviz.header.stamp = ros::Time::now();
         modelviz.id = id;
 
-        modelviz.scale.x = x;
-        modelviz.scale.y = y;
-        modelviz.scale.z = z;
+        modelviz.scale.x = 2*x;
+        modelviz.scale.y = 2*y;
+        modelviz.scale.z = 2*z;
 
         modelviz.pose.position.x = transform.getOrigin().getX();
         modelviz.pose.position.y = transform.getOrigin().getY();
@@ -619,7 +661,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         modelviz.scale.x = 2*x;
         modelviz.scale.y = 2*z;
-        modelviz.scale.z = y;
+        modelviz.scale.z = 2*y;
 
         modelviz.pose.position.x = transform.getOrigin().getX();
         modelviz.pose.position.y = transform.getOrigin().getY();
@@ -655,7 +697,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         modelviz.scale.x = 2*x;
         modelviz.scale.y = 2*y;
-        modelviz.scale.z = z;
+        modelviz.scale.z = 2*z;
 
         modelviz.pose.position.x = transform.getOrigin().getX();
         modelviz.pose.position.y = transform.getOrigin().getY();
@@ -684,7 +726,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
         modelviz.id = id;
 
         modelviz.scale.x = 2.3*x;
-        modelviz.scale.y = 1.5*z;
+        modelviz.scale.y = 3.0*z;
         modelviz.scale.z = 2.3*y;
 
         btTransform rotXfromZtoY;
@@ -790,7 +832,7 @@ void CollisionAvoidance::visualizeReactionForce(Distance &d_min,int id) const
     RFviz.type = visualization_msgs::Marker::ARROW;
     RFviz.header.frame_id = "map"; //"/base_link";
     RFviz.header.stamp = ros::Time::now();
-    RFviz.id = id++;
+    RFviz.id = id;
 
 
     RFviz.scale.x = 0.02;
@@ -827,7 +869,7 @@ void CollisionAvoidance::visualizeReactionForce(Distance &d_min,int id) const
 
 }
 
-void CollisionAvoidance::visualizeBBX(int id) const
+void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 max, int id) const
 {
     visualization_msgs::MarkerArray marker_array;
     visualization_msgs::Marker BBXviz;
@@ -835,15 +877,15 @@ void CollisionAvoidance::visualizeBBX(int id) const
     BBXviz.type = visualization_msgs::Marker::CUBE;
     BBXviz.header.frame_id = "map"; //"/base_link";
     BBXviz.header.stamp = ros::Time::now();
-    BBXviz.id = id++;
+    BBXviz.id = id;
 
-    BBXviz.scale.x = max_(0) - min_(0);
-    BBXviz.scale.y = max_(1) - min_(1);
-    BBXviz.scale.z = max_(2) - min_(2);
+    BBXviz.scale.x = max(0) - min(0);
+    BBXviz.scale.y = max(1) - min(1);
+    BBXviz.scale.z = max(2) - min(2);
 
-    BBXviz.pose.position.x = min_(0) + (max_(0) - min_(0))/2;
-    BBXviz.pose.position.y = min_(1) + (max_(1) - min_(1))/2;
-    BBXviz.pose.position.z = min_(2) + (max_(2) - min_(2))/2;
+    BBXviz.pose.position.x = min(0) + (max(0) - min(0))/2;
+    BBXviz.pose.position.y = min(1) + (max(1) - min(1))/2;
+    BBXviz.pose.position.z = min(2) + (max(2) - min(2))/2;
 
     BBXviz.pose.orientation.x = 0;
     BBXviz.pose.orientation.y = 0;
@@ -851,7 +893,7 @@ void CollisionAvoidance::visualizeBBX(int id) const
     BBXviz.pose.orientation.w = 1;
 
 
-    BBXviz.color.a = 0.2;
+    BBXviz.color.a = 0.25;
     BBXviz.color.r = 1;
     BBXviz.color.g = 1;
     BBXviz.color.b = 1;
@@ -867,4 +909,66 @@ void CollisionAvoidance::setOctoMap(const octomap_msgs::OctomapBinary& octomap_m
     // Only OctomapBinary is provided as a message in Fuerte
     // In Groovy a general Octomap message will be provided, so for now we'll have to do with the Binary
     octomap_ = octomap_msgs::binaryMsgDataToMap(octomap_msg.data);
+}
+
+void CollisionAvoidance::findOuterPoints(RobotState::CollisionBody& collisionBody, btVector3 min, btVector3 max)
+{
+    // Calculate all outer points
+    std::vector<btVector3> outer_points;
+    btVector3 point1 = collisionBody.bt_transform.getOrigin() + collisionBody.bt_transform.getBasis() * btVector3 (collisionBody.collision_shape.dimensions.x,
+                                                                                                                   collisionBody.collision_shape.dimensions.y,
+                                                                                                                   collisionBody.collision_shape.dimensions.z);
+    outer_points.push_back(point1);
+
+    btVector3 point2 = collisionBody.bt_transform.getOrigin() + collisionBody.bt_transform.getBasis() * btVector3 (-collisionBody.collision_shape.dimensions.x,
+                                                                                                                   collisionBody.collision_shape.dimensions.y,
+                                                                                                                   collisionBody.collision_shape.dimensions.z);
+    outer_points.push_back(point2);
+
+    btVector3 point3 = collisionBody.bt_transform.getOrigin() + collisionBody.bt_transform.getBasis() * btVector3 (collisionBody.collision_shape.dimensions.x,
+                                                                                                                   -collisionBody.collision_shape.dimensions.y,
+                                                                                                                   collisionBody.collision_shape.dimensions.z);
+    outer_points.push_back(point3);
+
+    btVector3 point4 = collisionBody.bt_transform.getOrigin() + collisionBody.bt_transform.getBasis() * btVector3 (collisionBody.collision_shape.dimensions.x,
+                                                                                                                   collisionBody.collision_shape.dimensions.y,
+                                                                                                                   -collisionBody.collision_shape.dimensions.z);
+    outer_points.push_back(point4);
+
+    btVector3 point5 = collisionBody.bt_transform.getOrigin() + collisionBody.bt_transform.getBasis() * btVector3 (-collisionBody.collision_shape.dimensions.x,
+                                                                                                                   -collisionBody.collision_shape.dimensions.y,
+                                                                                                                   collisionBody.collision_shape.dimensions.z);
+    outer_points.push_back(point5);
+
+    btVector3 point6 = collisionBody.bt_transform.getOrigin() + collisionBody.bt_transform.getBasis() * btVector3 (collisionBody.collision_shape.dimensions.x,
+                                                                                                                   -collisionBody.collision_shape.dimensions.y,
+                                                                                                                   -collisionBody.collision_shape.dimensions.z);
+    outer_points.push_back(point6);
+
+    btVector3 point7 = collisionBody.bt_transform.getOrigin() + collisionBody.bt_transform.getBasis() * btVector3 (-collisionBody.collision_shape.dimensions.x,
+                                                                                                                   collisionBody.collision_shape.dimensions.y,
+                                                                                                                   -collisionBody.collision_shape.dimensions.z);
+    outer_points.push_back(point7);
+
+    btVector3 point8 = collisionBody.bt_transform.getOrigin() + collisionBody.bt_transform.getBasis() * btVector3 (-collisionBody.collision_shape.dimensions.x,
+                                                                                                                   -collisionBody.collision_shape.dimensions.y,
+                                                                                                                   -collisionBody.collision_shape.dimensions.z);
+    outer_points.push_back(point8);
+
+    // Determin the min and max point for the axis aligned BBX
+    for (unsigned int i = 0; i < outer_points.size(); i++)
+    {
+        for (unsigned int j = 0; j < 3; j++)
+        {
+            if (min[j] > outer_points[i][j]) {
+                min[j] = outer_points[i][j];
+            }
+            if (max[j] < outer_points[i][j]) {
+                max[j] = outer_points[i][j];
+            }
+        }
+    }
+    std::cout << collisionBody.name_collision_body << std::endl;
+    std::cout << "min: " << min[0] << " " << min[1] << " " << min[2] << std::endl;
+    std::cout << "max: " << max[0] << " " << max[1] << " " << max[2] << std::endl;
 }
