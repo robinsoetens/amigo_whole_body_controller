@@ -13,6 +13,7 @@ CartesianImpedance::CartesianImpedance(const std::string& tip_frame) :
     ROS_INFO("Initializing Cartesian Impedance for %s", tip_frame_.c_str());
 
     /// Set stiffness matrix to zero
+    K_.resize(6,6);
     K_.Zero(6,6);
     num_constrained_dofs_ = 0;
     for (unsigned int i = 0; i < 3; i++) {

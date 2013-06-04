@@ -200,13 +200,14 @@ int main(int argc, char **argv) {
     add_motion_objective_server_->registerPreemptCallback(boost::bind(&CancelCB));
     add_motion_objective_server_->start();
 
-    CollisionAvoidance* collision_avoidance = new CollisionAvoidance(ca_param, 1/loop_rate_);
+    collision_avoidance = new CollisionAvoidance(ca_param, 1/loop_rate_);
     if (!wbc->addMotionObjective(collision_avoidance)) {
         ROS_ERROR("Could not initialize collision avoidance");
         exit(-1);
     }
 
     ///// Teststuff /////
+    /*
     CartesianImpedance* cartesian_impedance;
     cartesian_impedance = new CartesianImpedance("grippoint_left");
     if (!wbc->addMotionObjective(cartesian_impedance)) {
@@ -224,6 +225,7 @@ int main(int argc, char **argv) {
         exit(-1);
     }
     int ctr = 0;
+    */
     /////////////////////
 
     KDL::JntArray q_current;
@@ -237,6 +239,7 @@ int main(int argc, char **argv) {
         wbc->update(q_current, q_ref, qdot_ref);
 
         ///// Teststuff /////
+        /*
         std::string root_frame;
         std::vector<MotionObjective*> leftimp = wbc->getCartesianImpedances("grippoint_left",root_frame);
         std::vector<MotionObjective*> rightimp = wbc->getCartesianImpedances("grippoint_right",root_frame);
@@ -246,6 +249,7 @@ int main(int argc, char **argv) {
             for (unsigned int i = 0; i < rightimp.size(); i++) ROS_INFO("Tip frame: %s\t root frame: %s",rightimp[i]->tip_frame_.c_str(),rightimp[i]->root_frame_.c_str());
             ctr = 0;
         }
+        */
         /////////////////////
 
         //ToDo: set stuff succeeded

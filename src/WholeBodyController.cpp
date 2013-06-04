@@ -12,8 +12,6 @@ WholeBodyController::WholeBodyController(const double Ts)
 WholeBodyController::~WholeBodyController() {
     ROS_INFO("Shutting down whole body controller");
     // ToDo: delete all motion objectives nicely?
-
-    tf::TransformListener listener_(ros::Duration(4.0));
 }
 
 bool WholeBodyController::initialize(const double Ts)
@@ -23,6 +21,7 @@ bool WholeBodyController::initialize(const double Ts)
     //ROS_INFO("Nodehandle %s",n.getNamespace().c_str());
     ROS_INFO("Initializing whole body controller");
 
+    listener_ = new tf::TransformListener(ros::Duration(4.0));
 
     // ToDo: Parameterize
     Ts_ = Ts;
@@ -162,7 +161,7 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     robot_state_.tree_.rearrangeJntArrayToTree(q_current_);
     robot_state_.tree_.removeCartesianWrenches();
 
-    robot_state_.collectFKSolutions(listener_);
+    robot_state_.collectFKSolutions(*listener_);
 
     /*
     std::cout << "==================================" << std::endl;

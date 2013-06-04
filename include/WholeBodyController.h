@@ -74,7 +74,7 @@ public:
 
 protected:
 
-    tf::TransformListener listener_;
+    tf::TransformListener* listener_;
 
     std::vector<Chain*> chains_;
 

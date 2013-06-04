@@ -28,7 +28,7 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
     pub_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_avoidance_markers/", 10);
 
-    octomap_ = new octomap::OcTree(ca_param_.environment_collision.octomap_resolution);
+    //octomap_ = new octomap::OcTree(ca_param_.environment_collision.octomap_resolution);
 
     no_fix_.header.frame_id = "none";
     no_fix_.pose.position.x = 0;
@@ -903,6 +903,7 @@ void CollisionAvoidance::setOctoMap(const octomap_msgs::OctomapBinary& octomap_m
 {
     // Only OctomapBinary is provided as a message in Fuerte
     // In Groovy a general Octomap message will be provided, so for now we'll have to do with the Binary
+
     octomap_ = octomap_msgs::binaryMsgDataToMap(octomap_msg.data);
 }
 
