@@ -46,11 +46,6 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     return true;
 }
 
-bool CollisionAvoidance::isActive()
-{
-    return true;
-}
-
 void CollisionAvoidance::apply(RobotState &robotstate)
 {
     ThreadProfiler::Start("CA");

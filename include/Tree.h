@@ -21,7 +21,7 @@ public:
      * the computed chain jacobian
      * @param jacobian The whole body jacobian that needs to be filled
      */
-    void fillJacobian(Eigen::MatrixXd& jacobian);
+     void fillJacobian(Eigen::MatrixXd& jacobian);
 
     /**
      * @brief Adds all wrenches applied to this chain to a vector containing all wrenches of all chains

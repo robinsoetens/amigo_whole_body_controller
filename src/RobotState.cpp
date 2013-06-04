@@ -14,6 +14,7 @@ void RobotState::collectFKSolutions(tf::TransformListener& listener)
     fk_poses_.clear();
     geometry_msgs::PoseStamped baselink_pose;
 
+
     // Get base_link frame using tf
     tf::StampedTransform tf_baselink;
     tf::StampedTransform tf_baselink_fix;
@@ -69,10 +70,10 @@ void RobotState::collectFKSolutions(tf::TransformListener& listener)
                 tf::Stamped<tf::Pose> tf_pose,tf_solution;
                 KDL::Frame kdlFrame;
 
-                if (fk_solver_->JntToCart(tree_.q_tree_, kdlFrame,chain->kdl_chain_.getSegment(itr).getName()) < 0 ) ROS_WARN("Problems with FK computation for the chain");
+                if (fk_solver_->JntToCart(tree_.q_tree_, kdlFrame,chain->kdl_chain_.getSegment(itr).getName()) < 0 ) ROS_WARN("Problems with FK computation for the tree");
 
                 // Transform FK solution to map frame using precomputed base_link solution
-                getFKsolution(kdlFrame, fk_pose);
+                KDLFrameToStampedPose(kdlFrame, fk_pose);
                 tf::poseStampedMsgToTF(fk_pose,tf_pose);
                 tf_solution.mult(tf_baselink_fix,tf_pose);
                 tf::poseStampedTFToMsg(tf_solution,fk_solution);
@@ -91,13 +92,31 @@ void RobotState::collectFKSolutions(tf::TransformListener& listener)
                 std::cout << "Z = " <<  fk_solution.pose.orientation.z << std::endl;
                 std::cout << "W = " <<  fk_solution.pose.orientation.w << std::endl;
                 */
-            }
 
+            }
+            //std::cout << fk_solvers.size() << std::endl;            
         }
-        //std::cout << fk_solvers.size() << std::endl;
+
     }
     chainNr++;
 }
+
+void RobotState::KDLFrameToStampedPose(const KDL::Frame& FK_pose, geometry_msgs::PoseStamped& pose)
+{
+    ROS_WARN_ONCE("This function name does not make any sense");
+    // ToDo: get rid of hardcoding
+    pose.header.frame_id = "map";
+    // Position
+    pose.pose.position.x = FK_pose.p.x();
+    pose.pose.position.y = FK_pose.p.y();
+    pose.pose.position.z = FK_pose.p.z();
+    // Orientation
+    FK_pose.M.GetQuaternion(pose.pose.orientation.x,
+                            pose.pose.orientation.y,
+                            pose.pose.orientation.z,
+                            pose.pose.orientation.w);
+}
+
 
 int RobotState::getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment_name)
 {
@@ -115,17 +134,16 @@ int RobotState::getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment
     return segmentNr;
 }
 
-void RobotState::getFKsolution(KDL::Frame& FK_pose, geometry_msgs::PoseStamped& pose)
-{
-    // ToDo: get rid of hardcoding
-    pose.header.frame_id = "base_link";
-    // Position
-    pose.pose.position.x = FK_pose.p.x();
-    pose.pose.position.y = FK_pose.p.y();
-    pose.pose.position.z = FK_pose.p.z();
-    // Orientation
-    FK_pose.M.GetQuaternion(pose.pose.orientation.x,
-                            pose.pose.orientation.y,
-                            pose.pose.orientation.z,
-                            pose.pose.orientation.w);
+KDL::Frame RobotState::getFK(const std::string& tip_frame){
+
+    /// Get the current FK pose as a geometry msgs
+    std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = fk_poses_.find(tip_frame);
+    geometry_msgs::PoseStamped end_effector_pose_ = (*itrFK).second;
+
+    /// Convert to KDL
+    KDL::Frame end_effector_kdl_frame;
+    ROS_ERROR("This function does not work yet");
+    //stampedPoseToKDLframe(end_effector_pose_, end_effector_kdl_frame);
+
+    return end_effector_kdl_frame;
 }

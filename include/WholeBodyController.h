@@ -10,6 +10,8 @@
 // ROS
 #include "ros/ros.h"
 
+#include <Eigen/Core>
+
 // Messages
 #include <std_msgs/Float64.h>
 #include <sensor_msgs/JointState.h>
@@ -29,8 +31,6 @@
 
 // Vector
 #include <vector>
-
-#include <XmlRpcException.h>
 
 class WholeBodyController {
 
@@ -59,12 +59,18 @@ public:
 
     bool addMotionObjective(MotionObjective* motionobjective);
 
+//    bool addMotionObjective(amigo_whole_body_controller::ArmTaskGoal& goal);
+
+    bool removeMotionObjective(MotionObjective* motionobjective);
+
     /**
       * Returns the current "cost", i.e., the absolute value of the torque of every single plugin
       */
     double getCost();
 
     RobotState robot_state_;
+
+    std::vector<MotionObjective*> getCartesianImpedances(const std::string& tip_frame, const std::string& root_frame);
 
 protected:
 

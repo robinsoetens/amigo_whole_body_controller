@@ -8,6 +8,8 @@ from arm_navigation_msgs.msg import *
 from actionlib_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped
 from visualization_msgs.msg import Marker
+#from amigo_arm_navigation.msg._grasp_precomputeGoal import grasp_precomputeGoal
+#from amigo_arm_navigation.msg._grasp_precomputeAction import grasp_precomputeAction
 
 def euler_z_to_quaternion(roll, pitch, yaw):
     
@@ -26,43 +28,32 @@ if __name__ == '__main__':
 
     rospy.init_node('add_motion_objective')
 
-    #move_arm = actionlib.SimpleActionClient("add_motion_objective")
-    #move_arm.wait_for_server()
+    move_arm = actionlib.SimpleActionClient("add_motion_objective", ArmTaskAction)
+    move_arm.wait_for_server()
     rospy.loginfo("Connected to action server")
     
     marker_pub = rospy.Publisher('/visualization_marker', Marker)
 
     goal = ArmTaskGoal()
-    rospy.loginfo(goal)
+    #rospy.loginfo(goal)
     goal.goal_type = "grasp"
-    #goal.goal_constraints.position_constraints[0].header.frame_id = "/base_link"
-    #goal.goal_constraints.position_constraints[0].link_name = "/grippoint_left"
-    #goal.goal_constraints.position_constraints[0].target_point_offset.x = 0.0
-    #goal.goal_constraints.position_constraints[0].target_point_offset.y = 0.0
-    #goal.goal_constraints.position_constraints[0].target_point_offset.z = 0.0
-    #goal.goal_constraints.position_constraints[0].position.x = sys.argv[1]
-    #goal.goal_constraints.position_constraints[0].position.y = sys.argv[2]
-    #goal.goal_constraints.position_constraints[0].position.z = sys.argv[3]
     position_constraint = PositionConstraint()
-    position_constraint.header.frame_id = "/base_link"
-    position_constraint.link_name = "/grippoint_left"
+    position_constraint.header.frame_id = "base_link"
+    position_constraint.link_name = "grippoint_left"
     position_constraint.target_point_offset.x = 0.0
     position_constraint.target_point_offset.y = 0.0
     position_constraint.target_point_offset.z = 0.0
     position_constraint.position.x = float(sys.argv[1])
     position_constraint.position.y = float(sys.argv[2])
     position_constraint.position.z = float(sys.argv[3])
-    goal.goal_constraints.position_constraints.append(position_constraint)
+    goal.position_constraint = position_constraint
     rospy.logwarn("Position constraint region shapes etc. not yet defined")
     
-    #goal.goal_constraints.orientation_constraints[0].header.frame_id = "/base_link"
-    #goal.goal_constraints.orientation_constraints[0].link_name = "/grippoint_left"
-    #goal.goal_constraints.orientation_constraints[0].orientation = euler_z_to_quaternion(sys.argv[4],sys.argv[5],sys.argv[6])
     orientation_constraint = OrientationConstraint()
-    orientation_constraint.header.frame_id = "/base_link"
-    orientation_constraint.link_name = "/grippoint_left"
+    orientation_constraint.header.frame_id = "base_link"
+    orientation_constraint.link_name = "grippoint_left"
     orientation_constraint.orientation = euler_z_to_quaternion(float(sys.argv[4]),float(sys.argv[5]),float(sys.argv[6]))
-    goal.goal_constraints.orientation_constraints.append(orientation_constraint)
+    goal.orientation_constraint = orientation_constraint
     rospy.loginfo("Type link or header not yet taken into account")
     rospy.logwarn("Orientation constraint tolerances etc not yet defined")
 
@@ -76,14 +67,14 @@ if __name__ == '__main__':
     rospy.loginfo(goal)
     
     goal_marker = Marker()
-    goal_marker.header = goal.goal_constraints.position_constraints[0].header
+    goal_marker.header = goal.position_constraint.header
     goal_marker.id = 5432
     goal_marker.type = 0 # Arrow
-    goal_marker.pose.position = goal.goal_constraints.position_constraints[0].position
-    goal_marker.pose.orientation = goal.goal_constraints.orientation_constraints[0].orientation
-    goal_marker.scale.x = 0.1
-    goal_marker.scale.y = 0.1
-    goal_marker.scale.z = 0.1
+    goal_marker.pose.position = goal.position_constraint.position
+    goal_marker.pose.orientation = goal.orientation_constraint.orientation
+    goal_marker.scale.x = 0.5
+    goal_marker.scale.y = 0.5
+    goal_marker.scale.z = 0.2
     goal_marker.color.r = 1.0
     goal_marker.color.g = 0.0
     goal_marker.color.b = 0.0
@@ -92,21 +83,55 @@ if __name__ == '__main__':
 
     rospy.loginfo(goal_marker)
 
-    while not rospy.is_shutdown():
+    ctr = 0;
+    while (not rospy.is_shutdown() and ctr < 10):
         marker_pub.publish(goal_marker)
         rospy.sleep(rospy.Duration(0.1))
-    marker_pub.publish(goal_marker)
-    '''
-    while not rospy.is_shutdown():
-        rospy.loginfo("Publishing target pose")
-        targetPubLeft.publish(goalPoseLeft)
+        ctr = ctr + 1
+        rospy.sleep(0.02)
         
-        rospy.loginfo("Published target pose")
-        rospy.sleep(0.1)
-        
-    rospy.loginfo("Finished")
-    '''
+    #actionClients.move_arm.send_goal_and_wait(goal, rospy.Duration(time_out))
+    result = move_arm.send_goal_and_wait(goal, rospy.Duration(1.0))
+    rospy.loginfo("Result = {0}".format(result))
     
+    ctr = 5
+    while (ctr > 0):
+        rospy.loginfo("Waiting for {0} s".format(ctr))
+        rospy.sleep(rospy.Duration(1.0))
+        ctr = ctr - 1
     
+    goal = ArmTaskGoal()
+    goal.goal_type = "reset"
+    goal.remove_tip_frame = "grippoint_left"
+    goal.remove_root_frame = "base_link"
+    
+    result = move_arm.send_goal_and_wait(goal, rospy.Duration(1.0))
+    rospy.loginfo("Result = {0}".format(result))
+    
+    ctr = 5
+    while (ctr > 0):
+        rospy.loginfo("Waiting for {0} s".format(ctr))
+        rospy.sleep(rospy.Duration(1.0))
+        ctr = ctr - 1
+    
+    goal = ArmTaskGoal()
+    goal.goal_type = "reset"
+    goal.remove_tip_frame = "grippoint_right"
+    
+    result = move_arm.send_goal_and_wait(goal, rospy.Duration(1.0))
+    rospy.loginfo("Result = {0}".format(result))
+    
+    ctr = 5
+    while (ctr > 0):
+        rospy.loginfo("Waiting for {0} s".format(ctr))
+        rospy.sleep(rospy.Duration(1.0))
+        ctr = ctr - 1
+    
+    goal = ArmTaskGoal()
+    goal.goal_type = "reset"
+    goal.remove_tip_frame = "grippoint_left"
+    
+    result = move_arm.send_goal_and_wait(goal, rospy.Duration(1.0))
+    rospy.loginfo("Result = {0}".format(result))
 
     

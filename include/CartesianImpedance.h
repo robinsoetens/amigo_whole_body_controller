@@ -14,9 +14,14 @@
 
 // Messages
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Wrench.h>
+#include <arm_navigation_msgs/Shape.h>
 
 // Eigen
 #include <Eigen/Core>
+
+// tf
+#include <tf/transform_listener.h>
 
 // Action server
 #include <actionlib/server/action_server.h>
@@ -39,7 +44,7 @@ public:
     /**
      * Constructor
      */
-    CartesianImpedance(const std::string& end_effector_frame);
+    CartesianImpedance(const std::string& tip_frame);
 
     /**
      * Deconstructor
@@ -48,19 +53,21 @@ public:
 
     bool initialize(RobotState &robotstate);
 
-    bool isActive();
-
     void apply(RobotState& robotstate);
 
-    void setGoal(geometry_msgs::PoseStamped &goal_pose);
+    void setGoal(const geometry_msgs::PoseStamped &goal_pose);
+
+    void setImpedance(const geometry_msgs::Wrench &stiffness);
+
+    bool setPositionTolerance(const arm_navigation_msgs::Shape &position_tolerance);
+
+    bool setOrientationTolerance(const float roll, const float pitch, const float yaw);
 
     void cancelGoal();
 
-    // Status for the Cartesian Impedance
-    // IDLE=0
-    // AT_GOAL_POSE=1
-    // MOVING_TO_GOAL_POSE=2
-    unsigned int status_;
+    unsigned int getStatus();
+
+    KDL::Twist getError();
 
 
 protected:
@@ -68,29 +75,44 @@ protected:
     //! Sampling time
     double Ts;
 
-    //! Bool indicating whether this is active
-    bool is_active_;
-
+    // ToDo: SHOULD be obsolete
     Chain* chain_;
 
-    std::string end_effector_frame_;
-
     geometry_msgs::PoseStamped end_effector_pose_;
-    geometry_msgs::PoseStamped goal_pose_;
-    geometry_msgs::PoseStamped error_pose_;
+
+    KDL::Frame goal_pose_;
+
+    KDL::Twist pose_error_;
 
     // Converts Converts geometry_msgs::PoseStamped to KDL::Frame
-    void stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame, Eigen::Vector3d& RPY);
+    void stampedPoseToKDLframe(const geometry_msgs::PoseStamped& pose, KDL::Frame& frame);
 
     // Cartesian Impedance matrix
     Eigen::MatrixXd K_;
 
-    Eigen::VectorXd error_vector_;
+    /**
+      * Indicates the number of constrained degrees of freedom
+      * If a zero stiffness in a certain direction is selected, this implies that this DoF need not be constrained
+      */
+    unsigned int num_constrained_dofs_;
 
-    bool pre_grasp_;
-    double pre_grasp_delta_;
+    /**
+      * Array containing the dimensions of the box for the position constraint
+      * A DoF is converged if error < (dimension/2)
+      */
+    double box_tolerance_[3];
 
-    RobotState* robot_state_;
+    /**
+      * Array containing the absolute_roll_tolerance, absolute_pitch_tolerance and absolute_yaw_tolerance
+      * A DoFs is converged if error < tolerance
+      */
+    double orientation_tolerance_[3];
+
+    // Status for the Cartesian Impedance
+    // IDLE=0
+    // AT_GOAL_POSE=1
+    // MOVING_TO_GOAL_POSE=2
+    unsigned int status_;
 
 
 };

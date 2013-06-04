@@ -26,6 +26,7 @@
 // tf
 #include <tf/transform_listener.h>
 
+
 class RobotState
 {
 
@@ -131,9 +132,19 @@ public:
       */
     void collectFKSolutions(tf::TransformListener &listener);
 
+    /**
+      * Returns the current FK solution
+      *
+      */
+    void KDLFrameToStampedPose(const KDL::Frame &FK_pose, geometry_msgs::PoseStamped &pose);
+
     int getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment_name);
 
-    void getFKsolution(KDL::Frame& FK_pose, geometry_msgs::PoseStamped& pose);
+    /**
+      * Returns the KDL frame of the tip frame
+      * @param tip_frame
+      */
+    KDL::Frame getFK(const std::string& tip_frame);
 
 };
 

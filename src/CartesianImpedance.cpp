@@ -4,76 +4,84 @@
 #include <amigo_whole_body_controller/ArmTaskAction.h>
 #include <actionlib/server/simple_action_server.h>
 
-CartesianImpedance::CartesianImpedance(const std::string& end_effector_frame) :
-    is_active_(false), chain_(0), end_effector_frame_(end_effector_frame) {
+CartesianImpedance::CartesianImpedance(const std::string& tip_frame) :
+    chain_(0) {
 
-    ROS_INFO("Initializing Cartesian Impedance for %s", end_effector_frame_.c_str());
+    type_ = "CartesianImpedance";
+    tip_frame_ = tip_frame;
 
-    // ToDo: Parameterize
-    Ts = 0.1;
+    ROS_INFO("Initializing Cartesian Impedance for %s", tip_frame_.c_str());
 
-    // Get node handle
-    ros::NodeHandle n("~");
-    std::string ns = ros::this_node::getName();
-
-    // Fill in impedance matrix
-    // ToDo: Parametrize
-    K_.resize(6,6);
-    //double standard_factor = 25;
-    for (uint i = 0; i<6; i++) {
-        for (uint ii = 0; ii<6; ii++) {
-            K_(i,ii) = 0;
-            ///if (i != ii) K_(i,ii) = 0;
-            ///else K_(i,ii) = standard_factor;
-        }
+    /// Set stiffness matrix to zero
+    K_.Zero(6,6);
+    num_constrained_dofs_ = 0;
+    for (unsigned int i = 0; i < 3; i++) {
+        box_tolerance_[i] = 0;
+        orientation_tolerance_[i] = 0;
     }
-    n.param<double> (ns+"/kx", K_(0,0), 26);
-    n.param<double> (ns+"/ky", K_(1,1), 26);
-    n.param<double> (ns+"/kz", K_(2,2), 26);
-    n.param<double> (ns+"/krx", K_(3,3), 26);
-    n.param<double> (ns+"/kry", K_(4,4), 26);
-    n.param<double> (ns+"/krz", K_(5,5), 26);
-    //ROS_INFO("K = %f, %f, %f, %f, %f, %f",K_(0,0),K_(1,1),K_(2,2),K_(3,3),K_(4,4),K_(5,5));
 
-    error_vector_.resize(6);
-    for (uint i = 0; i<6; i++) error_vector_(i) = 0;
-
-    // Wait for transform
-    //ToDo: make this work!
-    //bool wait_for_transform = tf_listener_->waitForTransform(end_effector_frame_,"/map", ros::Time::now(), ros::Duration(1.0));
-    //if (!wait_for_transform) ROS_WARN("Transform between %s and /map is not available",end_effector_frame.c_str());
-
-    // Pre-grasping
-    pre_grasp_ = false;
-    n.param<double> (ns+"/pre_grasp_delta", pre_grasp_delta_, 0.0);
-    /////
-    ROS_WARN("force_vector_index in update hook is now obsolete");
+    pose_error_.Zero();
 
     ROS_INFO("Initialized Cartesian Impedance");
 }
 
 bool CartesianImpedance::initialize(RobotState &robotstate) {
-
-    robot_state_ = &robotstate;
-
     return true;
-}
-
-bool CartesianImpedance::isActive() {
-    return is_active_;
 }
 
 CartesianImpedance::~CartesianImpedance() {
 }
 
-void CartesianImpedance::setGoal(geometry_msgs::PoseStamped& goal_pose) {
-    goal_pose_ = goal_pose;
-    is_active_ = true;
-    status_ = 2;
+void CartesianImpedance::setGoal(const geometry_msgs::PoseStamped& goal_pose ) {
+
+    /// Root frame
+    root_frame_ = goal_pose.header.frame_id;
+
+    /// Goal Pose
+    stampedPoseToKDLframe(goal_pose, goal_pose_);
+}
+
+void CartesianImpedance::setImpedance(const geometry_msgs::Wrench &stiffness) {
+
+    /// Copy desired stiffness into K matrix
+    K_(0,0) = stiffness.force.x;
+    K_(1,1) = stiffness.force.y;
+    K_(2,2) = stiffness.force.z;
+    K_(3,3) = stiffness.torque.x;
+    K_(4,4) = stiffness.torque.y;
+    K_(5,5) = stiffness.torque.z;
+
+    /// Count the number of constrained DoFs
+    num_constrained_dofs_ = 0;
+    for (unsigned int i = 0; i < 6; i++) {
+        if (K_(i,i) != 0) {
+            num_constrained_dofs_ += 1;
+        }
+    }
+}
+
+bool CartesianImpedance::setPositionTolerance(const arm_navigation_msgs::Shape &position_tolerance) {
+
+    if (position_tolerance.type != 1) {
+        ROS_WARN("Other position tolerance than box not yet implemented, defaulting");
+        return false;
+    }
+    else {
+        box_tolerance_[0] = position_tolerance.dimensions[0];
+        box_tolerance_[1] = position_tolerance.dimensions[1];
+        box_tolerance_[2] = position_tolerance.dimensions[2];
+        return true;
+    }
+}
+
+bool CartesianImpedance::setOrientationTolerance(const float roll, const float pitch, const float yaw) {
+    orientation_tolerance_[0] = roll;
+    orientation_tolerance_[1] = pitch;
+    orientation_tolerance_[2] = yaw;
+    return true;
 }
 
 void CartesianImpedance::cancelGoal() {
-    is_active_ = false;
     status_ = 0;
 }
 
@@ -82,86 +90,76 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     //ROS_INFO("CartesianImpedance::apply");
 
     Eigen::VectorXd F_task(6);
+    Eigen::VectorXd error_vector(6);
 
-    if (!is_active_) {
-        return;
-    }
-
-    //ROS_INFO("    is active");
-
-    if (end_effector_frame_ == "grippoint_left") {
-        end_effector_pose_ = robotstate.poseGrippointLeft_;
-        chain_ = robot_state_->chain_left_;
-    }
-    else if (end_effector_frame_ == "grippoint_right") {
-        end_effector_pose_ = robotstate.poseGrippointRight_;
-        chain_ = robot_state_->chain_right_;
-    }
+    // ToDo: create get function
+    std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
+    end_effector_pose_ = (*itrFK).second;
 
     KDL::Frame end_effector_kdl_frame;
-    KDL::Frame goal_kdl_frame;
-    Eigen::Vector3d end_effector_RPY;
-    Eigen::Vector3d goal_RPY;
-    stampedPoseToKDLframe(end_effector_pose_, end_effector_kdl_frame, end_effector_RPY);
-    stampedPoseToKDLframe(goal_pose_, goal_kdl_frame, goal_RPY);
+    stampedPoseToKDLframe(end_effector_pose_, end_effector_kdl_frame);
 
     //ROS_INFO("goal_kdl_frame = %f,\t%f,\t%f,\t%f,\t%f,\t%f", goal_kdl_frame.p.x(), goal_kdl_frame.p.y(), goal_kdl_frame.p.z(),
     //                                                         goal_RPY(0), goal_RPY(1), goal_RPY(2));
     //ROS_INFO("end_effector_kdl_frame = %f,\t%f,\t%f,\t%f,\t%f,\t%f", end_effector_kdl_frame.p.x(), end_effector_kdl_frame.p.y(), end_effector_kdl_frame.p.z(),
     //                                                                 end_effector_RPY(0), end_effector_RPY(1), end_effector_RPY(2));
 
-    KDL::Twist error_vector_fk = KDL::diff(end_effector_kdl_frame,goal_kdl_frame, Ts);
+    // ToDo: why does KDL::diff depend on Ts? I guess it can be left out
+    //KDL::Twist error_vector_fk = KDL::diff(end_effector_kdl_frame, goal_pose_, Ts);
+   pose_error_ = KDL::diff(end_effector_kdl_frame, goal_pose_);
 
-
-    error_vector_(0) = error_vector_fk.vel.x();
-    error_vector_(1) = error_vector_fk.vel.y();
-    error_vector_(2) = error_vector_fk.vel.z();
-    error_vector_(3) = goal_RPY(0) - end_effector_RPY(0)/ Ts;
-    error_vector_(4) = goal_RPY(1) - end_effector_RPY(1)/ Ts;
-    error_vector_(5) = goal_RPY(2) - end_effector_RPY(2)/ Ts;
+    error_vector(0) = pose_error_.vel.x();
+    error_vector(1) = pose_error_.vel.y();
+    error_vector(2) = pose_error_.vel.z();
+    error_vector(3) = pose_error_.rot.x();//goal_RPY(0) - end_effector_RPY(0)/ Ts;
+    error_vector(4) = pose_error_.rot.y();//goal_RPY(1) - end_effector_RPY(1)/ Ts;
+    error_vector(5) = pose_error_.rot.z();//goal_RPY(2) - end_effector_RPY(2)/ Ts;
 
 
     //std::cout << "goal_pose = " << goal_pose_.getOrigin().getX() << " , " << goal_pose_.getOrigin().getY() << " , " << goal_pose_.getOrigin().getZ() << std::endl;
     //std::cout << "error_vector = " << error_vector_ << std::endl;
 
-    // If pre-grasping, an offset is added to the errorpose in x-direction
-    //if (pre_grasp_) error_vector_(0) -= pre_grasp_delta_;
-
     //ROS_INFO("error pose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
-
-    F_task = K_ * error_vector_;
+    F_task = K_ * error_vector;
 
     //std::cout << "F_task = " << F_task << std::endl;
+    //ROS_INFO("Tip frame = %s",tip_frame_.c_str());
     //ROS_INFO("F_task = %f,\t%f,\t%f,\t%f,\t%f,\t%f",F_task(0),F_task(1),F_task(2),F_task(3),F_task(4),F_task(5));
 
     // add the wrench to the end effector of the kinematic chain
-    robot_state_->tree_.addCartesianWrench(end_effector_frame_, F_task);
+    robotstate.tree_.addCartesianWrench(tip_frame_,F_task);
 
-
+    /// Count number of converged DoFs
     // ToDo: Include boundaries in action message
-    int num_converged_dof = 0;
-    for (uint i = 0; i < 3; i++) {
-        if (fabs(error_vector_(i)) < 0.035) ++num_converged_dof;
+    // ToDo: Include other checks than box check (move this to separate function)
+    unsigned int num_converged_dof = 0;
+    for (unsigned int i = 0; i < 3; i++) {
+        /// Only take constrained DoFs into account
+        /// Position
+        if (K_(i,i) != 0) {
+            if (fabs(error_vector(i)) < box_tolerance_[i]/2) ++num_converged_dof;
+        }
+        /// Orientation
+        if (K_(i+3,i+3) != 0) {
+            if (fabs(error_vector(i+3)) < orientation_tolerance_[i]) ++num_converged_dof;
+        }
     }
-    for (uint i = 0; i < 3; i++) {
-        if (fabs(error_vector_(i+3)) < 0.3) ++num_converged_dof;
-    }
-    if (num_converged_dof == 6 && pre_grasp_) {
-        pre_grasp_ = false;
-        ROS_INFO("pre_grasp_ = %d",pre_grasp_);
-    }
-    //////////else if (num_converged_dof == 6 && server_->isActive() && !pre_grasp_) {
-    //////////server_->setSucceeded();
-    //////////ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
-    //////////}
-    else if (num_converged_dof == 6 && status_ == 2 && !pre_grasp_) {
+
+    if (num_converged_dof == num_constrained_dofs_ && status_ == 2) {
         status_ = 1;
-        ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
+        ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector(0),error_vector(1),error_vector(2),error_vector(3),error_vector(4),error_vector(5));
     }
 }
 
+unsigned int CartesianImpedance::getStatus() {
+    return status_;
+}
 
-void CartesianImpedance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose, KDL::Frame& frame, Eigen::Vector3d& RPY) {
+KDL::Twist CartesianImpedance::getError() {
+    return pose_error_;
+}
+
+void CartesianImpedance::stampedPoseToKDLframe(const geometry_msgs::PoseStamped& pose, KDL::Frame& frame) {
 
     if (pose.header.frame_id != "base_link") ROS_WARN("FK computation can now only cope with base_link as input frame");
 
@@ -175,13 +173,5 @@ void CartesianImpedance::stampedPoseToKDLframe(geometry_msgs::PoseStamped& pose,
                        pose.pose.orientation.y,
                        pose.pose.orientation.z,
                        pose.pose.orientation.w);
-
-    tf::Quaternion q;
-    double roll, pitch, yaw;
-    tf::quaternionMsgToTF(pose.pose.orientation, q);
-    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
-    RPY(0) = roll;
-    RPY(1) = pitch;
-    RPY(2) = yaw;
 
 }

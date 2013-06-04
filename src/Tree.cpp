@@ -104,8 +104,6 @@ void Tree::calcPartialJacobian(std::string& link_name,
     //std::cout << q_tree.data.size() << std::endl;
     //std::cout << tree_joint_index_.size() << std::endl;
 
-
-
     jac_solver_->JntToJac(q_tree_,kdl_jacobian,link_name);
 
     //std::cout << kdl_jacobian.rows() << std::endl;

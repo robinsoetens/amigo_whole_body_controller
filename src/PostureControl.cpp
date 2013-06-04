@@ -18,7 +18,7 @@ void PostureControl::initialize(const KDL::JntArray& q_min, const KDL::JntArray&
 
     ROS_INFO("Length joint array = %i",num_joints_);
     for (uint i = 0; i < num_joints_; i++) {
-        K_[i] = 2*gain[i] / ((q_max(i) - q_min(i))*(q_max(i) - q_min(i)));
+        K_[i] = 20*gain[i] / ((q_max(i) - q_min(i))*(q_max(i) - q_min(i)));
         //ROS_INFO("qmin = %f, qmax = %f, q0 = %f, K = %f",q_min(i),q_max(i),q0_[i], K_[i]);
     }
     //ROS_INFO("Length joint array = %i",num_joints_);

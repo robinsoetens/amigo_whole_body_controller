@@ -85,8 +85,6 @@ public:
      */
     bool initialize(RobotState &robotstate);
 
-    bool isActive();
-
     void apply(RobotState& robotstate);
 
     void setOctoMap(const octomap_msgs::OctomapBinary&  octomap_msg);
@@ -102,8 +100,6 @@ protected:
     Tree tree_;
 
     RobotState* robot_state_;
-
-
 
     ros::Publisher pub_marker_;
 

@@ -11,6 +11,9 @@ WholeBodyController::WholeBodyController(const double Ts)
 
 WholeBodyController::~WholeBodyController() {
     ROS_INFO("Shutting down whole body controller");
+    // ToDo: delete all motion objectives nicely?
+
+    tf::TransformListener listener_(ros::Duration(4.0));
 }
 
 bool WholeBodyController::initialize(const double Ts)
@@ -20,7 +23,6 @@ bool WholeBodyController::initialize(const double Ts)
     //ROS_INFO("Nodehandle %s",n.getNamespace().c_str());
     ROS_INFO("Initializing whole body controller");
 
-    tf::TransformListener listener_(ros::Duration(4.0));
 
     // ToDo: Parameterize
     Ts_ = Ts;
@@ -59,10 +61,6 @@ bool WholeBodyController::initialize(const double Ts)
     }
 
     loadParameterFiles(robot_state_);
-
-    //std::cout << robot_state_.fk_solvers.size() << std::endl;
-
-    //robot_state_.tree_.q_tree_.resize(robot_state_.tree_.kdl_tree_.getNrOfJoints());
 
     // Construct the FK and Jacobian solvers
     robot_state_.fk_solver_ = new KDL::TreeFkSolverPos_recursive(robot_state_.tree_.kdl_tree_);
@@ -122,6 +120,18 @@ bool WholeBodyController::addMotionObjective(MotionObjective* motionobjective)
     return true;
 }
 
+//bool WholeBodyController::addMotionObjective(amigo_whole_body_controller::ArmTaskGoal& goal) {
+//    return true;
+//}
+
+bool WholeBodyController::removeMotionObjective(MotionObjective* motionobjective) {
+
+    motionobjectives_.erase(std::remove(motionobjectives_.begin(), motionobjectives_.end(), motionobjective), motionobjectives_.end());
+
+    return true;
+
+}
+
 void WholeBodyController::setMeasuredJointPosition(const std::string& joint_name, double pos)
 {
     q_current_(joint_name_to_index_[joint_name]) = pos;
@@ -150,9 +160,7 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     //std::cout << q_current_(joint_name_to_index_[wrist_yaw_joint_left]).data << std::endl;
 
     robot_state_.tree_.rearrangeJntArrayToTree(q_current_);
-
     robot_state_.tree_.removeCartesianWrenches();
-    //std::cout << "LEFT end-effector x,y,z: " << robot_state_.poseGrippointLeft_.pose.position.x << " " << robot_state_.poseGrippointLeft_.pose.position.y << " " << robot_state_.poseGrippointLeft_.pose.position.z << std::endl;
 
     robot_state_.collectFKSolutions(listener_);
 
@@ -168,7 +176,6 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     }
     */
 
-    // Get base_link frame using tf
 
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
     {
@@ -183,15 +190,14 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
         }
     }
 
-
+    /// Update motion objectives
     for(std::vector<MotionObjective*>::iterator it_motionobjective = motionobjectives_.begin(); it_motionobjective != motionobjectives_.end(); ++it_motionobjective)
     {
         MotionObjective* motionobjective = *it_motionobjective;
         //ROS_INFO("Motion Objective: %p", motionobjective);
-        if (motionobjective->isActive())
-        {
-            motionobjective->apply(robot_state_);
-        }
+
+        motionobjective->apply(robot_state_);
+
     }
 
     Eigen::VectorXd all_wrenches;
@@ -226,6 +232,7 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     //cout << "tau_ = " << endl << tau_ << endl;
 
     AdmitCont_.update(tau_, qdot_reference_, q_current_, q_reference_);
+
     //for (uint i = 0; i < qdot_reference_.rows(); i++) ROS_INFO("qd joint %i = %f",i,qdot_reference_(i));
     //for (uint i = 0; i < q_current_.rows(); i++) ROS_INFO("Position joint %i = %f",i,q_current_(i));
     //for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));
@@ -267,6 +274,22 @@ double WholeBodyController::getCost()
     // Singularity avoidance
 
     return current_cost;
+}
+
+std::vector<MotionObjective*> WholeBodyController::getCartesianImpedances(const std::string& tip_frame, const std::string& root_frame) {
+
+    std::vector<MotionObjective*> output;
+    /// Loop through all motion objectives
+    for (unsigned int i = 0; i < motionobjectives_.size(); i++) {
+        /// Only account for motion objectives that are Cartesian impedances
+        if (motionobjectives_[i]->type_ == "CartesianImpedance") {
+            /// Add to the output vector if the tip frames are equal and if either the root frames are equal or the requested root frame is empty (in case all objectives of a certain tip frame are requested)
+            if (motionobjectives_[i]->tip_frame_ == tip_frame && (motionobjectives_[i]->root_frame_ == root_frame || root_frame.empty())) {
+                output.push_back(motionobjectives_[i]);
+            }
+        }
+    }
+    return output;
 }
 
 void WholeBodyController::loadParameterFiles(RobotState &robot_state_)

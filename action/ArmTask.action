@@ -1,28 +1,23 @@
 # Define the goal
 # How do we abstract this message type from data in the WBC
 
-## TEUN ##
-# Define the frame for the specified waypoints
-Header header
-
-# The name of the group of joints on which this planner is operating (or will a frame be enough?)
-string group_name
-
-# A sequence (or should it be a single waypoint?) to be followed by a specified frame
-geometry_msgs/PoseStamped[] waypoints
-## TEUN ##
-
 # Semantic description of the goal (e.g. grasp, pre-grasp, lift, etc)
 string goal_type
 
 # Position constraint
 # Or should we use Constraints and fill these up?
 arm_navigation_msgs/PositionConstraint position_constraint
+arm_navigation_msgs/OrientationConstraint orientation_constraint
 
 # Stiffness 
 # Should we define a separate message containing two Vector3's (Twist and Wrench are identical)
 # With respect to what frame is this?
 geometry_msgs/Wrench stiffness
+
+# Remove motion objectives: 
+string remove_tip_frame
+# Optional
+string remove_root_frame
 
 ---
 # Define the result
@@ -31,4 +26,3 @@ WholeBodyControllerStatus status_code
 ---
 # Define a feedback message
 geometry_msgs/Twist pose_error 
-
