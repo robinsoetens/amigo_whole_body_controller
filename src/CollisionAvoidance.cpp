@@ -28,7 +28,7 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
     pub_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_avoidance_markers/", 10);
 
-    //octomap_ = new octomap::OcTree(ca_param_.environment_collision.octomap_resolution);
+    octomap_ = new octomap::OcTree(ca_param_.environment_collision.octomap_resolution);
 
     no_fix_.header.frame_id = "none";
     no_fix_.pose.position.x = 0;
@@ -205,6 +205,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 
 void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distances, std::vector<ReactionForce> &reaction_forces)
 {
+    int number_of_distance_calculations = 0;
     double xmin_octomap,ymin_octomap,zmin_octomap;
     double xmax_octomap,ymax_octomap,zmax_octomap;
     octomap_->getMetricMin(xmin_octomap,ymin_octomap,zmin_octomap);
@@ -343,6 +344,8 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
                     in_range_voxels.push_back(vox);
                 }
             }
+
+            number_of_distance_calculations = number_of_distance_calculations + in_range_voxels.size();
             //std::cout << "in_range_voxels: " << in_range_voxels.size() << std::endl;
 
 
@@ -376,6 +379,8 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
         }
     }
     calculateReactionForce(min_distances,reaction_forces,ca_param_.environment_collision);
+
+    //std::cout << "number of dist calc env = " << number_of_distance_calculations << std::endl;
 }
 
 void CollisionAvoidance::getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY)
