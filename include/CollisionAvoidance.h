@@ -168,7 +168,7 @@ protected:
 
     void visualizeBBX(octomath::Vector3 min, octomath::Vector3 max, int id) const;
 
-    void findOuterPoints(RobotState::CollisionBody& collisionBody, btVector3 min, btVector3 max);
+    void findOuterPoints(RobotState::CollisionBody& collisionBody, btVector3 &min, btVector3 &max);
 
 };
 

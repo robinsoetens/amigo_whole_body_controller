@@ -226,19 +226,19 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
             double xmin_bbx,ymin_bbx,zmin_bbx;
             double xmax_bbx,ymax_bbx,zmax_bbx;
             Distance distance;
-            btVector3 bbx_dim;
-            btVector3 min_cb = btVector3(0,0,0);
-            btVector3 max_cb = btVector3(0,0,0);
+            //btVector3 bbx_dim;
+            btVector3 min_cb = collisionBody.bt_transform.getOrigin();
+            btVector3 max_cb = collisionBody.bt_transform.getOrigin();
 
             findOuterPoints(collisionBody, min_cb, max_cb);
 
-            xmin_bbx = min_cb[0];
-            ymin_bbx = min_cb[1];
-            zmin_bbx = min_cb[2];
+            xmin_bbx = min_cb[0]-ca_param_.environment_collision.d_threshold;
+            ymin_bbx = min_cb[1]-ca_param_.environment_collision.d_threshold;
+            zmin_bbx = min_cb[2]-ca_param_.environment_collision.d_threshold;
 
-            xmax_bbx = max_cb[0];
-            ymax_bbx = max_cb[1];
-            zmax_bbx = max_cb[2];
+            xmax_bbx = max_cb[0]+ca_param_.environment_collision.d_threshold;
+            ymax_bbx = max_cb[1]+ca_param_.environment_collision.d_threshold;
+            zmax_bbx = max_cb[2]+ca_param_.environment_collision.d_threshold;
 
             /*
             // Find largest dimension of the collision body
@@ -266,36 +266,24 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
             */
 
             // Check whether the BBX is inside the OctoMap, otherwise take OctoMap dimensions
-            if (xmin_octomap > min_cb[0]) {
+            if (xmin_octomap > xmin_bbx) {
                 xmin_bbx = xmin_octomap;
-            } else {
-                xmin_bbx = min_cb[0];
             }
-            if (ymin_octomap > min_cb[1]) {
+            if (ymin_octomap > ymin_bbx) {
                 ymin_bbx = ymin_octomap;
-            } else {
-                ymin_bbx = min_cb[1];
             }
-            if (zmin_octomap > min_cb[2]) {
+            if (zmin_octomap > zmin_bbx) {
                 zmin_bbx = xmin_octomap;
-            } else {
-                zmin_bbx = min_cb[2];
             }
 
-            if (xmax_octomap < max_cb[0]) {
+            if (xmax_octomap < xmax_bbx) {
                 xmax_bbx = xmax_octomap;
-            } else {
-                xmax_bbx = max_cb[0];
             }
-            if (ymax_octomap < max_cb[1]) {
+            if (ymax_octomap < ymax_bbx) {
                 ymax_bbx = ymax_octomap;
-            } else {
-                ymax_bbx = max_cb[1];
             }
-            if (zmax_octomap < max_cb[2]) {
+            if (zmax_octomap < zmax_bbx) {
                 zmax_bbx = zmax_octomap;
-            } else {
-                zmax_bbx = max_cb[2];
             }
 
 
@@ -307,14 +295,20 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
             octomath::Vector3 max = octomath::Vector3(xmax_bbx,
                                                       ymax_bbx,
                                                       zmax_bbx);
+            /*
+            std::cout << collisionBody.name_collision_body << std::endl;
+            std::cout << "min: " << xmin_bbx << " " << ymin_bbx << " " << zmin_bbx << std::endl;
+            std::cout << "max: " << xmax_bbx << " " << ymax_bbx << " " << zmax_bbx << std::endl;
+            std::cout << "minO: " << xmin_octomap << " " << ymin_octomap << " " << zmin_octomap << std::endl;
+            std::cout << "maxO: " << xmax_octomap << " " << ymax_octomap << " " << zmax_octomap << std::endl;
+            */
 
-
-            //if (collisionBody.name_collision_body == "GripperRight")
-            //{
+            if (collisionBody.name_collision_body == "GripperRight")
+            {
                 // Store bbx min max in vector for visualization
                 min_.push_back(min);
                 max_.push_back(max);
-            //}
+            }
 
 
             // Find and store all occupied voxels
@@ -908,7 +902,7 @@ void CollisionAvoidance::setOctoMap(const octomap_msgs::OctomapBinary& octomap_m
     octomap_ = octomap_msgs::binaryMsgDataToMap(octomap_msg.data);
 }
 
-void CollisionAvoidance::findOuterPoints(RobotState::CollisionBody& collisionBody, btVector3 min, btVector3 max)
+void CollisionAvoidance::findOuterPoints(RobotState::CollisionBody& collisionBody, btVector3 &min, btVector3 &max)
 {
     // Calculate all outer points
     std::vector<btVector3> outer_points;
