@@ -227,12 +227,11 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
             double xmax_bbx,ymax_bbx,zmax_bbx;
             Distance distance;
             btVector3 bbx_dim;
-            //btVector3 min_cb = btVector3(0,0,0);
-            //btVector3 max_cb = btVector3(0,0,0);
+            btVector3 min_cb = btVector3(0,0,0);
+            btVector3 max_cb = btVector3(0,0,0);
 
-            //findOuterPoints(collisionBody, min_cb, max_cb);
+            findOuterPoints(collisionBody, min_cb, max_cb);
 
-            /*
             xmin_bbx = min_cb[0];
             ymin_bbx = min_cb[1];
             zmin_bbx = min_cb[2];
@@ -240,8 +239,8 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
             xmax_bbx = max_cb[0];
             ymax_bbx = max_cb[1];
             zmax_bbx = max_cb[2];
-            */
 
+            /*
             // Find largest dimension of the collision body
             double l = collisionBody.collision_shape.dimensions.x;
             if (l < collisionBody.collision_shape.dimensions.y) {
@@ -257,7 +256,6 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
 
             bbx_dim = collisionBody.bt_transform.getIdentity() * cb_im;
 
-
             xmin_bbx = collisionBody.bt_transform.getOrigin()[0] - bbx_dim[0];
             ymin_bbx = collisionBody.bt_transform.getOrigin()[1] - bbx_dim[1];
             zmin_bbx = collisionBody.bt_transform.getOrigin()[2] - bbx_dim[2];
@@ -265,9 +263,8 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
             xmax_bbx = collisionBody.bt_transform.getOrigin()[0] + bbx_dim[0];
             ymax_bbx = collisionBody.bt_transform.getOrigin()[1] + bbx_dim[1];
             zmax_bbx = collisionBody.bt_transform.getOrigin()[2] + bbx_dim[2];
+            */
 
-
-            /*
             // Check whether the BBX is inside the OctoMap, otherwise take OctoMap dimensions
             if (xmin_octomap > min_cb[0]) {
                 xmin_bbx = xmin_octomap;
@@ -300,7 +297,6 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
             } else {
                 zmax_bbx = max_cb[2];
             }
-            */
 
 
             // Set bounding box using its minimum and maximum coordinate
@@ -850,7 +846,8 @@ void CollisionAvoidance::visualizeReactionForce(Distance &d_min,int id) const
     RFviz.points.push_back(pB);
 
     if (d_min.bt_distance.m_distance <= ca_param_.self_collision.d_threshold )
-    {     RFviz.color.a = 1;
+    {
+        RFviz.color.a = 1;
         RFviz.color.r = 1;
         RFviz.color.g = 0;
         RFviz.color.b = 0;
@@ -866,7 +863,6 @@ void CollisionAvoidance::visualizeReactionForce(Distance &d_min,int id) const
     marker_array.markers.push_back(RFviz);
 
     pub_marker_.publish(marker_array);
-
 }
 
 void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 max, int id) const
@@ -969,7 +965,9 @@ void CollisionAvoidance::findOuterPoints(RobotState::CollisionBody& collisionBod
             }
         }
     }
+    /*
     std::cout << collisionBody.name_collision_body << std::endl;
     std::cout << "min: " << min[0] << " " << min[1] << " " << min[2] << std::endl;
     std::cout << "max: " << max[0] << " " << max[1] << " " << max[2] << std::endl;
+    */
 }

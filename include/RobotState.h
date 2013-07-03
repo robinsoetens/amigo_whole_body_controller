@@ -54,7 +54,6 @@ public:
                 double z;
             } dimensions;
         } collision_shape;
-        std::string chain_side;
         geometry_msgs::PoseStamped fk_pose;
         geometry_msgs::PoseStamped fix_pose;
         btTransform bt_transform;
@@ -77,8 +76,6 @@ public:
             XmlRpc::XmlRpcValue corrTransform = value["transform"];
             XmlRpc::XmlRpcValue origin = corrTransform["origin"];
             XmlRpc::XmlRpcValue orientation = corrTransform["orientation"];
-
-            chain_side = static_cast<std::string>(corrTransform["chain_side"]);
 
             fix_pose.header.frame_id = static_cast<std::string>(corrTransform["frame_id"]);
             fix_pose.pose.position.x = origin["x"];

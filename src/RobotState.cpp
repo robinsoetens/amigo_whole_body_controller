@@ -47,6 +47,19 @@ void RobotState::collectFKSolutions(tf::TransformListener& listener)
 
     fk_poses_["base_link"] = baselink_pose;
 
+
+    //ToDo:: Get rid of hardcoded
+    geometry_msgs::PoseStamped fk_pose,fk_solution;
+    tf::Stamped<tf::Pose> tf_pose,tf_solution;
+    KDL::Frame kdlFrame;
+    if (fk_solver_->JntToCart(tree_.q_tree_, kdlFrame,"head") < 0 ) ROS_WARN("Problems with FK computation for the tree");
+    KDLFrameToStampedPose(kdlFrame, fk_pose);
+    tf::poseStampedMsgToTF(fk_pose,tf_pose);
+    tf_solution.mult(tf_baselink_fix,tf_pose);
+    tf::poseStampedTFToMsg(tf_solution,fk_solution);
+    fk_solution.header.frame_id = "map";
+    fk_poses_["head"] = fk_solution;
+
     // ToDo:: Get rid of chains
     uint chainNr = 0;
     for (std::vector<Chain*>::iterator itrChain = chains_.begin(); itrChain != chains_.end(); ++itrChain)
