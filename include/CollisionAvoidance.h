@@ -117,7 +117,7 @@ protected:
         btPointCollector bt_distance;
     } ;
 
-    struct ReactionForce {
+    struct RepulsiveForce {
         std::string frame_id;
         btVector3 pointOnA;
         btVector3 direction;
@@ -138,40 +138,100 @@ protected:
     std::vector<octomath::Vector3> min_;
     std::vector<octomath::Vector3> max_;
 
-    void getposeRPY(geometry_msgs::PoseStamped& pose, Eigen::Vector3d& RPY);
 
-    void calculateWrenches(std::vector<ReactionForce> &reaction_forces, std::vector<Wrench> &wrenches_out);
+    /**
+     * @brief Calculate the repulsive forces as a result of self collision avoidance
+     * @param Output: Vector with the minimum distances between robot collision bodies, vector with the repulsive forces
+     */
+    void selfCollision(std::vector<Distance> &min_distances, std::vector<RepulsiveForce> &repulsive_forces);
 
-    void selfCollision(std::vector<Distance> &min_distances, std::vector<ReactionForce> &reaction_forces);
+    /**
+     * @brief Calculate the repulsive forces as a result of environment collision avoidance
+     * @param Output: Vector with the minimum distances to the environment, vector with the repulsive forces
+     */
+    void environmentCollision(std::vector<Distance> &min_distances, std::vector<RepulsiveForce> &repulsive_forces);
 
-    void environmentCollision(std::vector<Distance> &min_distances, std::vector<ReactionForce> &reaction_forces);
-
+    /**
+     * @brief Construct the collision bodies
+     * @param Input: The robot state
+     */
     void initializeCollisionModel(RobotState &robotstate);
 
+    /**
+     * @brief Calculate the pose of the collision bodies
+     */
     void calculateTransform();
 
-    void setTransform(btTransform& transform_out, geometry_msgs::PoseStamped &fkPose, geometry_msgs::PoseStamped& fixPose);
+    /**
+     * @brief Calculate the closest distance between two collision bodies
+     * @param Input: Pose of the KDL frame and the fix for the collision bodies, Output: Bullet transform
+     */
+    void setTransform(geometry_msgs::PoseStamped &fkPose, geometry_msgs::PoseStamped& fixPose, btTransform& transform_out);
 
+    /**
+     * @brief Calculate the closest distance between two collision bodies
+     * @param Input: The two collision bodies and their poses, output: The closest points with the corresponding distance en normal vector between them
+     */
     void distanceCalculation(btConvexShape &shapeA, btConvexShape &shapeB, btTransform& transformA, btTransform& transformB, btPointCollector& distance_out);
 
+    /**
+     * @brief Select the minimal closest distance
+     * @param Vector with all closest distances from a collision body, Vector with the minimal closest distances
+     */
     void pickMinimumDistance(std::vector<Distance> &calculatedDistances, std::vector<Distance> &minimumDistances);
 
-    void calculateReactionForce(std::vector<Distance> &minimumDistances, std::vector<ReactionForce> &reactionForces, collisionAvoidanceParameters::Parameters &param);
+    /**
+     * @brief Calculate the amplitude of the repulsive forces
+     * @param Vector with the minimal closest distances, Vector with the repulsive forces
+     */
+    void calculateRepulsiveForce(std::vector<Distance> &minimumDistances, std::vector<RepulsiveForce> &repulsiveForces, collisionAvoidanceParameters::Parameters &param);
 
-    void bulletTest();
+    /**
+     * @brief Calculate the wrenches as a function of the repulsive forces
+     * @param Input: Vector with the repulsive forces, Output: Vector with the wrenches
+     */
+    void calculateWrenches(std::vector<RepulsiveForce> &repulsive_forces, std::vector<Wrench> &wrenches_out);
 
+    /**
+     * @brief Output the wrench to the KDL tree
+     * @param Vector with wrenches
+     */
     void outputWrenches(std::vector<Wrench> &wrenches);
 
+    /**
+     * @brief Visualize the collision avoidance in RVIZ
+     * @param Vector with minimal distances
+     */
     void visualize(std::vector<Distance> &min_distances) const;
 
+    /**
+     * @brief Construct the visualization markers to visualize the collision model in RVIZ
+     * @param Collision body information
+     */
     void visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id)  const;
 
-    void visualizeReactionForce(Distance &d_min, int id) const;
+    /**
+     * @brief Construct the visualization markers to visualize the repulsive forces in RVIZ
+     * @param Collision vector
+     */
+    void visualizeRepulsiveForce(Distance &d_min, int id) const;
 
+    /**
+     * @brief Construct the visualization markers to visualize the bounding box in RVIZ
+     * @param Minimum and maximum point of the bounding box
+     */
     void visualizeBBX(octomath::Vector3 min, octomath::Vector3 max, int id) const;
 
+    /**
+     * @brief Find the outer points of the collision models for the bounding box construction in /map frame
+     * @param Input: The collision body, Output: The minimum and maximum point of the collision body in /map frame
+     */
     void findOuterPoints(RobotState::CollisionBody& collisionBody, btVector3 &min, btVector3 &max);
 
+    /**
+     * @brief Test the Bullet closest distance calculation
+     */
+    void bulletTest();
 };
 
 #endif
