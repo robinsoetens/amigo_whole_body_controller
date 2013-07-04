@@ -101,7 +101,9 @@ protected:
 
     RobotState* robot_state_;
 
-    ros::Publisher pub_marker_;
+    ros::Publisher pub_model_marker_;
+    ros::Publisher pub_forces_marker_;
+    ros::Publisher pub_bbx_marker_;
 
     std::vector< std::vector<RobotState::CollisionBody> > active_groups_;
     std::vector< std::vector<RobotState::CollisionBody> > collision_groups_;

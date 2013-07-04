@@ -11,7 +11,7 @@ add_definitions(${EIGEN_DEFINITIONS})
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-set(ROS_BUILD_TYPE Debug)
+set(ROS_BUILD_TYPE Release)
 
 find_package(octomap 1.5 REQUIRED)
 include_directories(BEFORE ${OCTOMAP_INCLUDE_DIRS})

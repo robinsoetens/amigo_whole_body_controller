@@ -26,7 +26,9 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     ros::NodeHandle n("~");
     std::string ns = ros::this_node::getName();
 
-    pub_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_avoidance_markers/", 10);
+    pub_model_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_model_markers/", 10);
+    pub_forces_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers/", 10);
+    pub_bbx_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
 
     octomap_ = new octomap::OcTree(ca_param_.environment_collision.octomap_resolution);
 
@@ -240,30 +242,11 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
             ymax_bbx = max_cb[1]+ca_param_.environment_collision.d_threshold;
             zmax_bbx = max_cb[2]+ca_param_.environment_collision.d_threshold;
 
-            /*
-            // Find largest dimension of the collision body
-            double l = collisionBody.collision_shape.dimensions.x;
-            if (l < collisionBody.collision_shape.dimensions.y) {
-                l = collisionBody.collision_shape.dimensions.y;
+            // ToDo:: Get rid of hardcoded bug fix
+            if (collisionBody.name_collision_body == "BaseTop")
+            {
+               zmin_bbx = zmin_bbx - 0.15;
             }
-            if (l < collisionBody.collision_shape.dimensions.z) {
-                l = collisionBody.collision_shape.dimensions.z;
-            }
-
-            btVector3 cb_im = btVector3(l+2*ca_param_.environment_collision.d_threshold,
-                                        l+2*ca_param_.environment_collision.d_threshold,
-                                        l+2*ca_param_.environment_collision.d_threshold);
-
-            bbx_dim = collisionBody.bt_transform.getIdentity() * cb_im;
-
-            xmin_bbx = collisionBody.bt_transform.getOrigin()[0] - bbx_dim[0];
-            ymin_bbx = collisionBody.bt_transform.getOrigin()[1] - bbx_dim[1];
-            zmin_bbx = collisionBody.bt_transform.getOrigin()[2] - bbx_dim[2];
-
-            xmax_bbx = collisionBody.bt_transform.getOrigin()[0] + bbx_dim[0];
-            ymax_bbx = collisionBody.bt_transform.getOrigin()[1] + bbx_dim[1];
-            zmax_bbx = collisionBody.bt_transform.getOrigin()[2] + bbx_dim[2];
-            */
 
             // Check whether the BBX is inside the OctoMap, otherwise take OctoMap dimensions
             if (xmin_octomap > xmin_bbx) {
@@ -303,12 +286,12 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
             std::cout << "maxO: " << xmax_octomap << " " << ymax_octomap << " " << zmax_octomap << std::endl;
             */
 
-            if (collisionBody.name_collision_body == "GripperRight")
-            {
+            //if (collisionBody.name_collision_body == "ForeArmRight")
+            //{
                 // Store bbx min max in vector for visualization
                 min_.push_back(min);
                 max_.push_back(max);
-            }
+            //}
 
 
             // Find and store all occupied voxels
@@ -610,7 +593,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         marker_array.markers.push_back(modelviz);
 
-        pub_marker_.publish(marker_array);
+        pub_model_marker_.publish(marker_array);
     }
 
     else if (type == "Sphere")
@@ -639,7 +622,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         marker_array.markers.push_back(modelviz);
 
-        pub_marker_.publish(marker_array);
+        pub_model_marker_.publish(marker_array);
     }
 
     else if (type == "CylinderY")
@@ -675,7 +658,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         marker_array.markers.push_back(modelviz);
 
-        pub_marker_.publish(marker_array);
+        pub_model_marker_.publish(marker_array);
     }
 
     else if (type == "CylinderZ")
@@ -704,7 +687,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         marker_array.markers.push_back(modelviz);
 
-        pub_marker_.publish(marker_array);
+        pub_model_marker_.publish(marker_array);
     }
 
     else if (type == "Cone")
@@ -715,6 +698,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
         modelviz.mesh_resource = "package://amigo_whole_body_controller/data/cone.dae";
         modelviz.id = id;
 
+        // ToDo:: Get rid of hardcoded bug fix
         modelviz.scale.x = 2.3*x;
         modelviz.scale.y = 3.0*z;
         modelviz.scale.z = 2.3*y;
@@ -740,7 +724,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 
         marker_array.markers.push_back(modelviz);
 
-        pub_marker_.publish(marker_array);
+        pub_model_marker_.publish(marker_array);
     }
 }
 
@@ -856,7 +840,7 @@ void CollisionAvoidance::visualizeReactionForce(Distance &d_min,int id) const
 
     marker_array.markers.push_back(RFviz);
 
-    pub_marker_.publish(marker_array);
+    pub_forces_marker_.publish(marker_array);
 }
 
 void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 max, int id) const
@@ -890,7 +874,7 @@ void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 m
 
     marker_array.markers.push_back(BBXviz);
 
-    pub_marker_.publish(marker_array);
+    pub_bbx_marker_.publish(marker_array);
 
 }
 
