@@ -4,7 +4,7 @@
 
     <arg name="launch_prefix" default="" />
 
-<include file="$(find amigo_joint_interface_converter)/launch/start.launch"/>
+<!--<include file="$(find amigo_joint_interface_converter)/launch/start.launch"/>-->
 	
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/parameters.yaml" command="load" ns="whole_body_controller"/>
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/joint_limit_avoidance.yaml" command="load" ns="whole_body_controller"/>

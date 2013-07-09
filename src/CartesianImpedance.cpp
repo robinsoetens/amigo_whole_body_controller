@@ -162,7 +162,7 @@ KDL::Twist CartesianImpedance::getError() {
 
 void CartesianImpedance::stampedPoseToKDLframe(const geometry_msgs::PoseStamped& pose, KDL::Frame& frame) {
 
-    if (pose.header.frame_id != "base_link") ROS_WARN("FK computation can now only cope with base_link as input frame");
+    if (pose.header.frame_id != "base_link") ROS_WARN("FK computation can now only cope with base_link as input frame, while it currently is %s", pose.header.frame_id.c_str());
 
     // Position
     frame.p.x(pose.pose.position.x);

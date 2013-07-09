@@ -18,7 +18,8 @@ bool ChainParser::parse(std::vector<Chain*>& chains,
                         KDL::JntArray& q_max)
 {
     ros::NodeHandle n("~");
-    std::string ns = n.getNamespace();
+    //std::string ns = n.getNamespace();
+    std::string ns = "/whole_body_controller";
 
     /* * * * * * * * PARSE JOINT TOPICS * * * * * * * * */
 

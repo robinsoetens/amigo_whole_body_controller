@@ -69,6 +69,8 @@ public:
     double getCost();
 
     RobotState robot_state_;
+    
+    std::map<std::string, unsigned int> getJointNameToIndex();
 
     std::vector<MotionObjective*> getCartesianImpedances(const std::string& tip_frame, const std::string& root_frame);
 

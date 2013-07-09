@@ -364,3 +364,8 @@ void WholeBodyController::loadParameterFiles(RobotState &robot_state_)
     }
 
 }
+
+std::map<std::string, unsigned int> WholeBodyController::getJointNameToIndex()
+{
+	return joint_name_to_index_;
+}
