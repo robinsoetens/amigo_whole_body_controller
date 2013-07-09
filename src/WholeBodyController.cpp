@@ -56,7 +56,7 @@ bool WholeBodyController::initialize(const double Ts)
         n.param<double> (ns+"/posture_control/gain/"+iter->first, posture_gain[iter->second], 1);
         n.param<double> (ns+"/admittance_control/mass/"+iter->first, admittance_mass[iter->second], 10);
         n.param<double> (ns+"/admittance_control/damping/"+iter->first, admittance_damping[iter->second], 10);
-        ROS_INFO("Damping joint %s = %f",iter->first.c_str(),admittance_damping[iter->second]);
+        //ROS_INFO("Damping joint %s = %f",iter->first.c_str(),admittance_damping[iter->second]);
     }
 
     loadParameterFiles(robot_state_);
@@ -85,7 +85,7 @@ bool WholeBodyController::initialize(const double Ts)
     N_.resize(num_joints_,num_joints_);
 
     // Initialize Joint Limit Avoidance
-    for (uint i = 0; i < num_joints_; i++) ROS_INFO("JLA gain of joint %i is %f",i,JLA_gain[i]);
+    //for (uint i = 0; i < num_joints_; i++) ROS_INFO("JLA gain of joint %i is %f",i,JLA_gain[i]);
     JointLimitAvoidance_.initialize(q_min_, q_max_, JLA_gain, JLA_workspace);
     ROS_INFO("Joint limit avoidance initialized");
 
@@ -349,12 +349,12 @@ void WholeBodyController::loadParameterFiles(RobotState &robot_state_)
         }
         else if (robot_state_.exclusion_checks.checks.size() > 0)
         {
-            ROS_INFO("Exclusions from self-collision checks are: ");
+            ROS_DEBUG("Exclusions from self-collision checks are: ");
             for (std::vector<RobotState::Exclusion>::iterator it = robot_state_.exclusion_checks.checks.begin(); it != robot_state_.exclusion_checks.checks.end(); ++it)
             {
                 RobotState::Exclusion excl = *it;
-                ROS_INFO("Name body A = %s", excl.name_body_A.c_str());
-                ROS_INFO("Name body B = %s", excl.name_body_B.c_str());
+                ROS_DEBUG("Name body A = %s", excl.name_body_A.c_str());
+                ROS_DEBUG("Name body B = %s", excl.name_body_B.c_str());
             }
         }
 

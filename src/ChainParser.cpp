@@ -134,8 +134,8 @@ Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, Tree tree
 
         if (joint.getType() != KDL::Joint::None)
         {
-            cout << "Segment: " << segment.getName() << endl;
-            cout << "Joint:   " << joint.getName() << endl;
+            //cout << "Segment: " << segment.getName() << endl;
+            //cout << "Joint:   " << joint.getName() << endl;
 
             unsigned int full_joint_index = 0;
 
@@ -145,14 +145,14 @@ Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, Tree tree
                 // joint name is not yet in map, so give it a new fresh index and add it to the map
                 full_joint_index = joint_name_to_index.size();
 
-                cout << "    new joint, gets index " << full_joint_index << endl;
-                cout << "    type: " << joint.getTypeName() << endl;
+                //cout << "    new joint, gets index " << full_joint_index << endl;
+                //cout << "    type: " << joint.getTypeName() << endl;
 
                 joint_name_to_index[joint.getName()] = full_joint_index;
                 index_to_joint_name.push_back(joint.getName());
 
-                cout << "    Lower limit: " << robot_model.getJoint(joint.getName())->limits->lower << endl;
-                cout << "    Upper limit: " << robot_model.getJoint(joint.getName())->limits->upper << endl;
+                //cout << "    Lower limit: " << robot_model.getJoint(joint.getName())->limits->lower << endl;
+                //cout << "    Upper limit: " << robot_model.getJoint(joint.getName())->limits->upper << endl;
 
                 // determine joint limits from URDF
                 q_min.push_back(robot_model.getJoint(joint.getName())->limits->lower);
@@ -162,7 +162,7 @@ Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, Tree tree
                 // joint name already in the map, so look-up its index
                 full_joint_index = it_joint->second;
 
-                cout << "    existing joint, has index: " << full_joint_index << endl;
+                //cout << "    existing joint, has index: " << full_joint_index << endl;
             }
 
             chain->addJoint(joint.getName(), segment.getName(), full_joint_index);
