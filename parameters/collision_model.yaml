@@ -67,10 +67,10 @@ collision_model:
           name: "Head"
           shape:
                 shape_type: "Box"
-                dimensions: {x: 0.07, y: 0.133, z: 0.065} # 0.5*x,0.5*y,0.5*z
+                dimensions: {x: 0.08, y: 0.133, z: 0.07} # 0.5*x,0.5*y,0.5*z
           transform:
                 frame_id: "head"
-                origin: {x: -0.005, y: 0.0, z: 0.135 }
+                origin: {x: -0.0055, y: 0.0, z: 0.135 }
                 orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
         UpperArmLeft:
           name: "UpperArmLeft"
