@@ -57,12 +57,12 @@ if __name__ == '__main__':
     rospy.loginfo("Type link or header not yet taken into account")
     rospy.logwarn("Orientation constraint tolerances etc not yet defined")
 
-    goal.stiffness.force.x = 1.0
-    goal.stiffness.force.y = 1.0
-    goal.stiffness.force.z = 1.0
-    goal.stiffness.torque.x = 1.0
-    goal.stiffness.torque.y = 1.0
-    goal.stiffness.torque.z = 1.0
+    goal.stiffness.force.x = 100.0
+    goal.stiffness.force.y = 100.0
+    goal.stiffness.force.z = 100.0
+    goal.stiffness.torque.x = 5.0
+    goal.stiffness.torque.y = 5.0
+    goal.stiffness.torque.z = 5.0
     
     rospy.loginfo(goal)
     

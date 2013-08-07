@@ -14,7 +14,7 @@ CartesianImpedance::CartesianImpedance(const std::string& tip_frame) :
 
     /// Set stiffness matrix to zero
     K_.resize(6,6);
-    K_.Zero(6,6);
+    K_.setZero();
     num_constrained_dofs_ = 0;
     for (unsigned int i = 0; i < 3; i++) {
         box_tolerance_[i] = 0;
@@ -107,7 +107,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
 
     // ToDo: why does KDL::diff depend on Ts? I guess it can be left out
     //KDL::Twist error_vector_fk = KDL::diff(end_effector_kdl_frame, goal_pose_, Ts);
-   pose_error_ = KDL::diff(end_effector_kdl_frame, goal_pose_);
+    pose_error_ = KDL::diff(end_effector_kdl_frame, goal_pose_);
 
     error_vector(0) = pose_error_.vel.x();
     error_vector(1) = pose_error_.vel.y();
@@ -116,16 +116,14 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     error_vector(4) = pose_error_.rot.y();//goal_RPY(1) - end_effector_RPY(1)/ Ts;
     error_vector(5) = pose_error_.rot.z();//goal_RPY(2) - end_effector_RPY(2)/ Ts;
 
-
     //std::cout << "goal_pose = " << goal_pose_.getOrigin().getX() << " , " << goal_pose_.getOrigin().getY() << " , " << goal_pose_.getOrigin().getZ() << std::endl;
-    //std::cout << "error_vector = " << error_vector_ << std::endl;
+    //std::cout << "error_vector = " << error_vector << std::endl;
 
-    //ROS_INFO("error pose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector_(0),error_vector_(1),error_vector_(2),error_vector_(3),error_vector_(4),error_vector_(5));
     F_task = K_ * error_vector;
 
+    //std::cout << "K_ = " << K_ << std::endl;
     //std::cout << "F_task = " << F_task << std::endl;
     //ROS_INFO("Tip frame = %s",tip_frame_.c_str());
-    //ROS_INFO("F_task = %f,\t%f,\t%f,\t%f,\t%f,\t%f",F_task(0),F_task(1),F_task(2),F_task(3),F_task(4),F_task(5));
 
     // add the wrench to the end effector of the kinematic chain
     robotstate.tree_.addCartesianWrench(tip_frame_,F_task);
