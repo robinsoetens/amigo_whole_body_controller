@@ -94,44 +94,44 @@ if __name__ == '__main__':
     result = move_arm.send_goal_and_wait(goal, rospy.Duration(1.0))
     rospy.loginfo("Result = {0}".format(result))
     
-    ctr = 5
-    while (ctr > 0):
-        rospy.loginfo("Waiting for {0} s".format(ctr))
-        rospy.sleep(rospy.Duration(1.0))
-        ctr = ctr - 1
+    #ctr = 5
+    #while (ctr > 0):
+    #   rospy.loginfo("Waiting for {0} s".format(ctr))
+    #   rospy.sleep(rospy.Duration(1.0))
+    #    ctr = ctr - 1
     
-    goal = ArmTaskGoal()
-    goal.goal_type = "reset"
-    goal.remove_tip_frame = "grippoint_left"
-    goal.remove_root_frame = "base_link"
+    #goal = ArmTaskGoal()
+    #goal.goal_type = "reset"
+    #goal.remove_tip_frame = "grippoint_left"
+    #goal.remove_root_frame = "base_link"
     
-    result = move_arm.send_goal_and_wait(goal, rospy.Duration(1.0))
-    rospy.loginfo("Result = {0}".format(result))
+    #result = move_arm.send_goal_and_wait(goal, rospy.Duration(1.0))
+    #rospy.loginfo("Result = {0}".format(result))
     
-    ctr = 5
-    while (ctr > 0):
-        rospy.loginfo("Waiting for {0} s".format(ctr))
-        rospy.sleep(rospy.Duration(1.0))
-        ctr = ctr - 1
+    #ctr = 5
+    #while (ctr > 0):
+    #    rospy.loginfo("Waiting for {0} s".format(ctr))
+    #    rospy.sleep(rospy.Duration(1.0))
+    #    ctr = ctr - 1
     
-    goal = ArmTaskGoal()
-    goal.goal_type = "reset"
-    goal.remove_tip_frame = "grippoint_right"
+    #goal = ArmTaskGoal()
+    #goal.goal_type = "reset"
+    #goal.remove_tip_frame = "grippoint_right"
     
-    result = move_arm.send_goal_and_wait(goal, rospy.Duration(1.0))
-    rospy.loginfo("Result = {0}".format(result))
+    #result = move_arm.send_goal_and_wait(goal, rospy.Duration(1.0))
+    #rospy.loginfo("Result = {0}".format(result))
     
-    ctr = 5
-    while (ctr > 0):
-        rospy.loginfo("Waiting for {0} s".format(ctr))
-        rospy.sleep(rospy.Duration(1.0))
-        ctr = ctr - 1
+    #ctr = 5
+    #while (ctr > 0):
+    #    rospy.loginfo("Waiting for {0} s".format(ctr))
+    #    rospy.sleep(rospy.Duration(1.0))
+    #    ctr = ctr - 1
     
-    goal = ArmTaskGoal()
-    goal.goal_type = "reset"
-    goal.remove_tip_frame = "grippoint_left"
+    #goal = ArmTaskGoal()
+    #goal.goal_type = "reset"
+    #goal.remove_tip_frame = "grippoint_left"
     
-    result = move_arm.send_goal_and_wait(goal, rospy.Duration(1.0))
-    rospy.loginfo("Result = {0}".format(result))
+    #result = move_arm.send_goal_and_wait(goal, rospy.Duration(1.0))
+    #rospy.loginfo("Result = {0}".format(result))
 
     
