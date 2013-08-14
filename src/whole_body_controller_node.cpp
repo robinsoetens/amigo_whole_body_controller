@@ -228,7 +228,7 @@ int main(int argc, char **argv) {
     */
     /////////////////////
 
-    KDL::JntArray q_current;
+    //KDL::JntArray q_current;
     Eigen::VectorXd q_ref;
     Eigen::VectorXd qdot_ref;
 
@@ -236,7 +236,8 @@ int main(int argc, char **argv) {
 
         ros::spinOnce();
 
-        wbc->update(q_current, q_ref, qdot_ref);
+        //wbc->update(q_current, q_ref, qdot_ref);
+        wbc->update(q_ref, qdot_ref);
 
         ///// Teststuff /////
         /*

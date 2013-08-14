@@ -137,7 +137,7 @@ void WholeBodyController::setMeasuredJointPosition(const std::string& joint_name
     //std::cout << joint_name << q_current_(joint_name_to_index_[joint_name]) <<  std::endl;
 }
 
-bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_reference, Eigen::VectorXd& qdot_reference)
+bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& qdot_reference)
 {
 
     //ROS_INFO("WholeBodyController::update()");
@@ -236,7 +236,7 @@ bool WholeBodyController::update(KDL::JntArray q_current, Eigen::VectorXd& q_ref
     //for (uint i = 0; i < q_current_.rows(); i++) ROS_INFO("Position joint %i = %f",i,q_current_(i));
     //for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));
 
-    q_current = q_current_;
+    //q_current = q_current_;
     q_reference = q_reference_;
     qdot_reference = qdot_reference_;
 

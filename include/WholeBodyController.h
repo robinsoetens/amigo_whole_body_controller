@@ -49,7 +49,7 @@ public:
     /*
      * Updatehook
      */
-    bool update(KDL::JntArray q_current, Eigen::VectorXd &q_reference, Eigen::VectorXd &qdot_reference);
+    bool update(Eigen::VectorXd &q_reference, Eigen::VectorXd &qdot_reference);
 
     void setMeasuredJointPosition(const std::string& joint_name, double pos);
 
