@@ -1,5 +1,6 @@
 #include "CollisionAvoidance.h"
 #include <math.h>
+#include "std_msgs/Float32.h"
 
 #include "visualization_msgs/MarkerArray.h"
 
@@ -29,6 +30,9 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     pub_model_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_model_markers/", 10);
     pub_forces_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers/", 10);
     pub_bbx_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
+	pub_rep_force_ = n.advertise<std_msgs::Float32>("/whole_body_controller/rep_force/", 10);
+    pub_d_min_ = n.advertise<std_msgs::Float32>("/whole_body_controller/d_min/", 10);
+
 
     octomap_ = new octomap::OcTree(ca_param_.environment_collision.octomap_resolution);
 
@@ -65,6 +69,26 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     wrenches_total.clear();
 
     selfCollision(min_distances_total,repulsive_forces_total);
+    
+    // Create topics for plots
+    for (std::vector<Distance>::iterator itr_d_min = min_distances_total.begin(); itr_d_min != min_distances_total.end(); ++itr_d_min)
+    {
+        Distance dist = *itr_d_min;
+
+        if (dist.frame_id == "grippoint_right")
+        {
+            pub_d_min_.publish(dist.bt_distance.m_distance);
+        }
+    }
+    for (std::vector<RepulsiveForce>::iterator itr_f_rep = repulsive_forces_total.begin(); itr_f_rep != repulsive_forces_total.end(); ++itr_f_rep)
+    {
+        RepulsiveForce f_rep = *itr_f_rep;
+
+        if (f_rep.frame_id == "grippoint_right")
+        {
+            pub_rep_force_.publish(f_rep.amplitude);
+        }
+    }
 
     if (octomap_->size() > 0)
     {

@@ -104,6 +104,8 @@ protected:
     ros::Publisher pub_model_marker_;
     ros::Publisher pub_forces_marker_;
     ros::Publisher pub_bbx_marker_;
+    ros::Publisher pub_rep_force_;
+    ros::Publisher pub_d_min_;
 
     std::vector< std::vector<RobotState::CollisionBody> > active_groups_;
     std::vector< std::vector<RobotState::CollisionBody> > collision_groups_;

@@ -39,7 +39,7 @@ void CartesianImpedance::setGoal(const geometry_msgs::PoseStamped& goal_pose ) {
     root_frame_ = goal_pose.header.frame_id;
 
     /// Goal Pose
-    stampedPoseToKDLframe(goal_pose, goal_pose_);
+    goal_pose_ = goal_pose;
 }
 
 void CartesianImpedance::setImpedance(const geometry_msgs::Wrench &stiffness) {
@@ -107,7 +107,23 @@ void CartesianImpedance::apply(RobotState &robotstate) {
 
     // ToDo: why does KDL::diff depend on Ts? I guess it can be left out
     //KDL::Twist error_vector_fk = KDL::diff(end_effector_kdl_frame, goal_pose_, Ts);
-    pose_error_ = KDL::diff(end_effector_kdl_frame, goal_pose_);
+    
+    
+    // Transform goal pose to map frame
+    geometry_msgs::PoseStamped goal_pose_map, root_frame_pose;
+    tf::Stamped<tf::Pose> tf_root_frame,tf_goal,tf_goal_map;
+    KDL::Frame goal_pose_map_kdl_frame;
+    
+    tf::poseStampedMsgToTF(goal_pose_,tf_goal);
+    
+    std::map<std::string, geometry_msgs::PoseStamped>::iterator itrRF = robotstate.fk_poses_.find(root_frame_);
+    tf::poseStampedMsgToTF((*itrRF).second,tf_root_frame);
+    tf_goal_map.mult(tf_root_frame,tf_goal);
+        
+    tf::poseStampedTFToMsg(tf_goal_map,goal_pose_map);
+    stampedPoseToKDLframe(goal_pose_map, goal_pose_map_kdl_frame);
+    
+    pose_error_ = KDL::diff(end_effector_kdl_frame, goal_pose_map_kdl_frame);
 
     error_vector(0) = pose_error_.vel.x();
     error_vector(1) = pose_error_.vel.y();
@@ -160,7 +176,7 @@ KDL::Twist CartesianImpedance::getError() {
 
 void CartesianImpedance::stampedPoseToKDLframe(const geometry_msgs::PoseStamped& pose, KDL::Frame& frame) {
 
-    if (pose.header.frame_id != "base_link") ROS_WARN("FK computation can now only cope with base_link as input frame, while it currently is %s", pose.header.frame_id.c_str());
+    if (pose.header.frame_id != "base_link") //ROS_WARN("FK computation can now only cope with base_link as input frame, while it currently is %s", pose.header.frame_id.c_str());
 
     // Position
     frame.p.x(pose.pose.position.x);

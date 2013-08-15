@@ -78,9 +78,7 @@ protected:
     // ToDo: SHOULD be obsolete
     Chain* chain_;
 
-    geometry_msgs::PoseStamped end_effector_pose_;
-
-    KDL::Frame goal_pose_;
+    geometry_msgs::PoseStamped end_effector_pose_,goal_pose_;
 
     KDL::Twist pose_error_;
 
