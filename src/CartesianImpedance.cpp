@@ -96,6 +96,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     // ToDo: create get function
     std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
     end_effector_pose_ = (*itrFK).second;
+    ROS_INFO("FK pose tip frame = (%f,%f,%f)", (*itrFK).second.pose.position.x, (*itrFK).second.pose.position.y, (*itrFK).second.pose.position.z);
 
     KDL::Frame end_effector_kdl_frame;
     stampedPoseToKDLframe(end_effector_pose_, end_effector_kdl_frame);
@@ -110,19 +111,38 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     
     
     // Transform goal pose to map frame
-    geometry_msgs::PoseStamped goal_pose_map, root_frame_pose;
-    tf::Stamped<tf::Pose> tf_root_frame,tf_goal,tf_goal_map;
-    KDL::Frame goal_pose_map_kdl_frame;
+    /////geometry_msgs::PoseStamped goal_pose_map, root_frame_pose;
+    /////tf::Stamped<tf::Pose> tf_root_frame,tf_goal,tf_goal_map;
+    /////KDL::Frame goal_pose_map_kdl_frame;
     
-    tf::poseStampedMsgToTF(goal_pose_,tf_goal);
+    /////tf::poseStampedMsgToTF(goal_pose_,tf_goal);
     
     std::map<std::string, geometry_msgs::PoseStamped>::iterator itrRF = robotstate.fk_poses_.find(root_frame_);
-    tf::poseStampedMsgToTF((*itrRF).second,tf_root_frame);
-    tf_goal_map.mult(tf_root_frame,tf_goal);
-        
-    tf::poseStampedTFToMsg(tf_goal_map,goal_pose_map);
-    stampedPoseToKDLframe(goal_pose_map, goal_pose_map_kdl_frame);
-    
+
+    /////ROS_INFO("FK pose root frame = (%f,%f,%f)", (*itrRF).second.pose.position.x, (*itrRF).second.pose.position.y, (*itrRF).second.pose.position.z);
+    /////ROS_INFO("FK pose root frame = %s at %f", (*itrRF).second.header.frame_id.c_str(), (*itrRF).second.header.stamp.toSec());
+    ///////ROS_INFO("Going to sleep");
+    ///////ros::Duration(5.0).sleep();
+    ///////ROS_INFO("Woke up again");
+    /////tf::poseStampedMsgToTF((*itrRF).second,tf_root_frame);
+    /////ROS_INFO("Going to mult frames");
+    /////tf_goal_map.mult(tf_root_frame,tf_goal);
+    /////ROS_INFO("Converting pose stamped tf to msg");
+    /////tf::poseStampedTFToMsg(tf_goal_map,goal_pose_map);
+    /////ROS_INFO("Converting pose stamped msg to KDL frame");
+    /////stampedPoseToKDLframe(goal_pose_map, goal_pose_map_kdl_frame);
+    /////ROS_INFO("goal_pose_map_kdl_frame (x,y,z) = (%f,%f,%f)",goal_pose_map_kdl_frame.p.x(),goal_pose_map_kdl_frame.p.y(),goal_pose_map_kdl_frame.p.z());
+
+    ///// Test
+    KDL::Frame kdl_goal_in_root, kdl_root_in_map;
+    stampedPoseToKDLframe(goal_pose_, kdl_goal_in_root);
+    ROS_INFO("kdl_goal_in_root (x,y,z) = (%f,%f,%f)",kdl_goal_in_root.p.x(),kdl_goal_in_root.p.y(),kdl_goal_in_root.p.z());
+    stampedPoseToKDLframe(itrRF->second, kdl_root_in_map);
+    ROS_INFO("kdl_root_in_map (x,y,z) = (%f,%f,%f)",kdl_root_in_map.p.x(),kdl_root_in_map.p.y(),kdl_root_in_map.p.z());
+    KDL::Frame goal_pose_map_kdl_frame = kdl_goal_in_root*kdl_root_in_map;
+    ROS_INFO("goal_pose_map_kdl_frame (x,y,z) = (%f,%f,%f)",goal_pose_map_kdl_frame.p.x(),goal_pose_map_kdl_frame.p.y(),goal_pose_map_kdl_frame.p.z());
+    /////
+
     pose_error_ = KDL::diff(end_effector_kdl_frame, goal_pose_map_kdl_frame);
 
     error_vector(0) = pose_error_.vel.x();
@@ -133,7 +153,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     error_vector(5) = pose_error_.rot.z();//goal_RPY(2) - end_effector_RPY(2)/ Ts;
 
     //std::cout << "goal_pose = " << goal_pose_.getOrigin().getX() << " , " << goal_pose_.getOrigin().getY() << " , " << goal_pose_.getOrigin().getZ() << std::endl;
-    //std::cout << "error_vector = " << error_vector << std::endl;
+    std::cout << "error_vector = " << error_vector << std::endl;
 
     F_task = K_ * error_vector;
 
@@ -176,7 +196,7 @@ KDL::Twist CartesianImpedance::getError() {
 
 void CartesianImpedance::stampedPoseToKDLframe(const geometry_msgs::PoseStamped& pose, KDL::Frame& frame) {
 
-    if (pose.header.frame_id != "base_link") //ROS_WARN("FK computation can now only cope with base_link as input frame, while it currently is %s", pose.header.frame_id.c_str());
+    //if (pose.header.frame_id != "base_link") //ROS_WARN("FK computation can now only cope with base_link as input frame, while it currently is %s", pose.header.frame_id.c_str());
 
     // Position
     frame.p.x(pose.pose.position.x);
