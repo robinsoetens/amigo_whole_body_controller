@@ -12,7 +12,7 @@ const double loop_rate_ = 50;
 typedef actionlib::SimpleActionServer<amigo_whole_body_controller::ArmTaskAction> action_server;
 action_server* add_motion_objective_server_;
 CollisionAvoidance* collision_avoidance;
-RobotState* robot_state;
+//RobotState* robot_state;
 
 WholeBodyController* wbc;
 
@@ -44,7 +44,8 @@ void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg) {
 
 void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
 {
-    robot_state->setAmclPose(*msg);
+    //robot_state->setAmclPose(*msg);
+    wbc->robot_state_.setAmclPose(*msg);
 }
 
 void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std::string>& joint_names) {
@@ -200,6 +201,24 @@ int main(int argc, char **argv) {
     loadParameterFiles(ca_param);
 
     wbc = new WholeBodyController(1/loop_rate_);
+
+    /// Use tf to set the first amcl pose
+    tf::TransformListener listener;
+    listener.waitForTransform("/map","/base_link",ros::Time(0),ros::Duration(1.0)); // Is the latest available transform
+    geometry_msgs::PoseStamped base_link_pose, map_pose;
+    base_link_pose.header.frame_id = "/base_link";
+    base_link_pose.pose.position.x = 0.0;
+    base_link_pose.pose.position.y = 0.0;
+    base_link_pose.pose.position.z = 0.0;
+    base_link_pose.pose.orientation.x = 0.0;
+    base_link_pose.pose.orientation.y = 0.0;
+    base_link_pose.pose.orientation.z = 0.0;
+    base_link_pose.pose.orientation.w = 1.0;
+    listener.transformPose("/map", base_link_pose, map_pose);
+    geometry_msgs::PoseWithCovarianceStamped amcl_pose;
+    amcl_pose.pose.pose = map_pose.pose;
+    ROS_INFO("Initial amcl pose, x = %f, y = %f",amcl_pose.pose.pose.position.x,amcl_pose.pose.pose.position.y);
+    wbc->robot_state_.setAmclPose(amcl_pose);
 
     ros::Rate r(loop_rate_);
 
