@@ -160,3 +160,11 @@ KDL::Frame RobotState::getFK(const std::string& tip_frame){
 
     return end_effector_kdl_frame;
 }
+
+void RobotState::setAmclPose(const geometry_msgs::PoseWithCovarianceStamped& amcl_pose_msg)
+{
+    amcl_pose_.header = amcl_pose_msg.header;
+    amcl_pose_.pose = amcl_pose_msg.pose.pose;
+
+    fk_poses_["base_link"] = amcl_pose_;
+}

@@ -26,6 +26,8 @@
 // tf
 #include <tf/transform_listener.h>
 
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+
 
 class RobotState
 {
@@ -118,6 +120,7 @@ public:
     Chain* chain_left_;
     Chain* chain_right_;
     std::vector<Chain*> chains_;
+    geometry_msgs::PoseStamped amcl_pose_;
 
     /**
       * Forward Kinematics Solver
@@ -131,7 +134,6 @@ public:
 
     /**
       * Returns the current FK solution
-      *
       */
     void KDLFrameToStampedPose(const KDL::Frame &FK_pose, geometry_msgs::PoseStamped &pose);
 
@@ -142,6 +144,8 @@ public:
       * @param tip_frame
       */
     KDL::Frame getFK(const std::string& tip_frame);
+
+    void setAmclPose(const geometry_msgs::PoseWithCovarianceStamped& amcl_pose_msg);
 
 };
 

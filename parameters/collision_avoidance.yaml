@@ -1,11 +1,11 @@
 collision_avoidance:
     self_collision:
-        d_threshold: 0.055
-        F_max: 18.75
+        d_threshold: 0.063
+        F_max: 50
         order: 2
     environment_collision:
-        d_threshold: 0.055 
-        F_max: 18.75 
+        d_threshold: 0.063 
+        F_max: 50 
         order: 2 
 
 # d_threshold:   Threshold from which the repulsive force starts acting, in [m]

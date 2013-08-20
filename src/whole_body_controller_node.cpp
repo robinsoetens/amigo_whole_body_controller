@@ -1,5 +1,6 @@
 #include "WholeBodyController.h"
 #include <amigo_whole_body_controller/ArmTaskAction.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 // tf
 #include <tf/transform_listener.h>
@@ -11,6 +12,7 @@ const double loop_rate_ = 50;
 typedef actionlib::SimpleActionServer<amigo_whole_body_controller::ArmTaskAction> action_server;
 action_server* add_motion_objective_server_;
 CollisionAvoidance* collision_avoidance;
+RobotState* robot_state;
 
 WholeBodyController* wbc;
 
@@ -38,6 +40,11 @@ void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg) {
     for(unsigned int i = 0; i < msg->name.size(); ++i) {
         wbc->setMeasuredJointPosition(msg->name[i], msg->position[i]);
     }
+}
+
+void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
+{
+    robot_state->setAmclPose(*msg);
 }
 
 void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std::string>& joint_names) {
@@ -161,10 +168,11 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "whole_body_controller");
     ros::NodeHandle nh_private("~");
 
-    ros::Subscriber sub_octomap   = nh_private.subscribe<octomap_msgs::OctomapBinary>("/octomap_binary", 10, &octoMapCallback);
+    ros::Subscriber sub_octomap   = nh_private.subscribe<octomap_msgs::OctomapBinary>("/partial_octomap_binary", 10, &octoMapCallback);
     ros::Subscriber sub_left_arm  = nh_private.subscribe<sensor_msgs::JointState>("/arm_left_controller/measurements", 10, &jointMeasurementCallback);
     ros::Subscriber sub_right_arm = nh_private.subscribe<sensor_msgs::JointState>("/arm_right_controller/measurements", 10, &jointMeasurementCallback);
     ros::Subscriber sub_torso     = nh_private.subscribe<sensor_msgs::JointState>("/torso_controller/measurements", 10, &jointMeasurementCallback);
+    ros::Subscriber sub_amcl_pose = nh_private.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 10, &amclPoseCallback);
 
     JointRefPublisher* pub_left_arm = new JointRefPublisher("/arm_left_controller/references");
     JointRefPublisher* pub_right_arm = new JointRefPublisher("/arm_right_controller/references");
