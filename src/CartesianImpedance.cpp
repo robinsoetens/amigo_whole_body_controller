@@ -39,7 +39,8 @@ void CartesianImpedance::setGoal(const geometry_msgs::PoseStamped& goal_pose ) {
     root_frame_ = goal_pose.header.frame_id;
 
     /// Goal Pose
-    goal_pose_ = goal_pose;
+    //////goal_pose_ = goal_pose;
+    stampedPoseToKDLframe(goal_pose, goal_pose_);
 }
 
 void CartesianImpedance::setImpedance(const geometry_msgs::Wrench &stiffness) {
@@ -94,12 +95,13 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     Eigen::VectorXd error_vector(6);
 
     // ToDo: create get function
-    std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
+    //////std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
+    std::map<std::string, KDL::Frame>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
     end_effector_pose_ = (*itrFK).second;
-    ROS_INFO("FK pose tip frame = (%f,%f,%f)", (*itrFK).second.pose.position.x, (*itrFK).second.pose.position.y, (*itrFK).second.pose.position.z);
+    ROS_INFO("FK pose tip frame in tree root = (%f,%f,%f)", end_effector_pose_.p.x(), end_effector_pose_.p.y(), end_effector_pose_.p.z());
 
-    KDL::Frame end_effector_kdl_frame;
-    stampedPoseToKDLframe(end_effector_pose_, end_effector_kdl_frame);
+    //////KDL::Frame end_effector_kdl_frame;
+    //////stampedPoseToKDLframe(end_effector_pose_, end_effector_kdl_frame);
 
     //ROS_INFO("goal_kdl_frame = %f,\t%f,\t%f,\t%f,\t%f,\t%f", goal_kdl_frame.p.x(), goal_kdl_frame.p.y(), goal_kdl_frame.p.z(),
     //                                                         goal_RPY(0), goal_RPY(1), goal_RPY(2));
@@ -117,8 +119,10 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     
     /////tf::poseStampedMsgToTF(goal_pose_,tf_goal);
     
-    std::map<std::string, geometry_msgs::PoseStamped>::iterator itrRF = robotstate.fk_poses_.find(root_frame_);
-
+    //////std::map<std::string, geometry_msgs::PoseStamped>::iterator itrRF = robotstate.fk_poses_.find(root_frame_);
+    std::map<std::string, KDL::Frame>::iterator itrRF = robotstate.fk_poses_.find(root_frame_);
+    KDL::Frame kdl_root_in_map = itrRF->second;
+    ROS_INFO("FK pose root frame in map (x,y,z) = (%f,%f,%f)", kdl_root_in_map.p.x(), kdl_root_in_map.p.y(), kdl_root_in_map.p.z());
     /////ROS_INFO("FK pose root frame = (%f,%f,%f)", (*itrRF).second.pose.position.x, (*itrRF).second.pose.position.y, (*itrRF).second.pose.position.z);
     /////ROS_INFO("FK pose root frame = %s at %f", (*itrRF).second.header.frame_id.c_str(), (*itrRF).second.header.stamp.toSec());
     ///////ROS_INFO("Going to sleep");
@@ -134,16 +138,17 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     /////ROS_INFO("goal_pose_map_kdl_frame (x,y,z) = (%f,%f,%f)",goal_pose_map_kdl_frame.p.x(),goal_pose_map_kdl_frame.p.y(),goal_pose_map_kdl_frame.p.z());
 
     ///// Test
-    KDL::Frame kdl_goal_in_root, kdl_root_in_map;
-    stampedPoseToKDLframe(goal_pose_, kdl_goal_in_root);
-    ROS_INFO("kdl_goal_in_root (x,y,z) = (%f,%f,%f)",kdl_goal_in_root.p.x(),kdl_goal_in_root.p.y(),kdl_goal_in_root.p.z());
-    stampedPoseToKDLframe(itrRF->second, kdl_root_in_map);
-    ROS_INFO("kdl_root_in_map (x,y,z) = (%f,%f,%f)",kdl_root_in_map.p.x(),kdl_root_in_map.p.y(),kdl_root_in_map.p.z());
-    KDL::Frame goal_pose_map_kdl_frame = kdl_goal_in_root*kdl_root_in_map;
-    ROS_INFO("goal_pose_map_kdl_frame (x,y,z) = (%f,%f,%f)",goal_pose_map_kdl_frame.p.x(),goal_pose_map_kdl_frame.p.y(),goal_pose_map_kdl_frame.p.z());
+    //////KDL::Frame kdl_goal_in_root, kdl_root_in_map;
+    //////stampedPoseToKDLframe(goal_pose_, kdl_goal_in_root);
+    //////ROS_INFO("kdl_goal_in_root (x,y,z) = (%f,%f,%f)",kdl_goal_in_root.p.x(),kdl_goal_in_root.p.y(),kdl_goal_in_root.p.z());
+    //////stampedPoseToKDLframe(itrRF->second, kdl_root_in_map);
+    //////ROS_INFO("kdl_root_in_map (x,y,z) = (%f,%f,%f)",kdl_root_in_map.p.x(),kdl_root_in_map.p.y(),kdl_root_in_map.p.z());
+    //////KDL::Frame goal_pose_map_kdl_frame = kdl_goal_in_root*kdl_root_in_map;
+    KDL::Frame goal_pose_map = goal_pose_* kdl_root_in_map;
+    ROS_INFO("goal_pose_map (x,y,z) = (%f,%f,%f)",goal_pose_map.p.x(),goal_pose_map.p.y(),goal_pose_map.p.z());
     /////
 
-    pose_error_ = KDL::diff(end_effector_kdl_frame, goal_pose_map_kdl_frame);
+    pose_error_ = KDL::diff(end_effector_pose_, goal_pose_map);
 
     error_vector(0) = pose_error_.vel.x();
     error_vector(1) = pose_error_.vel.y();

@@ -36,8 +36,8 @@ void RobotState::collectFKSolutions(tf::TransformListener& listener)
     /////                                    tf_baselink.getOrigin().getY(),
     /////                                    tf_baselink.getOrigin().getZ()));
     /////tf_baselink_fix.setRotation(tf_baselink.getRotation());
-
-    tf_baselink_fix.setOrigin(btVector3(amcl_pose_.pose.position.x,
+/*
+    tf_baselink_fix.setOrigin(btVector3(amcl_pose_.p.position.x,
                                         amcl_pose_.pose.position.y,
                                         amcl_pose_.pose.position.z));
     tf_baselink_fix.setRotation(tf::Quaternion(amcl_pose_.pose.orientation.x,
@@ -102,7 +102,7 @@ void RobotState::collectFKSolutions(tf::TransformListener& listener)
 
                 fk_poses_[chain->kdl_chain_.getSegment(itr).getName()] = fk_solution;
 
-                /*
+                *
                 std::cout << "frame = " << chain->kdl_chain_.getSegment(itr).getName() << std::endl;
                 std::cout << "frame_id = " <<  fk_solution.header.frame_id << std::endl;
                 std::cout << "x = " <<  fk_solution.pose.position.x << std::endl;
@@ -112,7 +112,7 @@ void RobotState::collectFKSolutions(tf::TransformListener& listener)
                 std::cout << "Y = " <<  fk_solution.pose.orientation.y << std::endl;
                 std::cout << "Z = " <<  fk_solution.pose.orientation.z << std::endl;
                 std::cout << "W = " <<  fk_solution.pose.orientation.w << std::endl;
-                */
+                *
 
             }
             //std::cout << fk_solvers.size() << std::endl;            
@@ -120,6 +120,25 @@ void RobotState::collectFKSolutions(tf::TransformListener& listener)
 
     }
     chainNr++;
+*/
+    /// Fill in the vector with FK poses (why do we actually need to do this? We can 'find' the respective link in the tree and compute FK right away...)
+    /// Iterate over tree
+    KDL::SegmentMap treemap = tree_.kdl_tree_.getSegments();
+    for (KDL::SegmentMap::iterator itrTree = treemap.begin(); itrTree != treemap.end(); ++itrTree)
+    {
+        /// Compute FK with respect to root frame of the tree
+        KDL::Frame fk_pose_in_root;
+        fk_solver_->JntToCart(tree_.q_tree_, fk_pose_in_root, itrTree->first);
+
+        /// Convert to map frame
+        KDL::Frame fk_pose_in_map;
+        fk_pose_in_map = fk_pose_in_root * amcl_pose_;
+
+        /// Put in map
+        fk_poses_[itrTree->first] = fk_pose_in_map;
+
+    }
+
 }
 
 void RobotState::KDLFrameToStampedPose(const KDL::Frame& FK_pose, geometry_msgs::PoseStamped& pose)
@@ -158,21 +177,24 @@ int RobotState::getNrOfSegment(KDL::Chain kdl_chain_, const std::string& segment
 KDL::Frame RobotState::getFK(const std::string& tip_frame){
 
     /// Get the current FK pose as a geometry msgs
-    std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = fk_poses_.find(tip_frame);
-    geometry_msgs::PoseStamped end_effector_pose_ = (*itrFK).second;
+    std::map<std::string, KDL::Frame>::iterator itrFK = fk_poses_.find(tip_frame);
+    KDL::Frame end_effector_pose = (*itrFK).second;
 
-    /// Convert to KDL
-    KDL::Frame end_effector_kdl_frame;
-    ROS_ERROR("This function does not work yet");
-    //stampedPoseToKDLframe(end_effector_pose_, end_effector_kdl_frame);
-
-    return end_effector_kdl_frame;
+    return end_effector_pose;
 }
 
 void RobotState::setAmclPose(const geometry_msgs::PoseWithCovarianceStamped& amcl_pose_msg)
 {
-    amcl_pose_.header = amcl_pose_msg.header;
-    amcl_pose_.pose = amcl_pose_msg.pose.pose;
+    // Position
+    amcl_pose_.p.x(amcl_pose_msg.pose.pose.position.x);
+    amcl_pose_.p.y(amcl_pose_msg.pose.pose.position.y);
+    amcl_pose_.p.z(amcl_pose_msg.pose.pose.position.z);
+
+    // Orientation
+    amcl_pose_.M.Quaternion(amcl_pose_msg.pose.pose.orientation.x,
+                       amcl_pose_msg.pose.pose.orientation.y,
+                       amcl_pose_msg.pose.pose.orientation.z,
+                       amcl_pose_msg.pose.pose.orientation.w);
 
     fk_poses_["base_link"] = amcl_pose_;
 }

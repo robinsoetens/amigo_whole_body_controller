@@ -183,9 +183,12 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
         for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
         {
             RobotState::CollisionBody &collisionBody = *it;
-            std::map<std::string, geometry_msgs::PoseStamped>::iterator itr = robot_state_.fk_poses_.find(collisionBody.fix_pose.header.frame_id);
-            geometry_msgs::PoseStamped fk_pose = (*itr).second;
-            collisionBody.fk_pose = fk_pose;
+            //////std::map<std::string, geometry_msgs::PoseStamped>::iterator itr = robot_state_.fk_poses_.find(collisionBody.fix_pose.header.frame_id);
+            std::map<std::string, KDL::Frame>::iterator itr = robot_state_.fk_poses_.find(collisionBody.fix_pose.header.frame_id);
+            //////geometry_msgs::PoseStamped fk_pose = (*itr).second;
+            //////collisionBody.fk_pose = fk_pose;
+            // ToDo: use KDL datatypes in collisionBody
+            robot_state_.KDLFrameToStampedPose(itr->second, collisionBody.fk_pose);
         }
     }
 

@@ -40,7 +40,8 @@ public:
     //Destructor
     virtual ~RobotState();
 
-    std::map<std::string, geometry_msgs::PoseStamped> fk_poses_;
+    //////std::map<std::string, geometry_msgs::PoseStamped> fk_poses_;
+    std::map<std::string, KDL::Frame> fk_poses_;
 
     // Collision Model
     struct CollisionBody
@@ -120,7 +121,8 @@ public:
     Chain* chain_left_;
     Chain* chain_right_;
     std::vector<Chain*> chains_;
-    geometry_msgs::PoseStamped amcl_pose_;
+    //////geometry_msgs::PoseStamped amcl_pose_;
+    KDL::Frame amcl_pose_;
 
     /**
       * Forward Kinematics Solver
