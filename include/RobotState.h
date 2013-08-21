@@ -14,6 +14,7 @@
 
 // Messages
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 // KDL
 #include <kdl/treefksolverpos_recursive.hpp>
@@ -22,12 +23,6 @@
 // Bullet
 #include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
 #include <BulletCollision/NarrowPhaseCollision/btPointCollector.h>
-
-// tf
-#include <tf/transform_listener.h>
-
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-
 
 class RobotState
 {
@@ -40,7 +35,7 @@ public:
     //Destructor
     virtual ~RobotState();
 
-    //////std::map<std::string, geometry_msgs::PoseStamped> fk_poses_;
+    // Map containing segment names and corresponding poses (in map frame)
     std::map<std::string, KDL::Frame> fk_poses_;
 
     // Collision Model
@@ -121,7 +116,6 @@ public:
     Chain* chain_left_;
     Chain* chain_right_;
     std::vector<Chain*> chains_;
-    //////geometry_msgs::PoseStamped amcl_pose_;
     KDL::Frame amcl_pose_;
 
     /**
@@ -132,7 +126,7 @@ public:
     /**
       * Store all FK solutions in a map
       */
-    void collectFKSolutions(tf::TransformListener &listener);
+    void collectFKSolutions();
 
     /**
       * Returns the current FK solution
