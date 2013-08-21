@@ -75,6 +75,19 @@ KDL::Frame RobotState::getFK(const std::string& tip_frame){
     return end_effector_pose;
 }
 
+geometry_msgs::PoseStamped RobotState::getFKPoseStamped(const std::string& tip_frame)
+{
+    /// Get the current FK pose as a geometry msgs
+    std::map<std::string, KDL::Frame>::iterator itrFK = fk_poses_.find(tip_frame);
+    KDL::Frame end_effector_pose = (*itrFK).second;
+
+    geometry_msgs::PoseStamped pose_out;
+    KDLFrameToStampedPose(end_effector_pose, pose_out);
+    pose_out.header.frame_id = "/map"; //Robot state performs these computations in map
+    return pose_out;
+
+}
+
 void RobotState::setAmclPose(const geometry_msgs::PoseWithCovarianceStamped& amcl_pose_msg)
 {
     // Position

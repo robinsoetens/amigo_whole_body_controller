@@ -141,6 +141,12 @@ public:
       */
     KDL::Frame getFK(const std::string& tip_frame);
 
+    /**
+      * Returns a geometry_msg of the tip frame
+      * @param tip_frame
+      */
+    geometry_msgs::PoseStamped getFKPoseStamped(const std::string& tip_frame);
+
     void setAmclPose(const geometry_msgs::PoseWithCovarianceStamped& amcl_pose_msg);
 
 };
