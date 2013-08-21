@@ -21,8 +21,6 @@ bool WholeBodyController::initialize(const double Ts)
     //ROS_INFO("Nodehandle %s",n.getNamespace().c_str());
     ROS_INFO("Initializing whole body controller");
 
-    listener_ = new tf::TransformListener(ros::Duration(4.0));
-
     // ToDo: Parameterize
     Ts_ = Ts;
 
@@ -163,7 +161,7 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
     }
     */
 
-
+    /// Apply the corresponding FK solution to the collision bodies
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
     {
         std::vector<RobotState::CollisionBody> &group = *it;
@@ -171,9 +169,8 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
         for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
         {
             RobotState::CollisionBody &collisionBody = *it;
-            std::map<std::string, KDL::Frame>::iterator itr = robot_state_.fk_poses_.find(collisionBody.fix_pose.header.frame_id);
-            // ToDo: use KDL datatypes in collisionBody
-            robot_state_.KDLFrameToStampedPose(itr->second, collisionBody.fk_pose);
+            std::map<std::string, KDL::Frame>::iterator itr = robot_state_.fk_poses_.find(collisionBody.frame_id);
+            collisionBody.fk_pose = itr->second;
         }
     }
 
@@ -279,7 +276,7 @@ std::vector<MotionObjective*> WholeBodyController::getCartesianImpedances(const 
     return output;
 }
 
-void WholeBodyController::loadParameterFiles(RobotState &robot_state_)
+void WholeBodyController::loadParameterFiles(RobotState &robot_state)
 {
     ros::NodeHandle n("~");
     std::string ns = ros::this_node::getName();
@@ -288,7 +285,6 @@ void WholeBodyController::loadParameterFiles(RobotState &robot_state_)
     try
     {
         // ROBOT
-
         n.getParam(ns+"/collision_model", groups);
         for(XmlRpcIterator itrGroups = groups.begin(); itrGroups != groups.end(); ++itrGroups)
         {
@@ -309,9 +305,9 @@ void WholeBodyController::loadParameterFiles(RobotState &robot_state_)
             }
 
             // add group of collision bodies to the robot
-            robot_state_.robot_.groups.push_back(robot_state_group);
+            robot_state.robot_.groups.push_back(robot_state_group);
         }
-        if (robot_state_.robot_.groups.size() == 0)
+        if (robot_state.robot_.groups.size() == 0)
         {
             ROS_WARN("No collision model loaded");
         }
@@ -327,18 +323,18 @@ void WholeBodyController::loadParameterFiles(RobotState &robot_state_)
                 RobotState::Exclusion exclusion;
                 exclusion.fromXmlRpc(Excl);
 
-                robot_state_.exclusion_checks.checks.push_back(exclusion);
+                robot_state.exclusion_checks.checks.push_back(exclusion);
             }
         }
 
-        if (robot_state_.exclusion_checks.checks.size() == 0)
+        if (robot_state.exclusion_checks.checks.size() == 0)
         {
             ROS_WARN("No exclusions from self-collision avoindance checks");
         }
-        else if (robot_state_.exclusion_checks.checks.size() > 0)
+        else if (robot_state.exclusion_checks.checks.size() > 0)
         {
             ROS_DEBUG("Exclusions from self-collision checks are: ");
-            for (std::vector<RobotState::Exclusion>::iterator it = robot_state_.exclusion_checks.checks.begin(); it != robot_state_.exclusion_checks.checks.end(); ++it)
+            for (std::vector<RobotState::Exclusion>::iterator it = robot_state.exclusion_checks.checks.begin(); it != robot_state.exclusion_checks.checks.end(); ++it)
             {
                 RobotState::Exclusion excl = *it;
                 ROS_DEBUG("Name body A = %s", excl.name_body_A.c_str());

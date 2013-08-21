@@ -33,7 +33,11 @@ map<string, JointRefPublisher*> JOINT_NAME_TO_PUB;
 
 void octoMapCallback(const octomap_msgs::OctomapBinary::ConstPtr& msg)
 {
-    collision_avoidance->setOctoMap(*msg);
+    // Only OctomapBinary is provided as a message in Fuerte
+    // In Groovy a general Octomap message will be provided, so for now we'll have to do with the Binary
+    octomap::OcTree* octree;
+    octree = octomap_msgs::binaryMsgDataToMap(msg->data);
+    collision_avoidance->setOctoMap(octree);
 }
 
 void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg) {
@@ -44,8 +48,18 @@ void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg) {
 
 void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
 {
-    //robot_state->setAmclPose(*msg);
-    wbc->robot_state_.setAmclPose(*msg);
+    KDL::Frame frame;
+    // Position
+    frame.p.x(msg->pose.pose.position.x);
+    frame.p.y(msg->pose.pose.position.y);
+    frame.p.z(msg->pose.pose.position.z);
+
+    // Orientation
+    frame.M.Quaternion(msg->pose.pose.orientation.x,
+                       msg->pose.pose.orientation.y,
+                       msg->pose.pose.orientation.z,
+                       msg->pose.pose.orientation.w);
+    wbc->robot_state_.setAmclPose(frame);
 }
 
 void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std::string>& joint_names) {
@@ -204,7 +218,8 @@ int main(int argc, char **argv) {
 
     /// Use tf to set the first amcl pose
     tf::TransformListener listener;
-    listener.waitForTransform("/map","/base_link",ros::Time(0),ros::Duration(1.0)); // Is the latest available transform
+    listener.waitForTransform("/map","/base_link",ros::Time(0),ros::Duration(10.0)); // Is the latest available transform
+
     geometry_msgs::PoseStamped base_link_pose, map_pose;
     base_link_pose.header.frame_id = "/base_link";
     base_link_pose.pose.position.x = 0.0;
@@ -215,9 +230,24 @@ int main(int argc, char **argv) {
     base_link_pose.pose.orientation.z = 0.0;
     base_link_pose.pose.orientation.w = 1.0;
     listener.transformPose("/map", base_link_pose, map_pose);
-    geometry_msgs::PoseWithCovarianceStamped amcl_pose;
-    amcl_pose.pose.pose = map_pose.pose;
-    ROS_INFO("Initial amcl pose, x = %f, y = %f",amcl_pose.pose.pose.position.x,amcl_pose.pose.pose.position.y);
+
+    KDL::Frame amcl_pose;
+    amcl_pose.p.x(map_pose.pose.position.x);
+    amcl_pose.p.y(map_pose.pose.position.y);
+    amcl_pose.p.z(map_pose.pose.position.z);
+    amcl_pose.M.Quaternion(map_pose.pose.orientation.x,
+                           map_pose.pose.orientation.y,
+                           map_pose.pose.orientation.z,
+                           map_pose.pose.orientation.w);
+
+    double x,y,z,w;
+    amcl_pose.M.GetQuaternion(x,y,z,w);
+    //ROS_INFO("map_pose, x = %f, y = %f, z = %f, w = %f",map_pose.pose.orientation.x,map_pose.pose.orientation.y,map_pose.pose.orientation.z,map_pose.pose.orientation.w);
+    //ROS_INFO("amcl_pose, x = %f, y = %f, z = %f, w = %f",x,y,z,w);
+
+    double roll,pitch,yaw;
+    amcl_pose.M.GetRPY(roll,pitch,yaw);
+    ROS_INFO("Initial amcl pose, x = %f, y = %f, theta = %f",amcl_pose.p.x(),amcl_pose.p.y(),yaw);
     wbc->robot_state_.setAmclPose(amcl_pose);
 
     ros::Rate r(loop_rate_);

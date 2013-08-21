@@ -27,23 +27,21 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     ros::NodeHandle n("~");
     std::string ns = ros::this_node::getName();
 
+    // Initialize output topics
     pub_model_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_model_markers/", 10);
     pub_forces_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers/", 10);
     pub_bbx_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
 	pub_rep_force_ = n.advertise<std_msgs::Float32>("/whole_body_controller/rep_force/", 10);
     pub_d_min_ = n.advertise<std_msgs::Float32>("/whole_body_controller/d_min/", 10);
 
-
+    // Initialize OctoMap
     octomap_ = new octomap::OcTree(ca_param_.environment_collision.octomap_resolution);
 
-    no_fix_.header.frame_id = "none";
-    no_fix_.pose.position.x = 0;
-    no_fix_.pose.position.y = 0;
-    no_fix_.pose.position.z = 0;
-    no_fix_.pose.orientation.x = 0;
-    no_fix_.pose.orientation.y = 0;
-    no_fix_.pose.orientation.z = 0;
-    no_fix_.pose.orientation.w = 1;
+    // Initialize a frame that indicates no fix is required from a FK pose to the collision shape
+    no_fix_.p.x(0);
+    no_fix_.p.y(0);
+    no_fix_.p.z(0);
+    no_fix_.M.Quaternion(0,0,0,1);
 
     initializeCollisionModel(robotstate);
 
@@ -54,12 +52,9 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
 void CollisionAvoidance::apply(RobotState &robotstate)
 {
-    ThreadProfiler::Start("CA");
+    //ThreadProfiler::Start("CA");
     robot_state_ = &robotstate;
     calculateTransform();
-
-    chain_left_ = robot_state_->chain_left_;
-    chain_right_ = robot_state_->chain_right_;
 
     // Calculate the wrenches as a result of (self-)collision avoidance
     std::vector<Distance> min_distances_total;
@@ -100,7 +95,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     // Output
     visualize(min_distances_total);
     outputWrenches(wrenches_total);
-    ThreadProfiler::Stop("CA");
+    //ThreadProfiler::Stop("CA");
 }
 
 void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std::vector<RepulsiveForce> &repulsive_forces)
@@ -118,8 +113,8 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
         {
             RobotState::CollisionBody &collisionBody = *itrBodies;
             //std::cout << collisionBody.bt_shape->getName() << std::endl;
-            if ( collisionBody.fix_pose.header.frame_id == "grippoint_left"
-                 || collisionBody.fix_pose.header.frame_id == "grippoint_right")
+            if ( collisionBody.frame_id == "grippoint_left"
+                 || collisionBody.frame_id == "grippoint_right")
             {
                 group_check = true;
             }
@@ -169,7 +164,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                         if (skip_check == false)
                         {
                             Distance distance;
-                            distance.frame_id = currentBody.fix_pose.header.frame_id;
+                            distance.frame_id = currentBody.frame_id;
                             //ThreadProfiler::Start("DistanceCalc");
                             distanceCalculation(*currentBody.bt_shape,*checkBody.bt_shape,currentBody.bt_transform,checkBody.bt_transform,distance.bt_distance);
                             distanceCollection.push_back(distance);
@@ -205,7 +200,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                     if (skip_check == false)
                     {
                         Distance distance;
-                        distance.frame_id = currentBody.fix_pose.header.frame_id;
+                        distance.frame_id = currentBody.frame_id;
                         distanceCalculation(*currentBody.bt_shape,*collisionBody.bt_shape,currentBody.bt_transform,collisionBody.bt_transform,distance.bt_distance);
                         distanceCollection.push_back(distance);
 
@@ -325,15 +320,11 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
                 Voxel vox;
                 if (octomap_->isNodeOccupied(*it))
                 {
-                    vox.center_point.pose.position.x = it.getX();
-                    vox.center_point.pose.position.y = it.getY();
-                    vox.center_point.pose.position.z = it.getZ();
-                    vox.center_point.pose.orientation.x = 0;
-                    vox.center_point.pose.orientation.y = 0;
-                    vox.center_point.pose.orientation.z = 0;
-                    vox.center_point.pose.orientation.w = 1;
-
-                    //std::cout << "voxel center position: " << vox.center_point.pose.position.x << " " << vox.center_point.pose.position.y << " " << vox.center_point.pose.position.z << std::endl;
+                    // Convert voxel center point to KDL frame
+                    vox.center_point.p.x(it.getX());
+                    vox.center_point.p.y(it.getY());
+                    vox.center_point.p.z(it.getZ());
+                    vox.center_point.M.Quaternion(0,0,0,1);
 
                     // Get Voxel size
                     vox.size_voxel = octomap_->getNodeSize(it.getDepth());
@@ -357,7 +348,7 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
                 envBody.bt_shape = new btBoxShape(btVector3(0.5*vox.size_voxel,0.5*vox.size_voxel,0.5*vox.size_voxel));
                 setTransform(vox.center_point, no_fix_, envBody.bt_transform);
 
-                distance.frame_id = collisionBody.fix_pose.header.frame_id;
+                distance.frame_id = collisionBody.frame_id;
                 distanceCalculation(*collisionBody.bt_shape,*envBody.bt_shape,collisionBody.bt_transform,envBody.bt_transform,distance.bt_distance);
                 distanceCollection.push_back(distance);
 
@@ -386,7 +377,7 @@ void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsiv
     {
         RepulsiveForce &RF = *itrRF;
         Wrench W;
-        geometry_msgs::PoseStamped p0;
+        KDL::Frame p0;
         Eigen::VectorXd wrench_calc(6);
         wrench_calc.setZero();
         double dpx, dpy, dpz, fx, fy, fz;
@@ -402,16 +393,16 @@ void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsiv
             for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
             {
                 RobotState::CollisionBody &collisionBody = *itrBodies;
-                if (collisionBody.fix_pose.header.frame_id == RF.frame_id )
+                if (collisionBody.frame_id == RF.frame_id )
                 {
                     p0 = collisionBody.fk_pose;
                 }
             }
         }
 
-        dpx = RF.pointOnA.getX() - p0.pose.position.x;
-        dpy = RF.pointOnA.getY() - p0.pose.position.y;
-        dpz = RF.pointOnA.getZ() - p0.pose.position.z;
+        dpx = RF.pointOnA.getX() - p0.p.x();
+        dpy = RF.pointOnA.getY() - p0.p.y();
+        dpz = RF.pointOnA.getZ() - p0.p.z();
 
         fx = RF.amplitude*RF.direction.getX();
         fy = RF.amplitude*RF.direction.getY();
@@ -516,42 +507,28 @@ void CollisionAvoidance::calculateTransform()
     }
 }
 
-void CollisionAvoidance::setTransform(geometry_msgs::PoseStamped& fkPose, geometry_msgs::PoseStamped& fixPose, btTransform& transform_out)
+void CollisionAvoidance::setTransform(KDL::Frame &fkPose, KDL::Frame &fixPose, btTransform &transform_out)
 {
-    //cout << "FKPOSE: x = " << fkPose.pose.position.x << "y = " << fkPose.pose.position.y << "z = " << fkPose.pose.position.z << endl;
     btTransform fkTransform;
     btTransform fixTransform;
-    fkTransform.setOrigin(btVector3(fkPose.pose.position.x,
-                                    fkPose.pose.position.y,
-                                    fkPose.pose.position.z));
-    fkTransform.setRotation(btQuaternion(fkPose.pose.orientation.x,
-                                         fkPose.pose.orientation.y,
-                                         fkPose.pose.orientation.z,
-                                         fkPose.pose.orientation.w));
+    double x,y,z,w;
+
+    fkTransform.setOrigin(btVector3(fkPose.p.x(),
+                                    fkPose.p.y(),
+                                    fkPose.p.z()));
+
+    fkPose.M.GetQuaternion(x,y,z,w);
+    fkTransform.setRotation(btQuaternion(x,y,z,w));
 
 
-    fixTransform.setOrigin(btVector3(fixPose.pose.position.x,
-                                     fixPose.pose.position.y,
-                                     fixPose.pose.position.z));
-    fixTransform.setRotation(btQuaternion(fixPose.pose.orientation.x,
-                                          fixPose.pose.orientation.y,
-                                          fixPose.pose.orientation.z,
-                                          fixPose.pose.orientation.w));
+    fixTransform.setOrigin(btVector3(fixPose.p.x(),
+                                     fixPose.p.y(),
+                                     fixPose.p.z()));
+
+    fixPose.M.GetQuaternion(x,y,z,w);
+    fixTransform.setRotation(btQuaternion(x,y,z,w));
+
     transform_out.mult(fkTransform,fixTransform);
-
-
-    /*
-    std::cout << "--------------------------------------" << std::endl;
-    std::cout << "frame_id = " << fixPose.header.frame_id << std::endl;
-    std::cout << "frame_id = " << p.header.frame_id << std::endl;
-    std::cout << "dx = " << fkPose.pose.position.x - p.pose.position.x << std::endl;
-    std::cout << "dy = " << fkPose.pose.position.y - p.pose.position.y << std::endl;
-    std::cout << "dz = " << fkPose.pose.position.z - p.pose.position.z << std::endl;
-    std::cout << "dX = " << fkPose.pose.orientation.x - p.pose.orientation.x << std::endl;
-    std::cout << "dY = " << fkPose.pose.orientation.y - p.pose.orientation.y << std::endl;
-    std::cout << "dZ = " << fkPose.pose.orientation.z - p.pose.orientation.z << std::endl;
-    std::cout << "dW = " << fkPose.pose.orientation.w - p.pose.orientation.w << std::endl;
-    */
 }
 
 
@@ -570,7 +547,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 {
     const btTransform& transform = collisionBody.bt_transform;
     std::string type = collisionBody.collision_shape.shape_type;
-    string frame_id = collisionBody.fk_pose.header.frame_id;
+    string frame_id = "map";
 
     double x = collisionBody.collision_shape.dimensions.x;
     double y = collisionBody.collision_shape.dimensions.y;
@@ -891,12 +868,9 @@ void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 m
 
 }
 
-void CollisionAvoidance::setOctoMap(const octomap_msgs::OctomapBinary& octomap_msg)
+void CollisionAvoidance::setOctoMap(octomap::OcTree* octree)
 {
-    // Only OctomapBinary is provided as a message in Fuerte
-    // In Groovy a general Octomap message will be provided, so for now we'll have to do with the Binary
-
-    octomap_ = octomap_msgs::binaryMsgDataToMap(octomap_msg.data);
+    octomap_ = octree;
 }
 
 void CollisionAvoidance::findOuterPoints(RobotState::CollisionBody& collisionBody, btVector3 &min, btVector3 &max)

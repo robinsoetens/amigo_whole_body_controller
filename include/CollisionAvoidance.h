@@ -87,15 +87,12 @@ public:
 
     void apply(RobotState& robotstate);
 
-    void setOctoMap(const octomap_msgs::OctomapBinary&  octomap_msg);
+    void setOctoMap(octomap::OcTree *octree);
 
 protected:
 
     //! Sampling time
     double Ts_;
-
-    Chain* chain_left_;
-    Chain* chain_right_;
 
     Tree tree_;
 
@@ -111,7 +108,7 @@ protected:
     std::vector< std::vector<RobotState::CollisionBody> > collision_groups_;
 
     struct Voxel {
-        geometry_msgs::PoseStamped center_point;
+        KDL::Frame center_point;
         double size_voxel;
     };
     struct Distance {
@@ -131,9 +128,8 @@ protected:
         Eigen::VectorXd wrench;
     } ;
 
-    geometry_msgs::PoseStamped no_fix_;
+    KDL::Frame no_fix_;
 
-    //octomap::OcTreeStamped* octomap_;
     octomap::OcTree* octomap_;
 
     // Minimum and maximum point of the BBX
@@ -165,10 +161,10 @@ protected:
     void calculateTransform();
 
     /**
-     * @brief Calculate the closest distance between two collision bodies
+     * @brief Calculate the Bullet shape pose from the corresponding FK pose using a correction from this frame pose
      * @param Input: Pose of the KDL frame and the fix for the collision bodies, Output: Bullet transform
      */
-    void setTransform(geometry_msgs::PoseStamped &fkPose, geometry_msgs::PoseStamped& fixPose, btTransform& transform_out);
+    void setTransform(KDL::Frame &fkPose, KDL::Frame& fixPose, btTransform &transform_out);
 
     /**
      * @brief Calculate the closest distance between two collision bodies

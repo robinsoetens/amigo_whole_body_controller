@@ -34,7 +34,7 @@ void RobotState::collectFKSolutions()
 
 }
 
-void RobotState::KDLFrameToStampedPose(const KDL::Frame& FK_pose, geometry_msgs::PoseStamped& pose)
+void RobotState::KDLFrameToStampedPose(const KDL::Frame& FK_pose, geometry_msgs::PoseStamped &pose)
 {
     // ToDo: get rid of hardcoding
     pose.header.frame_id = "map";
@@ -88,18 +88,7 @@ geometry_msgs::PoseStamped RobotState::getFKPoseStamped(const std::string& tip_f
 
 }
 
-void RobotState::setAmclPose(const geometry_msgs::PoseWithCovarianceStamped& amcl_pose_msg)
+void RobotState::setAmclPose(KDL::Frame& amcl_pose)
 {
-    // Position
-    amcl_pose_.p.x(amcl_pose_msg.pose.pose.position.x);
-    amcl_pose_.p.y(amcl_pose_msg.pose.pose.position.y);
-    amcl_pose_.p.z(amcl_pose_msg.pose.pose.position.z);
-
-    // Orientation
-    amcl_pose_.M.Quaternion(amcl_pose_msg.pose.pose.orientation.x,
-                       amcl_pose_msg.pose.pose.orientation.y,
-                       amcl_pose_msg.pose.pose.orientation.z,
-                       amcl_pose_msg.pose.pose.orientation.w);
-
-    fk_poses_["base_link"] = amcl_pose_;
+  amcl_pose_ = amcl_pose;
 }

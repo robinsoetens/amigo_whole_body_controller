@@ -76,8 +76,6 @@ public:
 
 protected:
 
-    tf::TransformListener* listener_;
-
     std::vector<Chain*> chains_;
 
     std::map<std::string, unsigned int> joint_name_to_index_;
@@ -147,7 +145,11 @@ protected:
      */
     void publishReferences();
 
-    void loadParameterFiles(RobotState &robot_state_);
+
+    /**
+      * Subtracts information from the parameter files
+      */
+    void loadParameterFiles(RobotState &robot_state);
 
     /**
       * End-effector pose based on forward kinematics computation

@@ -52,8 +52,9 @@ public:
                 double z;
             } dimensions;
         } collision_shape;
-        geometry_msgs::PoseStamped fk_pose;
-        geometry_msgs::PoseStamped fix_pose;
+        std::string frame_id;
+        KDL::Frame fk_pose;
+        KDL::Frame fix_pose;
         btTransform bt_transform;
         btConvexShape* bt_shape;
 
@@ -75,14 +76,14 @@ public:
             XmlRpc::XmlRpcValue origin = corrTransform["origin"];
             XmlRpc::XmlRpcValue orientation = corrTransform["orientation"];
 
-            fix_pose.header.frame_id = static_cast<std::string>(corrTransform["frame_id"]);
-            fix_pose.pose.position.x = origin["x"];
-            fix_pose.pose.position.y = origin["y"];
-            fix_pose.pose.position.z = origin["z"];
-            fix_pose.pose.orientation.x = orientation["x"];
-            fix_pose.pose.orientation.y = orientation["y"];
-            fix_pose.pose.orientation.z = orientation["z"];
-            fix_pose.pose.orientation.w = orientation["w"];
+            frame_id = static_cast<std::string>(corrTransform["frame_id"]);
+            fix_pose.p.x(origin["x"]);
+            fix_pose.p.y(origin["y"]);
+            fix_pose.p.z(origin["z"]);
+            fix_pose.M.Quaternion(orientation["x"],
+                                  orientation["y"],
+                                  orientation["z"],
+                                  orientation["w"]);
         }
     } collision_body;
 
@@ -147,7 +148,7 @@ public:
       */
     geometry_msgs::PoseStamped getFKPoseStamped(const std::string& tip_frame);
 
-    void setAmclPose(const geometry_msgs::PoseWithCovarianceStamped& amcl_pose_msg);
+    void setAmclPose(KDL::Frame& amcl_pose);
 
 };
 
