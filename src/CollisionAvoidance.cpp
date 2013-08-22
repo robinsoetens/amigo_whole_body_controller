@@ -41,7 +41,7 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     no_fix_.p.x(0);
     no_fix_.p.y(0);
     no_fix_.p.z(0);
-    no_fix_.M.Quaternion(0,0,0,1);
+    no_fix_.M = KDL::Rotation::Quaternion(0,0,0,1);
 
     initializeCollisionModel(robotstate);
 

@@ -55,10 +55,10 @@ void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& 
     frame.p.z(msg->pose.pose.position.z);
 
     // Orientation
-    frame.M.Quaternion(msg->pose.pose.orientation.x,
-                       msg->pose.pose.orientation.y,
-                       msg->pose.pose.orientation.z,
-                       msg->pose.pose.orientation.w);
+    frame.M = KDL::Rotation::Quaternion(msg->pose.pose.orientation.x,
+                                        msg->pose.pose.orientation.y,
+                                        msg->pose.pose.orientation.z,
+                                        msg->pose.pose.orientation.w);
     wbc->robot_state_.setAmclPose(frame);
 }
 
@@ -218,7 +218,7 @@ int main(int argc, char **argv) {
 
     /// Use tf to set the first amcl pose
     tf::TransformListener listener;
-    listener.waitForTransform("/map","/base_link",ros::Time(0),ros::Duration(10.0)); // Is the latest available transform
+    listener.waitForTransform("/map","/base_link",ros::Time(0),ros::Duration(1.0)); // Is the latest available transform
 
     geometry_msgs::PoseStamped base_link_pose, map_pose;
     base_link_pose.header.frame_id = "/base_link";
@@ -235,15 +235,11 @@ int main(int argc, char **argv) {
     amcl_pose.p.x(map_pose.pose.position.x);
     amcl_pose.p.y(map_pose.pose.position.y);
     amcl_pose.p.z(map_pose.pose.position.z);
-    amcl_pose.M.Quaternion(map_pose.pose.orientation.x,
-                           map_pose.pose.orientation.y,
-                           map_pose.pose.orientation.z,
-                           map_pose.pose.orientation.w);
+    amcl_pose.M = KDL::Rotation::Quaternion(map_pose.pose.orientation.x,
+                                            map_pose.pose.orientation.y,
+                                            map_pose.pose.orientation.z,
+                                            map_pose.pose.orientation.w);
 
-    double x,y,z,w;
-    amcl_pose.M.GetQuaternion(x,y,z,w);
-    //ROS_INFO("map_pose, x = %f, y = %f, z = %f, w = %f",map_pose.pose.orientation.x,map_pose.pose.orientation.y,map_pose.pose.orientation.z,map_pose.pose.orientation.w);
-    //ROS_INFO("amcl_pose, x = %f, y = %f, z = %f, w = %f",x,y,z,w);
 
     double roll,pitch,yaw;
     amcl_pose.M.GetRPY(roll,pitch,yaw);

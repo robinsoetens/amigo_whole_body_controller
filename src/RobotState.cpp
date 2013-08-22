@@ -25,7 +25,7 @@ void RobotState::collectFKSolutions()
 
         /// Convert to map frame
         KDL::Frame fk_pose_in_map;
-        fk_pose_in_map = fk_pose_in_root * amcl_pose_;
+        fk_pose_in_map = amcl_pose_ * fk_pose_in_root;
 
         /// Put in map
         fk_poses_[itrTree->first] = fk_pose_in_map;
