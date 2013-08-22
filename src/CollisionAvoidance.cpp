@@ -1,6 +1,6 @@
 #include "CollisionAvoidance.h"
 #include <math.h>
-#include "std_msgs/Float32.h"
+#include "std_msgs/Float64.h"
 
 #include "visualization_msgs/MarkerArray.h"
 
@@ -31,8 +31,8 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     pub_model_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_model_markers/", 10);
     pub_forces_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers/", 10);
     pub_bbx_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
-	pub_rep_force_ = n.advertise<std_msgs::Float32>("/whole_body_controller/rep_force/", 10);
-    pub_d_min_ = n.advertise<std_msgs::Float32>("/whole_body_controller/d_min/", 10);
+    pub_rep_force_ = n.advertise<std_msgs::Float64>("/whole_body_controller/rep_force/", 10);
+    pub_d_min_ = n.advertise<std_msgs::Float64>("/whole_body_controller/d_min/", 10);
 
     // Initialize OctoMap
     octomap_ = new octomap::OcTree(ca_param_.environment_collision.octomap_resolution);
@@ -69,19 +69,22 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     for (std::vector<Distance>::iterator itr_d_min = min_distances_total.begin(); itr_d_min != min_distances_total.end(); ++itr_d_min)
     {
         Distance dist = *itr_d_min;
-
-        if (dist.frame_id == "grippoint_right")
+        if (dist.frame_id == "grippoint_left")
         {
-            pub_d_min_.publish(dist.bt_distance.m_distance);
+            double distance = dist.bt_distance.m_distance;
+            pub_d_min_.publish(distance);
+            //std::cout << " d_min = " << distance << std::endl;
         }
     }
     for (std::vector<RepulsiveForce>::iterator itr_f_rep = repulsive_forces_total.begin(); itr_f_rep != repulsive_forces_total.end(); ++itr_f_rep)
     {
         RepulsiveForce f_rep = *itr_f_rep;
 
-        if (f_rep.frame_id == "grippoint_right")
+        if (f_rep.frame_id == "grippoint_left")
         {
-            pub_rep_force_.publish(f_rep.amplitude);
+            double force = f_rep.amplitude;
+            pub_rep_force_.publish(force);
+            //std::cout << " F_rep = " << force << std::endl;
         }
     }
 
@@ -297,13 +300,6 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
             octomath::Vector3 max = octomath::Vector3(xmax_bbx,
                                                       ymax_bbx,
                                                       zmax_bbx);
-            /*
-            std::cout << collisionBody.name_collision_body << std::endl;
-            std::cout << "min: " << xmin_bbx << " " << ymin_bbx << " " << zmin_bbx << std::endl;
-            std::cout << "max: " << xmax_bbx << " " << ymax_bbx << " " << zmax_bbx << std::endl;
-            std::cout << "minO: " << xmin_octomap << " " << ymin_octomap << " " << zmin_octomap << std::endl;
-            std::cout << "maxO: " << xmax_octomap << " " << ymax_octomap << " " << zmax_octomap << std::endl;
-            */
 
             //if (collisionBody.name_collision_body == "ForeArmRight")
             //{
@@ -788,6 +784,7 @@ void CollisionAvoidance::outputWrenches(std::vector<Wrench> &wrenches)
 
 void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const
 {
+
     visualization_msgs::MarkerArray marker_array;
     visualization_msgs::Marker RFviz;
     geometry_msgs::Point pA;
@@ -798,7 +795,6 @@ void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const
     RFviz.header.stamp = ros::Time::now();
     RFviz.id = id;
 
-
     RFviz.scale.x = 0.02;
     RFviz.scale.y = 0.04;
     RFviz.scale.z = 0.04;
@@ -806,12 +802,18 @@ void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const
     pA.x = d_min.bt_distance.m_pointInWorld.getX();
     pA.y = d_min.bt_distance.m_pointInWorld.getY();
     pA.z = d_min.bt_distance.m_pointInWorld.getZ();
-    RFviz.points.push_back(pA);
+
 
     pB.x = d_min.bt_distance.m_pointInWorld.getX() + d_min.bt_distance.m_distance * d_min.bt_distance.m_normalOnBInWorld.getX();
     pB.y = d_min.bt_distance.m_pointInWorld.getY() + d_min.bt_distance.m_distance * d_min.bt_distance.m_normalOnBInWorld.getY();
     pB.z = d_min.bt_distance.m_pointInWorld.getZ() + d_min.bt_distance.m_distance * d_min.bt_distance.m_normalOnBInWorld.getZ();
-    RFviz.points.push_back(pB);
+
+    if(pA.x > 0.001 && pA.y > 0.001 && pB.x > 0.001 && pB.y > 0.001)
+    {
+       RFviz.points.push_back(pA);
+       RFviz.points.push_back(pB);
+    }
+
 
     if (d_min.bt_distance.m_distance <= ca_param_.self_collision.d_threshold )
     {

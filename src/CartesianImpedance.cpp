@@ -98,16 +98,16 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     /// Get end effector pose (is in map frame)
     std::map<std::string, KDL::Frame>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
     end_effector_pose_ = (*itrFK).second;
-    ROS_INFO("FK pose tip frame in tree root = (%f,%f,%f)", end_effector_pose_.p.x(), end_effector_pose_.p.y(), end_effector_pose_.p.z());
+    //ROS_INFO("FK pose tip frame in tree root = (%f,%f,%f)", end_effector_pose_.p.x(), end_effector_pose_.p.y(), end_effector_pose_.p.z());
 
     /// Get the pose of the root frame (of the goal) in map
     std::map<std::string, KDL::Frame>::iterator itrRF = robotstate.fk_poses_.find(root_frame_);
     KDL::Frame kdl_root_in_map = itrRF->second;
-    ROS_INFO("FK pose root frame in map (x,y,z) = (%f,%f,%f)", kdl_root_in_map.p.x(), kdl_root_in_map.p.y(), kdl_root_in_map.p.z());
+    //ROS_INFO("FK pose root frame in map (x,y,z) = (%f,%f,%f)", kdl_root_in_map.p.x(), kdl_root_in_map.p.y(), kdl_root_in_map.p.z());
 
     /// Convert the goal pose to map (is required because pose of robot in map (amcl_pose) may have been updated)
     KDL::Frame goal_pose_map = goal_pose_* kdl_root_in_map;
-    ROS_INFO("goal_pose_map (x,y,z) = (%f,%f,%f)",goal_pose_map.p.x(),goal_pose_map.p.y(),goal_pose_map.p.z());
+    //ROS_INFO("goal_pose_map (x,y,z) = (%f,%f,%f)",goal_pose_map.p.x(),goal_pose_map.p.y(),goal_pose_map.p.z());
 
     /// Compute pose error
     pose_error_ = KDL::diff(end_effector_pose_, goal_pose_map);
@@ -120,7 +120,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     error_vector(5) = pose_error_.rot.z();//goal_RPY(2) - end_effector_RPY(2)/ Ts;
 
     //std::cout << "goal_pose = " << goal_pose_.getOrigin().getX() << " , " << goal_pose_.getOrigin().getY() << " , " << goal_pose_.getOrigin().getZ() << std::endl;
-    std::cout << "error_vector = " << error_vector << std::endl;
+    //std::cout << "error_vector = " << error_vector << std::endl;
 
     F_task = K_ * error_vector;
 
