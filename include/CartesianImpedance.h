@@ -8,6 +8,7 @@
 #define CARTESIANIMPEDANCE_H_
 
 #include "MotionObjective.h"
+#include "CollisionAvoidance.h"
 
 // ROS
 #include "ros/ros.h"
@@ -78,10 +79,15 @@ protected:
     // ToDo: SHOULD be obsolete
     Chain* chain_;
 
+    ros::Publisher pub_CI_wrench_;
+
     //////geometry_msgs::PoseStamped end_effector_pose_,goal_pose_;
     KDL::Frame end_effector_pose_,goal_pose_;
 
     KDL::Twist pose_error_;
+
+    // Maximum magnitude of the attractive force;
+    double f_max_;
 
     // Converts Converts geometry_msgs::PoseStamped to KDL::Frame
     void stampedPoseToKDLframe(const geometry_msgs::PoseStamped& pose, KDL::Frame& frame);

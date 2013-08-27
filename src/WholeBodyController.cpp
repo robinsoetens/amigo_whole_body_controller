@@ -1,6 +1,7 @@
 #include "WholeBodyController.h"
 #include "ChainParser.h"
 #include <tf/transform_datatypes.h>
+#include <std_msgs/Float64MultiArray.h>
 
 using namespace std;
 
@@ -56,6 +57,9 @@ bool WholeBodyController::initialize(const double Ts)
         n.param<double> (ns+"/admittance_control/damping/"+iter->first, admittance_damping[iter->second], 10);
         //ROS_INFO("Damping joint %s = %f",iter->first.c_str(),admittance_damping[iter->second]);
     }
+
+    // Initialize output topics
+    pub_joint_torques_ = n.advertise<std_msgs::Float64MultiArray>("/whole_body_controller/joint_torques/", 10);
 
     loadParameterFiles(robot_state_);
 
@@ -200,6 +204,14 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
 
     tau_ = jacobian_tree.transpose() * all_wrenches;
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
+
+    // Publish the joint torques
+    std_msgs::Float64MultiArray msgTau;
+    for (uint i = 0; i < tau_.rows(); i++)
+    {
+        msgTau.data.push_back(tau_(i));
+    }
+    pub_joint_torques_.publish(msgTau);
 
     ComputeNullspace_.update(jacobian_tree, N_);
     //ROS_INFO("Nullspace updated");

@@ -76,6 +76,8 @@ public:
 
 protected:
 
+    ros::Publisher pub_joint_torques_;
+
     std::vector<Chain*> chains_;
 
     std::map<std::string, unsigned int> joint_name_to_index_;

@@ -138,16 +138,14 @@ void GoalCB() {
     }
     /// Else: add motion objectives
     else {
+        std::vector<MotionObjective*> imps_to_remove = wbc->getCartesianImpedances(goal.position_constraint.link_name,goal.position_constraint.header.frame_id);
+        for (unsigned int i = 0; i < imps_to_remove.size(); i++) {
+            wbc->removeMotionObjective(imps_to_remove[i]);
+        }
+
         CartesianImpedance* cartesian_impedance = new CartesianImpedance(goal.position_constraint.link_name);
         geometry_msgs::PoseStamped goal_pose;
-        //goal_pose.pose.position.x = goal.position_constraint.position.x;
-        //goal_pose.pose.position.y = goal.position_constraint.position.y;
-        //goal_pose.pose.position.z = goal.position_constraint.position.z;
         goal_pose.pose.position = goal.position_constraint.position;
-        //goal_pose.pose.orientation.x = goal.orientation_constraint.orientation.x;
-        //goal_pose.pose.orientation.y = goal.orientation_constraint.orientation.y;
-        //goal_pose.pose.orientation.z = goal.orientation_constraint.orientation.z;
-        //goal_pose.pose.orientation.w = goal.orientation_constraint.orientation.w;
         goal_pose.pose.orientation = goal.orientation_constraint.orientation;
         goal_pose.header.frame_id = goal.position_constraint.header.frame_id;
         // ToDo: include offset
