@@ -3,6 +3,7 @@
 #include <tf/transform_datatypes.h>
 #include <std_msgs/Float64MultiArray.h>
 
+
 using namespace std;
 
 WholeBodyController::WholeBodyController(const double Ts)
@@ -47,15 +48,16 @@ bool WholeBodyController::initialize(const double Ts)
 
     std::vector<double> admittance_mass(num_joints_);
     std::vector<double> admittance_damping(num_joints_);
+
     for (std::map<std::string, unsigned int>::iterator iter = joint_name_to_index_.begin(); iter != joint_name_to_index_.end(); ++iter)
     {
-        n.param<double> (ns+"/joint_limit_avoidance/gain/"+iter->first, JLA_gain[iter->second], 1.0);
-        n.param<double> (ns+"/joint_limit_avoidance/workspace/"+iter->first, JLA_workspace[iter->second], 0.9);
-        n.param<double> (ns+"/posture_control/home_position/"+iter->first, posture_q0[iter->second], 0);
-        n.param<double> (ns+"/posture_control/gain/"+iter->first, posture_gain[iter->second], 1);
-        n.param<double> (ns+"/admittance_control/mass/"+iter->first, admittance_mass[iter->second], 10);
-        n.param<double> (ns+"/admittance_control/damping/"+iter->first, admittance_damping[iter->second], 10);
-        //ROS_INFO("Damping joint %s = %f",iter->first.c_str(),admittance_damping[iter->second]);
+        n.param<double> ("/whole_body_controller/joint_limit_avoidance/gain/"+iter->first, JLA_gain[iter->second], 1.0);
+        n.param<double> ("/whole_body_controller/joint_limit_avoidance/workspace/"+iter->first, JLA_workspace[iter->second], 0.9);
+        n.param<double> ("/whole_body_controller/posture_control/home_position/"+iter->first, posture_q0[iter->second], 0);
+        n.param<double> ("/whole_body_controller/posture_control/gain/"+iter->first, posture_gain[iter->second], 1.0);
+        n.param<double> ("/whole_body_controller/admittance_control/mass/"+iter->first, admittance_mass[iter->second], 10);
+        n.param<double> ("/whole_body_controller/admittance_control/damping/"+iter->first, admittance_damping[iter->second], 10);
+        ROS_INFO("Damping joint %s = %f",iter->first.c_str(),admittance_damping[iter->second]);
     }
 
     // Initialize output topics
@@ -84,7 +86,6 @@ bool WholeBodyController::initialize(const double Ts)
     ROS_INFO("Joint limit avoidance initialized");
 
     // Initialize Posture Controller
-    for (uint i = 0; i < num_joints_; i++) posture_gain[i] = 1;
     PostureControl_.initialize(q_min_, q_max_, posture_q0, posture_gain);
     ROS_INFO("Posture Control initialized");
 
@@ -124,7 +125,12 @@ bool WholeBodyController::removeMotionObjective(MotionObjective* motionobjective
 void WholeBodyController::setMeasuredJointPosition(const std::string& joint_name, double pos)
 {
     q_current_(joint_name_to_index_[joint_name]) = pos;
+
     //std::cout << joint_name << q_current_(joint_name_to_index_[joint_name]) <<  std::endl;
+
+    robot_state_.tree_.rearrangeJntArrayToTree(q_current_);
+    //robot_state_.collectFKSolutions();
+
 }
 
 bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& qdot_reference)

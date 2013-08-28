@@ -207,7 +207,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                         distanceCalculation(*currentBody.bt_shape,*collisionBody.bt_shape,currentBody.bt_transform,collisionBody.bt_transform,distance.bt_distance);
                         distanceCollection.push_back(distance);
 
-                        /*
+
                         if (distance.bt_distance.m_distance < 0)
                         {
                             std::cout << "COLLISION" << std::endl;
@@ -215,7 +215,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                             std::cout << "Frame B:" << collisionBody.name_collision_body << std::endl;
                             std::cout << "Distance:" << distance.bt_distance.m_distance << std::endl;
                         }
-                        */
+
                     }
                 }
             }
@@ -414,15 +414,15 @@ void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsiv
         W.frame_id = RF.frame_id;
         W.wrench = wrench_calc;
 
-        wrenches_out.push_back(W);
+        //wrenches_out.push_back(W);
 
-        /*
+
         std::cout << "----------------------------------------------" << std::endl;
         std::cout << "Frame ID = " << W.frame_id << std::endl;
         std::cout << "dp = " << dpx << " " << dpy << " " << dpz << std::endl;
         std::cout << "f = " << W.wrench[0] << " " << W.wrench[1] << " " << W.wrench[2] << std::endl;
         std::cout << "T = " << W.wrench[3] << " " << W.wrench[4] << " " << W.wrench[5] << std::endl;
-        */
+
     }
 }
 
@@ -768,7 +768,7 @@ void CollisionAvoidance::calculateRepulsiveForce(std::vector<Distance> &minimumD
             F.amplitude = param.f_max / pow(param.d_threshold,param.order) * pow((param.d_threshold - dmin.bt_distance.m_distance),param.order) ;
 
             // Store all minimum distances;
-            repulsiveForces.push_back(F);
+            //repulsiveForces.push_back(F);
         }
     }
 }

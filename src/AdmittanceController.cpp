@@ -93,7 +93,7 @@ void AdmittanceController::update(const Eigen::VectorXd& tau, Eigen::VectorXd& q
     tau_previous_ = tau;
     qdot_reference_previous_ = qdot_reference;
 
-    ///ROS_INFO("qdr = %f %f %f %f", qdot_reference(0), qdot_reference(1), qdot_reference(2), qdot_reference(3));
+    //ROS_INFO("qdr = %f %f %f %f", qdot_reference(0), qdot_reference(1), qdot_reference(2), qdot_reference(3));
     ///ROS_INFO("qdrspindle = %f", qdot_reference(7));
 
 }
