@@ -1,20 +1,20 @@
 posture_control:
     gain:
         spindle_joint: 105.0
-        shoulder_yaw_joint_left: 40.0
-        shoulder_yaw_joint_right: 40.0
-        shoulder_pitch_joint_left: 82.5
-        shoulder_pitch_joint_right: 82.5
-        shoulder_roll_joint_left: 31.0
-        shoulder_roll_joint_right: 31.0
-        elbow_pitch_joint_left: 26.5
-        elbow_pitch_joint_right: 26.5
-        elbow_roll_joint_left: 43.0
-        elbow_roll_joint_right: 43.0
-        wrist_pitch_joint_left: 4.75
-        wrist_pitch_joint_right: 4.75
-        wrist_yaw_joint_left: 3.05
-        wrist_yaw_joint_right: 3.05
+        shoulder_yaw_joint_left: 400.0
+        shoulder_yaw_joint_right: 400.0
+        shoulder_pitch_joint_left: 1800.0
+        shoulder_pitch_joint_right: 1800.0
+        shoulder_roll_joint_left: 750.0
+        shoulder_roll_joint_right: 750.0
+        elbow_pitch_joint_left: 225.0
+        elbow_pitch_joint_right: 225.0
+        elbow_roll_joint_left: 600.0
+        elbow_roll_joint_right: 600.0
+        wrist_pitch_joint_left: 15.5
+        wrist_pitch_joint_right: 15.5
+        wrist_yaw_joint_left: 10.0
+        wrist_yaw_joint_right: 10.0
         
     home_position:
         spindle_joint: 0.35
@@ -32,6 +32,7 @@ posture_control:
         wrist_pitch_joint_right: 0.0
         wrist_yaw_joint_left: 0.0
         wrist_yaw_joint_right: 0.0
+        
         
 #    gain:
 #        spindle_joint: 21.0
