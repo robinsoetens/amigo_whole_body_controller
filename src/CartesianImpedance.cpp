@@ -128,7 +128,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     error_vector(5) = pose_error_.rot.z();//goal_RPY(2) - end_effector_RPY(2)/ Ts;
 
     //std::cout << "goal_pose = " << goal_pose_.getOrigin().getX() << " , " << goal_pose_.getOrigin().getY() << " , " << goal_pose_.getOrigin().getZ() << std::endl;
-    std::cout << "error_vector = " << error_vector << std::endl;
+    //std::cout << "error_vector = " << error_vector << std::endl;
 
     F_task = K_ * error_vector;
 

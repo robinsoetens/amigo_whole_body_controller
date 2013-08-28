@@ -53,9 +53,7 @@ void JointLimitAvoidance::update(const KDL::JntArray& q_in, Eigen::VectorXd& tau
     for (uint i = 0; i < num_joints_; i++) {
         if (q_in(i) < qmin_threshold_(i)) tau_out(i) += K_[i]*(qmin_threshold_(i) - q_in(i));
         else if (q_in(i) > qmax_threshold_(i)) tau_out(i) += K_[i]*(qmax_threshold_(i) - q_in(i));
-        if(tau_out(i) > 0.1){
-            ROS_INFO("JOINT_LIMIT :::: q(%i) = %f\ttau = %f ",i,q_in(i),tau_out(i));
-        }
+
 
         // Add this to the costs
         current_cost_ += fabs(tau_out(i));
