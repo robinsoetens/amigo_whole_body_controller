@@ -249,7 +249,7 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
 
             findOuterPoints(collisionBody, min_cb, max_cb);
 
-            // Add the threshold distance to the found axis alligned BBX
+            // Add the threshold distance to the found axis aligned BBX
             xmin_bbx = min_cb[0]-ca_param_.environment_collision.d_threshold;
             ymin_bbx = min_cb[1]-ca_param_.environment_collision.d_threshold;
             zmin_bbx = min_cb[2]-ca_param_.environment_collision.d_threshold;
@@ -862,7 +862,7 @@ void CollisionAvoidance::setOctoMap(octomap::OcTree* octree)
 
 void CollisionAvoidance::findOuterPoints(RobotState::CollisionBody& collisionBody, btVector3 &min, btVector3 &max)
 {
-    // Calculate all outer points of the axis alligned BBX
+    // Calculate all outer points of the axis aligned BBX
     std::vector<btVector3> outer_points;
     btVector3 point1 = collisionBody.bt_transform.getOrigin() + collisionBody.bt_transform.getBasis() * btVector3 (collisionBody.collision_shape.dimensions.x,
                                                                                                                    collisionBody.collision_shape.dimensions.y,
