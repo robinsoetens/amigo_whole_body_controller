@@ -1,8 +1,9 @@
 #include "CollisionAvoidance.h"
 #include <math.h>
-#include "std_msgs/Float64.h"
 
-#include "visualization_msgs/MarkerArray.h"
+#include <std_msgs/Float64.h>
+#include <std_msgs/Float64MultiArray.h>
+#include <visualization_msgs/MarkerArray.h>
 
 #include "profiling/Profiler.h"
 
@@ -33,6 +34,8 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     pub_bbx_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
     pub_rep_force_ = n.advertise<std_msgs::Float64>("/whole_body_controller/rep_force/", 10);
     pub_d_min_ = n.advertise<std_msgs::Float64>("/whole_body_controller/d_min/", 10);
+    pub_CA_wrench_ = n.advertise<std_msgs::Float64MultiArray>("/whole_body_controller/ca_wrench/", 10);
+    pub_delta_p_ = n.advertise<std_msgs::Float64MultiArray>("/whole_body_controller/delta_p/", 10);
 
     // Initialize OctoMap
     octomap_ = new octomap::OcTree(ca_param_.environment_collision.octomap_resolution);
@@ -63,13 +66,14 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     repulsive_forces_total.clear();
     wrenches_total.clear();
 
+    // Calculate the repulsive forces as a result of the self-collision avoidance.
     selfCollision(min_distances_total,repulsive_forces_total);
-    
+
     // Create topics for plots
     for (std::vector<Distance>::iterator itr_d_min = min_distances_total.begin(); itr_d_min != min_distances_total.end(); ++itr_d_min)
     {
         Distance dist = *itr_d_min;
-        if (dist.frame_id == "grippoint_left")
+        if (dist.frame_id == "grippoint_right")
         {
             double distance = dist.bt_distance.m_distance;
             pub_d_min_.publish(distance);
@@ -79,8 +83,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     for (std::vector<RepulsiveForce>::iterator itr_f_rep = repulsive_forces_total.begin(); itr_f_rep != repulsive_forces_total.end(); ++itr_f_rep)
     {
         RepulsiveForce f_rep = *itr_f_rep;
-
-        if (f_rep.frame_id == "grippoint_left")
+        if (f_rep.frame_id == "grippoint_right")
         {
             double force = f_rep.amplitude;
             pub_rep_force_.publish(force);
@@ -88,6 +91,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
         }
     }
 
+    // Calculate the repulsive forces as a result of the environment collision avoidance.
     if (octomap_->size() > 0)
     {
         environmentCollision(min_distances_total,repulsive_forces_total);
@@ -95,11 +99,12 @@ void CollisionAvoidance::apply(RobotState &robotstate)
 
     calculateWrenches(repulsive_forces_total, wrenches_total);
 
-    // Output
+    /// Output
     visualize(min_distances_total);
     outputWrenches(wrenches_total);
     //ThreadProfiler::Stop("CA");
 }
+
 
 void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std::vector<RepulsiveForce> &repulsive_forces)
 {
@@ -168,15 +173,12 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                         {
                             Distance distance;
                             distance.frame_id = currentBody.frame_id;
-                            //ThreadProfiler::Start("DistanceCalc");
                             distanceCalculation(*currentBody.bt_shape,*checkBody.bt_shape,currentBody.bt_transform,checkBody.bt_transform,distance.bt_distance);
                             distanceCollection.push_back(distance);
-                            //ThreadProfiler::Stop("DistanceCalc");
                         }
                     }
                 }
             }
-
 
             // Distance check with collision groups
             for (std::vector<std::vector<RobotState::CollisionBody> >::iterator itrCollisionGroup = collision_groups_.begin(); itrCollisionGroup != collision_groups_.end(); ++itrCollisionGroup)
@@ -207,16 +209,6 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                         distanceCalculation(*currentBody.bt_shape,*collisionBody.bt_shape,currentBody.bt_transform,collisionBody.bt_transform,distance.bt_distance);
                         distanceCollection.push_back(distance);
 
-                        /*
-                        if (distance.bt_distance.m_distance < 0)
-                        {
-                            std::cout << "COLLISION" << std::endl;
-                            std::cout << "Frame A:" << currentBody.name_collision_body << std::endl;
-                            std::cout << "Frame B:" << collisionBody.name_collision_body << std::endl;
-                            std::cout << "Distance:" << distance.bt_distance.m_distance << std::endl;
-                        }
-                        */
-
                     }
                 }
             }
@@ -228,9 +220,9 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
     calculateRepulsiveForce(min_distances,repulsive_forces,ca_param_.self_collision);
 }
 
+
 void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distances, std::vector<RepulsiveForce> &repulsive_forces)
 {
-    int number_of_distance_calculations = 0;
     double xmin_octomap,ymin_octomap,zmin_octomap;
     double xmax_octomap,ymax_octomap,zmax_octomap;
     octomap_->getMetricMin(xmin_octomap,ymin_octomap,zmin_octomap);
@@ -257,6 +249,7 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
 
             findOuterPoints(collisionBody, min_cb, max_cb);
 
+            // Add the threshold distance to the found axis alligned BBX
             xmin_bbx = min_cb[0]-ca_param_.environment_collision.d_threshold;
             ymin_bbx = min_cb[1]-ca_param_.environment_collision.d_threshold;
             zmin_bbx = min_cb[2]-ca_param_.environment_collision.d_threshold;
@@ -268,7 +261,7 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
             // ToDo:: Get rid of hardcoded bug fix
             if (collisionBody.name_collision_body == "BaseTop")
             {
-               zmin_bbx = zmin_bbx - 0.15;
+                zmin_bbx = zmin_bbx - 0.15;
             }
 
             // Check whether the BBX is inside the OctoMap, otherwise take OctoMap dimensions
@@ -302,12 +295,10 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
                                                       ymax_bbx,
                                                       zmax_bbx);
 
-            //if (collisionBody.name_collision_body == "ForeArmRight")
-            //{
-                // Store bbx min max in vector for visualization
-                min_.push_back(min);
-                max_.push_back(max);
-            //}
+
+            // Store bbx min max in vector for visualization
+            min_.push_back(min);
+            max_.push_back(max);
 
 
             // Find and store all occupied voxels
@@ -330,10 +321,6 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
                 }
             }
 
-            number_of_distance_calculations = number_of_distance_calculations + in_range_voxels.size();
-            //std::cout << "in_range_voxels: " << in_range_voxels.size() << std::endl;
-
-
 
             std::vector<Distance> distanceCollection;
             for (std::vector<Voxel>::iterator itrVox = in_range_voxels.begin(); itrVox != in_range_voxels.end(); ++itrVox)
@@ -348,25 +335,15 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
                 distance.frame_id = collisionBody.frame_id;
                 distanceCalculation(*collisionBody.bt_shape,*envBody.bt_shape,collisionBody.bt_transform,envBody.bt_transform,distance.bt_distance);
                 distanceCollection.push_back(distance);
-
-                //std::cout << "Distance:" << distance.bt_distance.m_distance << std::endl;
-                /*
-                if (distance.bt_distance.m_distance < 0)
-                {
-                    std::cout << "COLLISION" << std::endl;
-                    std::cout << "Frame A:" << currentBody.name_collision_body << std::endl;
-                    std::cout << "Frame B:" << collisionBody.name_collision_body << std::endl;
-                    std::cout << "Distance:" << distance.bt_distance.m_distance << std::endl;
-                }
-                */
             }
+            // Find minimum distance
             pickMinimumDistance(distanceCollection,min_distances);
         }
     }
+    // Calculate the repulsive forces
     calculateRepulsiveForce(min_distances,repulsive_forces,ca_param_.environment_collision);
-
-    //std::cout << "number of dist calc env = " << number_of_distance_calculations << std::endl;
 }
+
 
 void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsive_forces, std::vector<Wrench> &wrenches_out)
 {
@@ -379,11 +356,7 @@ void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsiv
         wrench_calc.setZero();
         double dpx, dpy, dpz, fx, fy, fz;
 
-        /*
-        std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robot_state_.fk_poses_.find(RF.frame_id);
-        geometry_msgs::PoseStamped p0 = (*itrFK).second;
-        */
-
+        // Find the frame of the kinematic model on which the wrench acts.
         for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
         {
             std::vector<RobotState::CollisionBody> &group = *itrGroups;
@@ -397,10 +370,12 @@ void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsiv
             }
         }
 
+        // Calculate delta p
         dpx = RF.pointOnA.getX() - p0.p.x();
         dpy = RF.pointOnA.getY() - p0.p.y();
         dpz = RF.pointOnA.getZ() - p0.p.z();
 
+        // Calculate the force components
         fx = RF.amplitude*RF.direction.getX();
         fy = RF.amplitude*RF.direction.getY();
         fz = RF.amplitude*RF.direction.getZ();
@@ -412,24 +387,29 @@ void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsiv
         wrench_calc[4] = fx*dpz - fz*dpx;
         wrench_calc[5] = fy*dpx - fx*dpy;
 
+        if (RF.frame_id == "grippoint_left")
+        {
+            // Publish the wrench
+            std_msgs::Float64MultiArray msgP;
+            msgP.data.push_back(dpx);
+            msgP.data.push_back(dpy);
+            msgP.data.push_back(dpz);
+
+            pub_delta_p_.publish(msgP);
+        }
+
         W.frame_id = RF.frame_id;
         W.wrench = wrench_calc;
 
         wrenches_out.push_back(W);
-
-        /*
-        std::cout << "----------------------------------------------" << std::endl;
-        std::cout << "Frame ID = " << W.frame_id << std::endl;
-        std::cout << "dp = " << dpx << " " << dpy << " " << dpz << std::endl;
-        std::cout << "f = " << W.wrench[0] << " " << W.wrench[1] << " " << W.wrench[2] << std::endl;
-        std::cout << "T = " << W.wrench[3] << " " << W.wrench[4] << " " << W.wrench[5] << std::endl;
-        */
     }
 }
+
 
 void CollisionAvoidance::visualize(std::vector<Distance> &min_distances) const
 {
     int id = 0;
+    // Loop through the collision bodies and visualize them.
     for (std::vector< std::vector<RobotState::CollisionBody> >::const_iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
     {
         std::vector<RobotState::CollisionBody> group = *itrGroups;
@@ -440,6 +420,7 @@ void CollisionAvoidance::visualize(std::vector<Distance> &min_distances) const
         }
     }
 
+    // Loop through the closest distance vectors and visualize them.
     for (std::vector<Distance>::const_iterator itrdmin = min_distances.begin(); itrdmin != min_distances.end(); ++itrdmin)
     {
         Distance dmin = *itrdmin;
@@ -451,6 +432,7 @@ void CollisionAvoidance::visualize(std::vector<Distance> &min_distances) const
         visualizeBBX(min_[i], max_[i], id++);
     }
 }
+
 
 void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
 {
@@ -489,8 +471,10 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
     }
 }
 
+
 void CollisionAvoidance::calculateTransform()
 {
+    // Loop throught the collision bodies and calculate the transform from /map frame to the collision bodies center frame.
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_->robot_.groups.begin(); it != robot_state_->robot_.groups.end(); ++it)
     {
         std::vector<RobotState::CollisionBody> &group = *it;
@@ -503,6 +487,7 @@ void CollisionAvoidance::calculateTransform()
         }
     }
 }
+
 
 void CollisionAvoidance::setTransform(KDL::Frame &fkPose, KDL::Frame &fixPose, btTransform &transform_out)
 {
@@ -531,14 +516,20 @@ void CollisionAvoidance::setTransform(KDL::Frame &fkPose, KDL::Frame &fixPose, b
 
 void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA, btConvexShape& shapeB, btTransform& transformA, btTransform& transformB, btPointCollector &distance_out)
 {
+    // Set solvers
     btConvexPenetrationDepthSolver*	depthSolver = new btMinkowskiPenetrationDepthSolver;
     btSimplexSolverInterface* simplexSolver = new btVoronoiSimplexSolver;
     btGjkPairDetector convexConvex(&shapeA, &shapeB, simplexSolver, depthSolver);
+
+    // Set input transforms
     btGjkPairDetector::ClosestPointInput input;
     input.m_transformA = transformA;
     input.m_transformB = transformB;
+
+    // Calculate closest distance
     convexConvex.getClosestPoints(input, distance_out, 0);
 }
+
 
 void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id) const
 {
@@ -715,31 +706,10 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
     }
 }
 
-void CollisionAvoidance::bulletTest()
-{
-    btConvexShape* A = new btSphereShape(1);
-    btConvexShape* B = new btSphereShape(1);
-    //btConvexShape* B = new btConeShapeZ(5-.04,1);
-    btTransform At;
-    btTransform Bt;
-    btPointCollector d;
-
-    At.setOrigin(btVector3(0,0,0));
-    At.setRotation(btQuaternion(0,0,0,1));
-
-    Bt.setOrigin(btVector3(2,0,0));
-    Bt.setRotation(btQuaternion(0,0,0,1));
-
-    distanceCalculation(*A,*B,At,Bt,d);
-
-    std::cout << "distance = " << d.m_distance << std::endl;
-    std::cout << "point on B = " << d.m_pointInWorld.getX() << " " << d.m_pointInWorld.getY() << " " << d.m_pointInWorld.getZ() << std::endl;
-    std::cout << "normal on B = " << d.m_normalOnBInWorld.getX() << " " << d.m_normalOnBInWorld.getY() << " " << d.m_normalOnBInWorld.getZ() << std::endl;
-
-}
 
 void CollisionAvoidance::pickMinimumDistance(std::vector<Distance> &calculatedDistances, std::vector<Distance> &minimumDistances)
 {
+    // For a single collision body pick the minimum of all calculated closest distances by the GJK algorithm.
     Distance dmin;
     dmin.bt_distance.m_distance = 10000.0;
     for (std::vector<Distance>::iterator itrDistance = calculatedDistances.begin(); itrDistance != calculatedDistances.end(); ++itrDistance)
@@ -754,6 +724,7 @@ void CollisionAvoidance::pickMinimumDistance(std::vector<Distance> &calculatedDi
     // Store all minimum distances;
     minimumDistances.push_back(dmin);
 }
+
 
 void CollisionAvoidance::calculateRepulsiveForce(std::vector<Distance> &minimumDistances, std::vector<RepulsiveForce> &repulsiveForces, collisionAvoidanceParameters::Parameters &param)
 {
@@ -774,18 +745,30 @@ void CollisionAvoidance::calculateRepulsiveForce(std::vector<Distance> &minimumD
     }
 }
 
+
 void CollisionAvoidance::outputWrenches(std::vector<Wrench> &wrenches)
 {
     for (std::vector<Wrench>::iterator itrW = wrenches.begin(); itrW != wrenches.end(); ++itrW)
     {
         Wrench W = *itrW;
         robot_state_->tree_.addCartesianWrench(W.frame_id,W.wrench);
+
+        if (W.frame_id == "grippoint_right")
+        {
+            // Publish the wrench
+            std_msgs::Float64MultiArray msgW;
+            for (uint i = 0; i < W.wrench.rows(); i++)
+            {
+                msgW.data.push_back(W.wrench(i));
+            }
+            pub_CA_wrench_.publish(msgW);
+        }
     }
 }
 
+
 void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const
 {
-
     visualization_msgs::MarkerArray marker_array;
     visualization_msgs::Marker RFviz;
     geometry_msgs::Point pA;
@@ -804,16 +787,15 @@ void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const
     pA.y = d_min.bt_distance.m_pointInWorld.getY();
     pA.z = d_min.bt_distance.m_pointInWorld.getZ();
 
-
     pB.x = d_min.bt_distance.m_pointInWorld.getX() + d_min.bt_distance.m_distance * d_min.bt_distance.m_normalOnBInWorld.getX();
     pB.y = d_min.bt_distance.m_pointInWorld.getY() + d_min.bt_distance.m_distance * d_min.bt_distance.m_normalOnBInWorld.getY();
     pB.z = d_min.bt_distance.m_pointInWorld.getZ() + d_min.bt_distance.m_distance * d_min.bt_distance.m_normalOnBInWorld.getZ();
 
-    if(pA.x > 0.001 && pA.y > 0.001 && pB.x > 0.001 && pB.y > 0.001)
-    {
-       RFviz.points.push_back(pA);
-       RFviz.points.push_back(pB);
-    }
+    //if(pA.x > 0.001 && pA.y > 0.001 && pB.x > 0.001 && pB.y > 0.001)
+    //{
+    RFviz.points.push_back(pA);
+    RFviz.points.push_back(pB);
+    //}
 
 
     if (d_min.bt_distance.m_distance <= ca_param_.self_collision.d_threshold )
@@ -835,6 +817,7 @@ void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const
 
     pub_forces_marker_.publish(marker_array);
 }
+
 
 void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 max, int id) const
 {
@@ -859,7 +842,6 @@ void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 m
     BBXviz.pose.orientation.z = 0;
     BBXviz.pose.orientation.w = 1;
 
-
     BBXviz.color.a = 0.25;
     BBXviz.color.r = 1;
     BBXviz.color.g = 1;
@@ -871,14 +853,16 @@ void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 m
 
 }
 
+
 void CollisionAvoidance::setOctoMap(octomap::OcTree* octree)
 {
     octomap_ = octree;
 }
 
+
 void CollisionAvoidance::findOuterPoints(RobotState::CollisionBody& collisionBody, btVector3 &min, btVector3 &max)
 {
-    // Calculate all outer points
+    // Calculate all outer points of the axis alligned BBX
     std::vector<btVector3> outer_points;
     btVector3 point1 = collisionBody.bt_transform.getOrigin() + collisionBody.bt_transform.getBasis() * btVector3 (collisionBody.collision_shape.dimensions.x,
                                                                                                                    collisionBody.collision_shape.dimensions.y,
@@ -933,9 +917,4 @@ void CollisionAvoidance::findOuterPoints(RobotState::CollisionBody& collisionBod
             }
         }
     }
-    /*
-    std::cout << collisionBody.name_collision_body << std::endl;
-    std::cout << "min: " << min[0] << " " << min[1] << " " << min[2] << std::endl;
-    std::cout << "max: " << max[0] << " " << max[1] << " " << max[2] << std::endl;
-    */
 }

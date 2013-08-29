@@ -228,10 +228,7 @@ protected:
      */
     void findOuterPoints(RobotState::CollisionBody& collisionBody, btVector3 &min, btVector3 &max);
 
-    /**
-     * @brief Test the Bullet closest distance calculation
-     */
-    void bulletTest();
+
 };
 
 #endif

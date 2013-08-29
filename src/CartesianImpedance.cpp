@@ -48,6 +48,7 @@ void CartesianImpedance::setGoal(const geometry_msgs::PoseStamped& goal_pose ) {
     stampedPoseToKDLframe(goal_pose, goal_pose_);
 
     /// Maximum magnitude of the repulsive force
+    // ToDo: get rid of hardcoding
     f_max_ = 75;
 }
 
