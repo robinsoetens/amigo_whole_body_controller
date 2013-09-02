@@ -6,6 +6,7 @@
 
 #include <std_msgs/Float64MultiArray.h>
 
+
 CartesianImpedance::CartesianImpedance(const std::string& tip_frame) :
     chain_(0) {
 
@@ -25,6 +26,8 @@ CartesianImpedance::CartesianImpedance(const std::string& tip_frame) :
         box_tolerance_[i] = 0;
         orientation_tolerance_[i] = 0;
     }
+    sphere_tolerance_ = 0;
+    cylinder_tolerance_[0] = cylinder_tolerance_[1] = 0;
 
     pose_error_.Zero();
 
@@ -69,26 +72,44 @@ void CartesianImpedance::setImpedance(const geometry_msgs::Wrench &stiffness) {
             num_constrained_dofs_ += 1;
         }
     }
+   /// Set the status of current impedance
+   status_ = 2;
 }
 
 bool CartesianImpedance::setPositionTolerance(const arm_navigation_msgs::Shape &position_tolerance) {
 
-    if (position_tolerance.type != 1) {
-        ROS_WARN("Other position tolerance than box not yet implemented, defaulting");
-        return false;
+    std::cout<<"Impedance: Received constraint: \n"<<position_tolerance<<std::endl;
+    constraint_type_ = position_tolerance.type;
+    if (position_tolerance.type == 0) {
+        if (!position_tolerance.dimensions.empty()) sphere_tolerance_ = position_tolerance.dimensions[0];
+        else ROS_INFO("Impedance: Defaulting to position constraint: sphere with radius 0.035 [m]."); sphere_tolerance_ = 0.035;
+        return true;
     }
-    else {
+    else if (position_tolerance.type == 1) {
         box_tolerance_[0] = position_tolerance.dimensions[0];
         box_tolerance_[1] = position_tolerance.dimensions[1];
         box_tolerance_[2] = position_tolerance.dimensions[2];
         return true;
     }
+    else if (position_tolerance.type == 2){
+        cylinder_tolerance_[0] = position_tolerance.dimensions[0];
+        cylinder_tolerance_[1] = position_tolerance.dimensions[1];
+        return true;
+    }
+    else {
+        ROS_WARN("Other position tolerance than sphere/box/cylinder not yet implemented, defaulting");
+        return false;
+    }
 }
 
 bool CartesianImpedance::setOrientationTolerance(const float roll, const float pitch, const float yaw) {
-    orientation_tolerance_[0] = roll;
-    orientation_tolerance_[1] = pitch;
-    orientation_tolerance_[2] = yaw;
+    //ToDo default values in function parameters
+    if (roll == 0) orientation_tolerance_[0] = 1;
+    else orientation_tolerance_[0] = roll;
+    if (pitch == 0) orientation_tolerance_[1] = 1;
+    else orientation_tolerance_[1] = pitch;
+    if (yaw == 0) orientation_tolerance_[2] = 1;
+    else orientation_tolerance_[2] = yaw;
     return true;
 }
 
@@ -146,6 +167,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
         }
     }
 
+
     //std::cout << "K_ = " << K_ << std::endl;
     //std::cout << "F_task = " << F_task << std::endl;
     //ROS_INFO("Tip frame = %s",tip_frame_.c_str());
@@ -167,7 +189,9 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     /// Count number of converged DoFs
     // ToDo: Include boundaries in action message
     // ToDo: Include other checks than box check (move this to separate function)
-    unsigned int num_converged_dof = 0;
+    /*unsigned int num_converged_dof = 0;
+
+
     for (unsigned int i = 0; i < 3; i++) {
         /// Only take constrained DoFs into account
         /// Position
@@ -179,8 +203,10 @@ void CartesianImpedance::apply(RobotState &robotstate) {
             if (fabs(error_vector(i+3)) < orientation_tolerance_[i]) ++num_converged_dof;
         }
     }
+    */
+    //std::cout<<"Number of converged dofs: "<<convergedConstraints(error_vector)<<"/"<<num_constrained_dofs_<<" and status: " <<status_<<std::endl;
 
-    if (num_converged_dof == num_constrained_dofs_ && status_ == 2) {
+    if (convergedConstraints(error_vector) == num_constrained_dofs_ && status_ == 2) {
         status_ = 1;
         ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector(0),error_vector(1),error_vector(2),error_vector(3),error_vector(4),error_vector(5));
     }
@@ -209,4 +235,40 @@ void CartesianImpedance::stampedPoseToKDLframe(const geometry_msgs::PoseStamped&
                        pose.pose.orientation.z,
                        pose.pose.orientation.w);
 
+}
+
+unsigned int CartesianImpedance::convergedConstraints(Eigen::VectorXd error_vector){
+    unsigned int num_converged_dof = 0;
+
+    /// Orientation
+    for (unsigned int i = 3; i < 6; i++) {
+        if (K_(i,i) != 0) {
+            if (fabs(error_vector(i)) < orientation_tolerance_[i-3]) ++num_converged_dof;
+        }
+    }
+
+    /// Position
+    if (constraint_type_ == 0) //Sphere
+    {
+        if ( error_vector(0)*error_vector(0) + error_vector(1)*error_vector(1) + error_vector(2)*error_vector(2) < sphere_tolerance_*sphere_tolerance_ ) num_converged_dof = num_converged_dof + 3;
+    }
+
+    else if (constraint_type_ == 1) //Box
+    {
+        for (unsigned int i = 0; i < 3; i++) {
+            if (K_(i,i) != 0) {
+                if (fabs(error_vector(i)) < box_tolerance_[i]/2) ++num_converged_dof;
+            }
+        }
+    }
+
+    else if (constraint_type_ == 2) //Cylinder
+    {
+        ROS_INFO("CYLINDER NOT IMPLEMENTED");
+    }
+    else if (constraint_type_ == 3) //Mesh
+    {
+        ROS_INFO("MESH NOT IMPLEMENTED");
+    }
+    return num_converged_dof;
 }

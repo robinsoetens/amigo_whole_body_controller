@@ -36,8 +36,6 @@
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <kdl/frames.hpp>
 
-/////
-
 class CartesianImpedance : public MotionObjective {
 
 public:
@@ -70,7 +68,6 @@ public:
 
     KDL::Twist getError();
 
-
 protected:
 
     //! Sampling time
@@ -102,10 +99,28 @@ protected:
     unsigned int num_constrained_dofs_;
 
     /**
+      * Position constraint type
+      * 0 = Sphere, 1 = Box, 2 = Cylinder and 3 = Mesh
+      */
+    unsigned int constraint_type_;
+
+    /**
       * Array containing the dimensions of the box for the position constraint
       * A DoF is converged if error < (dimension/2)
       */
     double box_tolerance_[3];
+    /**
+      * Array containing the radius of the sphere for the position constraint
+      * A DoF is converged if error is inside sphere, error_x^2 + error_y^2 + error_z^2 < radius
+      */
+    double sphere_tolerance_;
+
+    /**
+      * Array containing the radius and length of the cylinder for the position constraint
+      * A DoF is converged if error is inside cylinder, error_x^2 + error_y^2 + error_z^2 < radius
+      */
+    double cylinder_tolerance_[2];
+
 
     /**
       * Array containing the absolute_roll_tolerance, absolute_pitch_tolerance and absolute_yaw_tolerance
@@ -119,6 +134,11 @@ protected:
     // MOVING_TO_GOAL_POSE=2
     unsigned int status_;
 
+    /**
+      *
+      *
+      */
+    unsigned int convergedConstraints(Eigen::VectorXd error_vector);
 
 };
 
