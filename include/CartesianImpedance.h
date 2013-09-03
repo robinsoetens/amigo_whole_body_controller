@@ -36,6 +36,9 @@
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <kdl/frames.hpp>
 
+//
+#include <amigo_ref_interpolator/interpolator.h>
+
 class CartesianImpedance : public MotionObjective {
 
 public:
@@ -67,6 +70,8 @@ public:
     unsigned int getStatus();
 
     KDL::Twist getError();
+
+    std::vector<refgen::RefGenerator> ref_generators;
 
 protected:
 
@@ -139,6 +144,12 @@ protected:
       *
       */
     unsigned int convergedConstraints(Eigen::VectorXd error_vector);
+
+    /**
+      *
+      *
+      */
+    void refGeneration(KDL::Frame& goal, KDL::Frame& ref);
 
 };
 
