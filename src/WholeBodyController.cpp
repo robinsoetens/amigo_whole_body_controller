@@ -9,9 +9,6 @@ using namespace std;
 WholeBodyController::WholeBodyController(const double Ts)
 {
     initialize(Ts);
-    myfile.open("/home/amigo/ros/fuerte/tue/user/Teun/Log/torques.txt");
-    myfile <<"\n";
-    myfile.close();
 }
 
 WholeBodyController::~WholeBodyController() {
@@ -211,11 +208,6 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
     //cout << "all_wrenches = " << endl << all_wrenches << endl;
     tau_ = jacobian_tree.transpose() * all_wrenches;
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
-    if (all_wrenches.size()>0){
-        myfile.open("/home/amigo/ros/fuerte/tue/user/Teun/Log/torques.txt", std::ios_base::app);
-        myfile <<all_wrenches(0)<<" "<<all_wrenches(1)<<" "<<all_wrenches(2)<<" "<<all_wrenches(3)<<" "<<all_wrenches(4)<<" "<<all_wrenches(5)<<"\n";
-        myfile.close();
-    }
 
     // Publish the joint torques
     std_msgs::Float64MultiArray msgTau;
