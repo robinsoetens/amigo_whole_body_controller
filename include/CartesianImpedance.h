@@ -72,6 +72,8 @@ public:
 
     KDL::Twist getError();
 
+    std::ofstream myfile;
+
     std::vector<refgen::RefGenerator> ref_generators;
 
 protected:

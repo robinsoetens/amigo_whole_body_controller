@@ -74,6 +74,8 @@ public:
 
     std::vector<MotionObjective*> getCartesianImpedances(const std::string& tip_frame, const std::string& root_frame);
 
+    std::ofstream myfile;
+
 protected:
 
     ros::Publisher pub_joint_torques_;

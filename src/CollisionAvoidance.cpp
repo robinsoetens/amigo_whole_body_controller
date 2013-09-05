@@ -101,7 +101,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
 
     /// Output
     visualize(min_distances_total);
-    outputWrenches(wrenches_total);
+    //outputWrenches(wrenches_total);
     //ThreadProfiler::Stop("CA");
 }
 

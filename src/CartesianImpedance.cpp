@@ -82,6 +82,10 @@ void CartesianImpedance::setImpedance(const geometry_msgs::Wrench &stiffness) {
     K_(4,4) = stiffness.torque.y;
     K_(5,5) = stiffness.torque.z;
 
+    myfile.open("/home/amigo/ros/fuerte/tue/user/Teun/Log/SCHEIT.txt");
+    myfile <<"\n";
+    myfile.close();
+
     /// Count the number of constrained DoFs
     num_constrained_dofs_ = 0;
     for (unsigned int i = 0; i < 6; i++) {
@@ -216,6 +220,11 @@ void CartesianImpedance::apply(RobotState &robotstate) {
             F_task_root(i) = -f_max_;
         }
     }
+
+    myfile.open("/home/amigo/ros/fuerte/tue/user/Teun/Log/SCHEIT.txt", std::ios_base::app);
+    //myfile <<error_vector(0)<<" "<<error_vector(1)<<" "<<error_vector(2)<<" "<<error_vector(3)<<" "<<error_vector(4)<<" "<<error_vector(5)<<"\n";
+    myfile <<F_task_root(0)<<" "<<F_task_root(1)<<" "<<F_task_root(2)<<" "<<F_task_root(3)<<" "<<F_task_root(4)<<" "<<F_task_root(5)<<"\n";
+    myfile.close();
 
     //std::cout << "K_ = " << K_ << std::endl;
     //std::cout << "F_task = " << F_task << std::endl;

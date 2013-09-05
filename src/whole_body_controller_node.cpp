@@ -12,6 +12,7 @@ const double loop_rate_ = 50;
 typedef actionlib::SimpleActionServer<amigo_whole_body_controller::ArmTaskAction> action_server;
 action_server* add_motion_objective_server_;
 CollisionAvoidance* collision_avoidance;
+CartesianImpedance* cartesian_impedance;
 //RobotState* robot_state;
 
 WholeBodyController* wbc;
@@ -143,7 +144,7 @@ void GoalCB() {
             wbc->removeMotionObjective(imps_to_remove[i]);
         }
 
-        CartesianImpedance* cartesian_impedance = new CartesianImpedance(goal.position_constraint.link_name);
+        cartesian_impedance = new CartesianImpedance(goal.position_constraint.link_name);
         geometry_msgs::PoseStamped goal_pose;
         goal_pose.pose.position = goal.position_constraint.position;
         goal_pose.pose.orientation = goal.orientation_constraint.orientation;
@@ -189,7 +190,7 @@ int main(int argc, char **argv) {
 
     JointRefPublisher* pub_left_arm = new JointRefPublisher("/arm_left_controller/references");
     JointRefPublisher* pub_right_arm = new JointRefPublisher("/arm_right_controller/references");
-    JointRefPublisher* pub_torso = new JointRefPublisher("/torso_controller/references");
+    JointRefPublisher* pub_torso = new JointRefPublisher("/spindle_controller/references"); //ToDo: Spindle Publisher and Subscriber names don't make sense!
 
     JOINT_NAME_TO_PUB["wrist_yaw_joint_left"] = pub_left_arm;
     JOINT_NAME_TO_PUB["wrist_pitch_joint_left"] = pub_left_arm;
@@ -216,6 +217,7 @@ int main(int argc, char **argv) {
 
     /// Use tf to set the first amcl pose
     tf::TransformListener listener;
+    ros::Duration(0.5).sleep();
     listener.waitForTransform("/map","/base_link",ros::Time(0),ros::Duration(1.0)); // Is the latest available transform
 
     geometry_msgs::PoseStamped base_link_pose, map_pose;
@@ -282,12 +284,32 @@ int main(int argc, char **argv) {
     //KDL::JntArray q_current;
     Eigen::VectorXd q_ref;
     Eigen::VectorXd qdot_ref;
+    std::string root_frame;
 
     while(ros::ok()) {
 
         ros::spinOnce();
 
-        //wbc->update(q_current, q_ref, qdot_ref);
+        // Beun oplossing
+        std::vector<MotionObjective*> left_imp = wbc->getCartesianImpedances("grippoint_left", root_frame);
+        std::vector<MotionObjective*> right_imp = wbc->getCartesianImpedances("grippoint_right", root_frame);
+        if (!left_imp.empty()){
+            if (cartesian_impedance->getStatus() == 1 && add_motion_objective_server_->isActive()){
+
+                add_motion_objective_server_->setSucceeded();
+                //ROS_INFO("Impedance status %i, Tip frame: %s root frame: %s",cartesian_impedance->getStatus(),left_imp[0]->tip_frame_.c_str(),left_imp[0]->root_frame_.c_str());
+            }
+        }
+        if (!right_imp.empty()){
+            if (cartesian_impedance->getStatus() == 1 && add_motion_objective_server_->isActive()){
+
+                add_motion_objective_server_->setSucceeded();
+                //ROS_INFO("Impedance status %i, Tip frame: %s root frame: %s",cartesian_impedance->getStatus(),right_imp[0]->tip_frame_.c_str(),right_imp[0]->root_frame_.c_str());
+            }
+        }
+
+
+
         wbc->update(q_ref, qdot_ref);
 
         ///// Teststuff /////
@@ -305,16 +327,15 @@ int main(int argc, char **argv) {
         /////////////////////
 
         //ToDo: set stuff succeeded
-
         publishJointReferences(wbc->getJointReferences(), wbc->getJointNames());
 
         r.sleep();
     }
-
     //ToDo: delete all motion objectives
     delete add_motion_objective_server_;
     delete collision_avoidance;
     delete wbc;
+    delete cartesian_impedance;
 
     return 0;
 }
