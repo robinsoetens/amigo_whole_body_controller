@@ -1,36 +1,35 @@
 admittance_control:
     mass:
         spindle_joint: 15
-        shoulder_yaw_joint_left: 0.1
-        shoulder_yaw_joint_right: 0.1
-        shoulder_pitch_joint_left: 0.1
-        shoulder_pitch_joint_right: 0.1
-        shoulder_roll_joint_left: 0.1
-        shoulder_roll_joint_right: 0.1
-        elbow_pitch_joint_left: 0.1
-        elbow_pitch_joint_right: 0.1
-        elbow_roll_joint_left: 0.1
-        elbow_roll_joint_right: 0.1
-        wrist_pitch_joint_left: 0.1
-        wrist_pitch_joint_right: 0.1
-        wrist_yaw_joint_left: 0.1
-        wrist_yaw_joint_right: 0.1
+        shoulder_yaw_joint_left: 3.8
+        shoulder_yaw_joint_right: 3.8
+        shoulder_pitch_joint_left: 3.8
+        shoulder_pitch_joint_right: 3.8
+        shoulder_roll_joint_left: 1.2
+        shoulder_roll_joint_right: 1.2
+        elbow_pitch_joint_left: 0.55
+        elbow_pitch_joint_right: 0.55
+        elbow_roll_joint_left: 0.55
+        elbow_roll_joint_right: 0.55
+        wrist_pitch_joint_left: 0.12
+        wrist_pitch_joint_right: 0.12
+        wrist_yaw_joint_left: 0.12
+        wrist_yaw_joint_right: 0.12
         
     damping:
         spindle_joint: 150
-        shoulder_yaw_joint_left: 18
-        shoulder_yaw_joint_right: 18
-        shoulder_pitch_joint_left: 18
-        shoulder_pitch_joint_right: 18
-        shoulder_roll_joint_left: 4
-        shoulder_roll_joint_right: 4
-        elbow_pitch_joint_left: 4
-        elbow_pitch_joint_right: 4
-        elbow_roll_joint_left: 4
-        elbow_roll_joint_right: 4
-        wrist_pitch_joint_left: 1
-        wrist_pitch_joint_right: 1
-        wrist_yaw_joint_left: 1
-        wrist_yaw_joint_right: 1
-
+        shoulder_yaw_joint_left: 38
+        shoulder_yaw_joint_right: 38
+        shoulder_pitch_joint_left: 38
+        shoulder_pitch_joint_right: 38
+        shoulder_roll_joint_left: 12
+        shoulder_roll_joint_right: 12
+        elbow_pitch_joint_left: 5.5
+        elbow_pitch_joint_right: 5.5
+        elbow_roll_joint_left: 5.5
+        elbow_roll_joint_right: 5.5
+        wrist_pitch_joint_left: 1.2
+        wrist_pitch_joint_right: 1.2
+        wrist_yaw_joint_left: 1.2
+        wrist_yaw_joint_right: 1.2
 
