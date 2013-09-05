@@ -37,6 +37,7 @@
 #include <kdl/frames.hpp>
 
 //
+#include <fstream>
 #include <amigo_ref_interpolator/interpolator.h>
 
 class CartesianImpedance : public MotionObjective {
@@ -84,9 +85,9 @@ protected:
     ros::Publisher pub_CI_wrench_;
 
     //////geometry_msgs::PoseStamped end_effector_pose_,goal_pose_;
-    KDL::Frame end_effector_pose_,goal_pose_;
+    KDL::Frame Frame_map_tip_, Frame_root_goal_;
 
-    KDL::Twist pose_error_;
+    KDL::Twist pose_error_, ref_pose_error_;
 
     // Maximum magnitude of the attractive force;
     double f_max_;
@@ -143,7 +144,7 @@ protected:
       *
       *
       */
-    unsigned int convergedConstraints(Eigen::VectorXd error_vector);
+    unsigned int convergedConstraints();
 
     /**
       *

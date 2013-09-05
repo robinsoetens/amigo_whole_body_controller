@@ -31,7 +31,7 @@ CartesianImpedance::CartesianImpedance(const std::string& tip_frame) :
     cylinder_tolerance_[0] = cylinder_tolerance_[1] = 0;
 
     pose_error_.Zero();
-
+    ref_pose_error_.Zero();
     ROS_INFO("Initialized Cartesian Impedance");
 }
 
@@ -39,16 +39,16 @@ bool CartesianImpedance::initialize(RobotState &robotstate) {
 
     /// Find the pose of the goal frame
     std::map<std::string, KDL::Frame>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
-    end_effector_pose_ = (*itrFK).second;
+    Frame_map_tip_ = (*itrFK).second;
 
     /// Init the reference generators
     ref_generators.resize(6);
-    ref_generators[0].setRefGen(end_effector_pose_.p.x());
-    ref_generators[1].setRefGen(end_effector_pose_.p.y());
-    ref_generators[2].setRefGen(end_effector_pose_.p.z());
+    ref_generators[0].setRefGen(Frame_map_tip_.p.x());
+    ref_generators[1].setRefGen(Frame_map_tip_ .p.y());
+    ref_generators[2].setRefGen(Frame_map_tip_ .p.z());
 
     double roll, pitch, yaw;
-    end_effector_pose_.M.GetRPY(roll, pitch, yaw);
+    Frame_map_tip_ .M.GetRPY(roll, pitch, yaw);
     ref_generators[3].setRefGen(roll);
     ref_generators[4].setRefGen(pitch);
     ref_generators[5].setRefGen(yaw);
@@ -65,7 +65,7 @@ void CartesianImpedance::setGoal(const geometry_msgs::PoseStamped& goal_pose ) {
 
     /// Goal Pose
     //////goal_pose_ = goal_pose;
-    stampedPoseToKDLframe(goal_pose, goal_pose_);
+    stampedPoseToKDLframe(goal_pose, Frame_root_goal_);
 
     /// Maximum magnitude of the repulsive force
     // ToDo: get rid of hardcoding
@@ -95,11 +95,13 @@ void CartesianImpedance::setImpedance(const geometry_msgs::Wrench &stiffness) {
 
 bool CartesianImpedance::setPositionTolerance(const arm_navigation_msgs::Shape &position_tolerance) {
 
-    std::cout<<"Impedance: Received constraint: \n"<<position_tolerance<<std::endl;
     constraint_type_ = position_tolerance.type;
     if (position_tolerance.type == 0) {
         if (!position_tolerance.dimensions.empty()) sphere_tolerance_ = position_tolerance.dimensions[0];
-        else ROS_INFO("Impedance: Defaulting to position constraint: sphere with radius 0.02 [m]."); sphere_tolerance_ = 0.02;
+        else {
+            ROS_INFO("Impedance: Defaulting to position constraint: sphere with radius 0.03 [m].");
+            sphere_tolerance_ = 0.03;
+        }
         return true;
     }
     else if (position_tolerance.type == 1) {
@@ -136,54 +138,82 @@ void CartesianImpedance::cancelGoal() {
 
 void CartesianImpedance::apply(RobotState &robotstate) {
 
-    //ROS_INFO("CartesianImpedance::apply");
-    Eigen::VectorXd F_task(6);
+    Eigen::VectorXd F_task_root(6);
+    Eigen::VectorXd F_task_map(6);
+    KDL::Wrench F_task_wrench_base;
+    KDL::Wrench F_task_wrench_map;
     Eigen::VectorXd error_vector(6);
 
     // ToDo: create get function
     /// Get end effector pose (is in map frame)
     std::map<std::string, KDL::Frame>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
-    end_effector_pose_ = (*itrFK).second;
-    //ROS_INFO("FK pose tip frame in tree root = (%f,%f,%f)", end_effector_pose_.p.x(), end_effector_pose_.p.y(), end_effector_pose_.p.z());
+    Frame_map_tip_  = (*itrFK).second;
+    //ROS_INFO("FK pose tip frame in map  = (%f,%f,%f)", Frame_map_tip_.p.x(), Frame_map_tip_.p.y(), Frame_map_tip_.p.z());
 
     /// Get the pose of the root frame (of the goal) in map
     std::map<std::string, KDL::Frame>::iterator itrRF = robotstate.fk_poses_.find(root_frame_);
-    KDL::Frame kdl_root_in_map = itrRF->second;
-    //ROS_INFO("FK pose root frame in map (x,y,z) = (%f,%f,%f)", kdl_root_in_map.p.x(), kdl_root_in_map.p.y(), kdl_root_in_map.p.z());
+    KDL::Frame Frame_map_root = itrRF->second;
+    //ROS_INFO("FK pose root frame in map (x,y,z) = (%f,%f,%f)", Frame_map_root.p.x(), Frame_map_root.p.y(), Frame_map_root.p.z());
 
     /// Convert the goal pose to map (is required because pose of robot in map (amcl_pose) may have been updated)
-    KDL::Frame goal_pose_map = kdl_root_in_map * goal_pose_;
-    //ROS_INFO("goal_pose_map (x,y,z) = (%f,%f,%f)",goal_pose_map.p.x(),goal_pose_map.p.y(),goal_pose_map.p.z());
+    KDL::Frame Frame_map_goal = Frame_map_root * Frame_root_goal_;
+    //ROS_INFO("Frame_map_goal (x,y,z) = (%f,%f,%f)",Frame_map_goal.p.x(),Frame_map_goal.p.y(),Frame_map_goal.p.z());
 
     /// Generate a reference for the cartesian impedance
-    KDL::Frame ref_pose_map;
-    refGeneration(goal_pose_map, ref_pose_map);
+    KDL::Frame Frame_map_ref;
+    refGeneration(Frame_map_goal, Frame_map_ref);
+    //ROS_INFO("Frame_map_ref (x,y,z) = (%f,%f,%f)",Frame_map_ref.p.x(),Frame_map_ref.p.y(),Frame_map_ref.p.z());
 
     /// Compute pose error
-    pose_error_ = KDL::diff(end_effector_pose_, ref_pose_map);
+    pose_error_ = KDL::diff(Frame_map_tip_ , Frame_map_goal);
+    ref_pose_error_ = KDL::diff(Frame_map_tip_ , Frame_map_ref);
 
-    error_vector(0) = pose_error_.vel.x();
-    error_vector(1) = pose_error_.vel.y();
-    error_vector(2) = pose_error_.vel.z();
-    error_vector(3) = pose_error_.rot.x();//goal_RPY(0) - end_effector_RPY(0)/ Ts;
-    error_vector(4) = pose_error_.rot.y();//goal_RPY(1) - end_effector_RPY(1)/ Ts;
-    error_vector(5) = pose_error_.rot.z();//goal_RPY(2) - end_effector_RPY(2)/ Ts;
+    /// Error between tip and reference frame
+    error_vector(0) = ref_pose_error_.vel.x();
+    error_vector(1) = ref_pose_error_.vel.y();
+    error_vector(2) = ref_pose_error_.vel.z();
+    error_vector(3) = ref_pose_error_.rot.x();//goal_RPY(0) - end_effector_RPY(0)/ Ts;
+    error_vector(4) = ref_pose_error_.rot.y();//goal_RPY(1) - end_effector_RPY(1)/ Ts;
+    error_vector(5) = ref_pose_error_.rot.z();//goal_RPY(2) - end_effector_RPY(2)/ Ts;
 
-    //std::cout << "goal_pose = " << goal_pose_.getOrigin().getX() << " , " << goal_pose_.getOrigin().getY() << " , " << goal_pose_.getOrigin().getZ() << std::endl;
     //std::cout << "error_vector = " << error_vector << std::endl;
 
-    F_task = K_ * error_vector;
+    /// Compute Force in map frame
+    F_task_map = K_ * error_vector;
+
+    /// Transform to KDL::Wrench
+    F_task_wrench_map.force.x(F_task_map(0));
+    F_task_wrench_map.force.y(F_task_map(1));
+    F_task_wrench_map.force.z(F_task_map(2));
+    F_task_wrench_map.torque.x(F_task_map(3));
+    F_task_wrench_map.torque.y(F_task_map(4));
+    F_task_wrench_map.torque.z(F_task_map(5));
+
+    //std::cout<<"Before Trans: "<<F_task_map(0)<<" "<<F_task_map(1)<<" "<<F_task_map(2)<<" "<<F_task_map(3)<<" "<<F_task_map(4)<<" "<<F_task_map(5)<<"\n";
+
+    /// Transform Force from map to root. Maybe efficienter to check if amcl change is big enough to afford to recalculate new Inverse.
+    F_task_wrench_base = Frame_map_root.Inverse() * F_task_wrench_map;
+
+    /// Transform to Eigen::VectorXd
+    F_task_root(0) = F_task_wrench_base.force.x();
+    F_task_root(1) = F_task_wrench_base.force.y();
+    F_task_root(2) = F_task_wrench_base.force.z();
+    F_task_root(3) = F_task_wrench_base.torque.x();
+    F_task_root(4) = F_task_wrench_base.torque.y();
+    F_task_root(5) = F_task_wrench_base.torque.z();
+
+    //std::cout<<"After Trans: "<<F_task_root(0)<<" "<<F_task_root(1)<<" "<<F_task_root(2)<<" "<<F_task_root(3)<<" "<<F_task_root(4)<<" "<<F_task_root(5)<<"\n\n";
 
     /// Limit the maximum magnitude of the attractive force so it will always be smaller than the maximum magnitude of the repulisive force generated by the collision avoidance
     for (uint i = 0; i < 3; i++)
     {
-        if (F_task(i) > f_max_ )
+        if (F_task_root(i) > f_max_ )
         {
-            F_task(i) = f_max_;
+            F_task_root(i) = f_max_;
         }
-        else if (F_task(i) < -f_max_ )
+        else if (F_task_root(i) < -f_max_ )
         {
-            F_task(i) = -f_max_;
+            F_task_root(i) = -f_max_;
         }
     }
 
@@ -192,22 +222,22 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     //ROS_INFO("Tip frame = %s",tip_frame_.c_str());
 
     // add the wrench to the end effector of the kinematic chain
-    robotstate.tree_.addCartesianWrench(tip_frame_,F_task);
+    robotstate.tree_.addCartesianWrench(tip_frame_,F_task_root);
 
     if (tip_frame_ == "grippoint_left")
     {
         // Publish the wrench
         std_msgs::Float64MultiArray msgW;
-        for (uint i = 0; i < F_task.rows(); i++)
+        for (uint i = 0; i < F_task_root.rows(); i++)
         {
-            msgW.data.push_back(F_task(i));
+            msgW.data.push_back(F_task_root(i));
         }
         pub_CI_wrench_.publish(msgW);
     }
 
-    if (convergedConstraints(error_vector) == num_constrained_dofs_ && status_ == 2) {
+    if (convergedConstraints() == num_constrained_dofs_ && status_ == 2) {
         status_ = 1;
-        ROS_WARN("errorpose = %f,\t%f,\t%f,\t%f,\t%f,\t%f",error_vector(0),error_vector(1),error_vector(2),error_vector(3),error_vector(4),error_vector(5));
+        ROS_WARN("Converged!, remaining error (x,y,z,r,p,y) = (%f, %f, %f, %f, %f, %f)",error_vector(0),error_vector(1),error_vector(2),error_vector(3),error_vector(4),error_vector(5));
     }
 }
 
@@ -235,8 +265,15 @@ void CartesianImpedance::stampedPoseToKDLframe(const geometry_msgs::PoseStamped&
                                         pose.pose.orientation.w);
 }
 
-unsigned int CartesianImpedance::convergedConstraints(Eigen::VectorXd error_vector){
+unsigned int CartesianImpedance::convergedConstraints(){
     unsigned int num_converged_dof = 0;
+    Eigen::VectorXd error_vector(6);
+    error_vector(0) = pose_error_.vel.x();
+    error_vector(1) = pose_error_.vel.y();
+    error_vector(2) = pose_error_.vel.z();
+    error_vector(3) = pose_error_.rot.x();//goal_RPY(0) - end_effector_RPY(0)/ Ts;
+    error_vector(4) = pose_error_.rot.y();//goal_RPY(1) - end_effector_RPY(1)/ Ts;
+    error_vector(5) = pose_error_.rot.z();
 
     /// Orientation
     for (unsigned int i = 3; i < 6; i++) {
@@ -248,7 +285,7 @@ unsigned int CartesianImpedance::convergedConstraints(Eigen::VectorXd error_vect
     /// Position
     if (constraint_type_ == 0) //Sphere
     {
-        if ( error_vector(0)*error_vector(0) + error_vector(1)*error_vector(1) + error_vector(2)*error_vector(2) < sphere_tolerance_*sphere_tolerance_ ) num_converged_dof = num_converged_dof + 3;
+        if ( (error_vector(0)*error_vector(0) + error_vector(1)*error_vector(1) + error_vector(2)*error_vector(2)) < sphere_tolerance_*sphere_tolerance_ ) num_converged_dof = num_converged_dof + 3;
     }
 
     else if (constraint_type_ == 1) //Box
