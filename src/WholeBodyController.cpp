@@ -57,7 +57,6 @@ bool WholeBodyController::initialize(const double Ts)
         n.param<double> ("/whole_body_controller/posture_control/gain/"+iter->first, posture_gain[iter->second], 1.0);
         n.param<double> ("/whole_body_controller/admittance_control/mass/"+iter->first, admittance_mass[iter->second], 10);
         n.param<double> ("/whole_body_controller/admittance_control/damping/"+iter->first, admittance_damping[iter->second], 10);
-        ROS_INFO("Damping joint %s = %f",iter->first.c_str(),admittance_damping[iter->second]);
     }
 
     // Initialize output topics
@@ -207,7 +206,6 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
 
     //cout << "jacobian = " << endl << jacobian_tree << endl;
     //cout << "all_wrenches = " << endl << all_wrenches << endl;
-
     tau_ = jacobian_tree.transpose() * all_wrenches;
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
 
@@ -303,7 +301,7 @@ void WholeBodyController::loadParameterFiles(RobotState &robot_state)
     try
     {
         // ROBOT
-        n.getParam(ns+"/collision_model", groups);
+        n.getParam("/whole_body_controller/collision_model", groups);
         for(XmlRpcIterator itrGroups = groups.begin(); itrGroups != groups.end(); ++itrGroups)
         {
             // COLLISION GROUP
@@ -331,7 +329,7 @@ void WholeBodyController::loadParameterFiles(RobotState &robot_state)
         }
 
         XmlRpc::XmlRpcValue exclusion_groups;
-        n.getParam(ns+"/exlusions_collision_calculation", exclusion_groups);
+        n.getParam("/whole_body_controller/exlusions_collision_calculation", exclusion_groups);
         for(XmlRpcIterator itrExclGr = exclusion_groups.begin(); itrExclGr != exclusion_groups.end(); ++itrExclGr)
         {
             XmlRpc::XmlRpcValue ExclGroup = itrExclGr->second;
