@@ -32,10 +32,6 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     pub_model_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_model_markers/", 10);
     pub_forces_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers/", 10);
     pub_bbx_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
-    pub_rep_force_ = n.advertise<std_msgs::Float64>("/whole_body_controller/rep_force/", 10);
-    pub_d_min_ = n.advertise<std_msgs::Float64>("/whole_body_controller/d_min/", 10);
-    pub_CA_wrench_ = n.advertise<std_msgs::Float64MultiArray>("/whole_body_controller/ca_wrench/", 10);
-    pub_delta_p_ = n.advertise<std_msgs::Float64MultiArray>("/whole_body_controller/delta_p/", 10);
 
     // Initialize OctoMap
     octomap_ = new octomap::OcTree(ca_param_.environment_collision.octomap_resolution);
@@ -55,7 +51,6 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
 void CollisionAvoidance::apply(RobotState &robotstate)
 {
-    //ThreadProfiler::Start("CA");
     robot_state_ = &robotstate;
     calculateTransform();
 
@@ -69,28 +64,6 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     // Calculate the repulsive forces as a result of the self-collision avoidance.
     selfCollision(min_distances_total,repulsive_forces_total);
 
-    // Create topics for plots
-    for (std::vector<Distance>::iterator itr_d_min = min_distances_total.begin(); itr_d_min != min_distances_total.end(); ++itr_d_min)
-    {
-        Distance dist = *itr_d_min;
-        if (dist.frame_id == "grippoint_right")
-        {
-            double distance = dist.bt_distance.m_distance;
-            pub_d_min_.publish(distance);
-            //std::cout << " d_min = " << distance << std::endl;
-        }
-    }
-    for (std::vector<RepulsiveForce>::iterator itr_f_rep = repulsive_forces_total.begin(); itr_f_rep != repulsive_forces_total.end(); ++itr_f_rep)
-    {
-        RepulsiveForce f_rep = *itr_f_rep;
-        if (f_rep.frame_id == "grippoint_right")
-        {
-            double force = f_rep.amplitude;
-            pub_rep_force_.publish(force);
-            //std::cout << " F_rep = " << force << std::endl;
-        }
-    }
-
     // Calculate the repulsive forces as a result of the environment collision avoidance.
     if (octomap_->size() > 0)
     {
@@ -102,68 +75,39 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     /// Output
     visualize(min_distances_total);
     //outputWrenches(wrenches_total);
-    //ThreadProfiler::Stop("CA");
 }
 
 
 void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std::vector<RepulsiveForce> &repulsive_forces)
 {
-    active_groups_.clear();
-    collision_groups_.clear();
-    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
-    {
-        std::vector<RobotState::CollisionBody> &group = *itrGroups;
-
-        // Determine if group has tip frame
-        // ToDo: get rid of hardcoding
-        bool group_check = false;
-        for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
-        {
-            RobotState::CollisionBody &collisionBody = *itrBodies;
-            //std::cout << collisionBody.bt_shape->getName() << std::endl;
-            if ( collisionBody.frame_id == "grippoint_left"
-                 || collisionBody.frame_id == "grippoint_right")
-            {
-                group_check = true;
-            }
-        }
-
-        if ( group_check == true )
-        {
-            active_groups_.push_back(group);
-        }
-        else if ( group_check == false )
-        {
-            // IF NOT FOUND collision_group
-            collision_groups_.push_back(group);
-        }
-    }
-
-    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrActiveGroup = active_groups_.begin(); itrActiveGroup != active_groups_.end(); ++itrActiveGroup)
+    // Loop through all collision groups
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroup = robot_state_->robot_.groups.begin(); itrGroup != robot_state_->robot_.groups.end(); ++itrGroup)
     {
         std::vector<Distance> distanceCollection;
-        std::vector<RobotState::CollisionBody> &activeGroup = *itrActiveGroup;
-        for (std::vector<RobotState::CollisionBody>::iterator itrActiveBody = activeGroup.begin(); itrActiveBody != activeGroup.end(); ++itrActiveBody)
+        std::vector<RobotState::CollisionBody> &Group = *itrGroup;
+        for (std::vector<RobotState::CollisionBody>::iterator itrBody = Group.begin(); itrBody != Group.end(); ++itrBody)
         {
-            RobotState::CollisionBody &currentBody = *itrActiveBody;
+            // Loop through al the bodies of the group
+            RobotState::CollisionBody &currentBody = *itrBody;
 
-            // Distance check with other active groups
-            for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrActiveGroup = active_groups_.begin(); itrActiveGroup != active_groups_.end(); ++itrActiveGroup)
+            // Distance check with other groups if the name of the groups is different than the current group
+            for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrCollisionGroup = robot_state_->robot_.groups.begin(); itrCollisionGroup != robot_state_->robot_.groups.end(); ++itrCollisionGroup)
             {
-                std::vector<RobotState::CollisionBody> &checkGroup = *itrActiveGroup;
-                if (checkGroup.front().name_collision_body != activeGroup.front().name_collision_body)
+                std::vector<RobotState::CollisionBody> &collisionGroup = *itrCollisionGroup;
+                if (collisionGroup.front().name_collision_body != Group.front().name_collision_body)
                 {
-                    for (std::vector<RobotState::CollisionBody>::iterator itrCheckBody = checkGroup.begin(); itrCheckBody != checkGroup.end(); ++itrCheckBody)
+                    // Loop trough al the bodies of the group
+                    for (std::vector<RobotState::CollisionBody>::iterator itrCollisionBody = collisionGroup.begin(); itrCollisionBody != collisionGroup.end(); ++itrCollisionBody)
                     {
-                        RobotState::CollisionBody &checkBody = *itrCheckBody;
+                        RobotState::CollisionBody &collisionBody = *itrCollisionBody;
 
                         // Check for exclusions
                         bool skip_check = false;
                         for (std::vector<RobotState::Exclusion> ::iterator itrExcl = robot_state_->exclusion_checks.checks.begin(); itrExcl != robot_state_->exclusion_checks.checks.end(); ++itrExcl)
                         {
                             RobotState::Exclusion &excluded_bodies = *itrExcl;
-                            if ( currentBody.name_collision_body == excluded_bodies.name_body_A
-                                 && checkBody.name_collision_body == excluded_bodies.name_body_B )
+                            if ( (currentBody.name_collision_body == excluded_bodies.name_body_A && collisionBody.name_collision_body == excluded_bodies.name_body_B) ||
+                                 (collisionBody.name_collision_body == excluded_bodies.name_body_A && currentBody.name_collision_body == excluded_bodies.name_body_B) )
                             {
                                 skip_check = true;
                             }
@@ -173,42 +117,9 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                         {
                             Distance distance;
                             distance.frame_id = currentBody.frame_id;
-                            distanceCalculation(*currentBody.bt_shape,*checkBody.bt_shape,currentBody.bt_transform,checkBody.bt_transform,distance.bt_distance);
+                            distanceCalculation(*currentBody.bt_shape,*collisionBody.bt_shape,currentBody.bt_transform,collisionBody.bt_transform,distance.bt_distance);
                             distanceCollection.push_back(distance);
                         }
-                    }
-                }
-            }
-
-            // Distance check with collision groups
-            for (std::vector<std::vector<RobotState::CollisionBody> >::iterator itrCollisionGroup = collision_groups_.begin(); itrCollisionGroup != collision_groups_.end(); ++itrCollisionGroup)
-            {
-                std::vector<RobotState::CollisionBody> &collisionGroup = *itrCollisionGroup;
-                //std::cout << "size collisionGroup = " << collisionGroup.size() << std::endl;
-                for (std::vector<RobotState::CollisionBody>::iterator itrCollisionBodies = collisionGroup.begin(); itrCollisionBodies != collisionGroup.end(); ++itrCollisionBodies)
-                {
-                    RobotState::CollisionBody &collisionBody = *itrCollisionBodies;
-
-                    // Check for exclusions
-                    bool skip_check = false;
-                    for (std::vector<RobotState::Exclusion> ::iterator itrExcl = robot_state_->exclusion_checks.checks.begin(); itrExcl != robot_state_->exclusion_checks.checks.end(); ++itrExcl)
-                    {
-                        RobotState::Exclusion &excluded_bodies = *itrExcl;
-
-                        if ( currentBody.name_collision_body == excluded_bodies.name_body_A
-                             && collisionBody.name_collision_body == excluded_bodies.name_body_B )
-                        {
-                            skip_check = true;
-                        }
-                    }
-
-                    if (skip_check == false)
-                    {
-                        Distance distance;
-                        distance.frame_id = currentBody.frame_id;
-                        distanceCalculation(*currentBody.bt_shape,*collisionBody.bt_shape,currentBody.bt_transform,collisionBody.bt_transform,distance.bt_distance);
-                        distanceCollection.push_back(distance);
-
                     }
                 }
             }
@@ -321,7 +232,6 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
                 }
             }
 
-
             std::vector<Distance> distanceCollection;
             for (std::vector<Voxel>::iterator itrVox = in_range_voxels.begin(); itrVox != in_range_voxels.end(); ++itrVox)
             {
@@ -334,6 +244,7 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
 
                 distance.frame_id = collisionBody.frame_id;
                 distanceCalculation(*collisionBody.bt_shape,*envBody.bt_shape,collisionBody.bt_transform,envBody.bt_transform,distance.bt_distance);
+
                 distanceCollection.push_back(distance);
             }
             // Find minimum distance
@@ -386,17 +297,6 @@ void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsiv
         wrench_calc[3] = fz*dpy - fy*dpz;
         wrench_calc[4] = fx*dpz - fz*dpx;
         wrench_calc[5] = fy*dpx - fx*dpy;
-
-        if (RF.frame_id == "grippoint_left")
-        {
-            // Publish the wrench
-            std_msgs::Float64MultiArray msgP;
-            msgP.data.push_back(dpx);
-            msgP.data.push_back(dpy);
-            msgP.data.push_back(dpz);
-
-            pub_delta_p_.publish(msgP);
-        }
 
         W.frame_id = RF.frame_id;
         W.wrench = wrench_calc;
@@ -722,7 +622,11 @@ void CollisionAvoidance::pickMinimumDistance(std::vector<Distance> &calculatedDi
     }
 
     // Store all minimum distances;
-    minimumDistances.push_back(dmin);
+    if ( dmin.bt_distance.m_distance < 100)
+    {
+        minimumDistances.push_back(dmin);
+    }
+
 }
 
 
@@ -752,17 +656,6 @@ void CollisionAvoidance::outputWrenches(std::vector<Wrench> &wrenches)
     {
         Wrench W = *itrW;
         robot_state_->tree_.addCartesianWrench(W.frame_id,W.wrench);
-
-        if (W.frame_id == "grippoint_right")
-        {
-            // Publish the wrench
-            std_msgs::Float64MultiArray msgW;
-            for (uint i = 0; i < W.wrench.rows(); i++)
-            {
-                msgW.data.push_back(W.wrench(i));
-            }
-            pub_CA_wrench_.publish(msgW);
-        }
     }
 }
 
@@ -791,11 +684,8 @@ void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const
     pB.y = d_min.bt_distance.m_pointInWorld.getY() + d_min.bt_distance.m_distance * d_min.bt_distance.m_normalOnBInWorld.getY();
     pB.z = d_min.bt_distance.m_pointInWorld.getZ() + d_min.bt_distance.m_distance * d_min.bt_distance.m_normalOnBInWorld.getZ();
 
-    //if(pA.x > 0.001 && pA.y > 0.001 && pB.x > 0.001 && pB.y > 0.001)
-    //{
     RFviz.points.push_back(pA);
     RFviz.points.push_back(pB);
-    //}
 
 
     if (d_min.bt_distance.m_distance <= ca_param_.self_collision.d_threshold )
@@ -812,6 +702,8 @@ void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const
         RFviz.color.g = 1;
         RFviz.color.b = 0;
     }
+
+    RFviz.lifetime = ros::Duration(1.0);
 
     marker_array.markers.push_back(RFviz);
 

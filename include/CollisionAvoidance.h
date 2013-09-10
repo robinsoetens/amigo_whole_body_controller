@@ -101,13 +101,6 @@ protected:
     ros::Publisher pub_model_marker_;
     ros::Publisher pub_forces_marker_;
     ros::Publisher pub_bbx_marker_;
-    ros::Publisher pub_rep_force_;
-    ros::Publisher pub_d_min_;
-    ros::Publisher pub_CA_wrench_;
-    ros::Publisher pub_delta_p_;
-
-    std::vector< std::vector<RobotState::CollisionBody> > active_groups_;
-    std::vector< std::vector<RobotState::CollisionBody> > collision_groups_;
 
     struct Voxel {
         KDL::Frame center_point;
