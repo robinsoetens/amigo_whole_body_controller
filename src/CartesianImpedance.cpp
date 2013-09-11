@@ -32,23 +32,31 @@ CartesianImpedance::CartesianImpedance(const std::string& tip_frame) :
 
     pose_error_.Zero();
     ref_pose_error_.Zero();
+    ref_tip_offset.Zero();
+
     ROS_INFO("Initialized Cartesian Impedance");
 }
 
 bool CartesianImpedance::initialize(RobotState &robotstate) {
 
     /// Find the pose of the goal frame
+    robotstate.collectFKSolutions();
     std::map<std::string, KDL::Frame>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
     Frame_map_tip_ = (*itrFK).second;
+
+    if(pre_grasp){
+        Frame_map_tip_ =  Frame_map_tip_* Frame_tip_offset;
+    }
 
     /// Init the reference generators
     ref_generators.resize(6);
     ref_generators[0].setRefGen(Frame_map_tip_.p.x());
-    ref_generators[1].setRefGen(Frame_map_tip_ .p.y());
-    ref_generators[2].setRefGen(Frame_map_tip_ .p.z());
+    ref_generators[1].setRefGen(Frame_map_tip_.p.y());
+    ref_generators[2].setRefGen(Frame_map_tip_.p.z());
+
 
     double roll, pitch, yaw;
-    Frame_map_tip_ .M.GetRPY(roll, pitch, yaw);
+    Frame_map_tip_.M.GetRPY(roll, pitch, yaw);
     ref_generators[3].setRefGen(roll);
     ref_generators[4].setRefGen(pitch);
     ref_generators[5].setRefGen(yaw);
@@ -63,14 +71,29 @@ void CartesianImpedance::setGoal(const geometry_msgs::PoseStamped& goal_pose ) {
     /// Root frame
     root_frame_ = goal_pose.header.frame_id;
 
-    /// Goal Pose
-    //////goal_pose_ = goal_pose;
     stampedPoseToKDLframe(goal_pose, Frame_root_goal_);
+    pre_grasp = false;
 
     /// Maximum magnitude of the repulsive force
     // ToDo: get rid of hardcoding
     f_max_ = 75;
 }
+
+void CartesianImpedance::setGoalOffset(const geometry_msgs::Point& target_point_offset ) {
+
+    ROS_INFO("PRE-GRAPSP: Received target point offset (x,y,z): %f, %f, %f", target_point_offset.x, target_point_offset.y, target_point_offset.z);
+
+    Frame_tip_offset.p.x(-target_point_offset.x);
+    Frame_tip_offset.p.y(-target_point_offset.y);
+    Frame_tip_offset.p.z(-target_point_offset.z);
+
+    ref_tip_offset.x(target_point_offset.x);
+    ref_tip_offset.y(target_point_offset.y);
+    ref_tip_offset.z(target_point_offset.z);
+
+    pre_grasp = true;
+}
+
 
 void CartesianImpedance::setImpedance(const geometry_msgs::Wrench &stiffness) {
 
@@ -140,7 +163,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
 
     Eigen::VectorXd F_task_root(6);
     Eigen::VectorXd F_task_map(6);
-    KDL::Wrench F_task_wrench_base;
+    KDL::Wrench F_task_wrench_root;
     KDL::Wrench F_task_wrench_map;
     Eigen::VectorXd error_vector(6);
 
@@ -150,6 +173,14 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     Frame_map_tip_  = (*itrFK).second;
     //ROS_INFO("FK pose tip frame in map  = (%f,%f,%f)", Frame_map_tip_.p.x(), Frame_map_tip_.p.y(), Frame_map_tip_.p.z());
 
+    if(pre_grasp){
+
+        ROS_INFO_ONCE("Tip at (x,y,z): %f, %f, %f", Frame_map_tip_.p.x(), Frame_map_tip_.p.y(), Frame_map_tip_.p.z());
+        Frame_map_tip_ =  Frame_map_tip_* Frame_tip_offset;
+        ROS_INFO_ONCE("Offset at (x,y,z): %f, %f, %f", Frame_map_tip_.p.x(), Frame_map_tip_.p.y(), Frame_map_tip_.p.z());
+
+    }
+
     /// Get the pose of the root frame (of the goal) in map
     std::map<std::string, KDL::Frame>::iterator itrRF = robotstate.fk_poses_.find(root_frame_);
     KDL::Frame Frame_map_root = itrRF->second;
@@ -157,12 +188,12 @@ void CartesianImpedance::apply(RobotState &robotstate) {
 
     /// Convert the goal pose to map (is required because pose of robot in map (amcl_pose) may have been updated)
     KDL::Frame Frame_map_goal = Frame_map_root * Frame_root_goal_;
-    //ROS_INFO("Frame_map_goal (x,y,z) = (%f,%f,%f)",Frame_map_goal.p.x(),Frame_map_goal.p.y(),Frame_map_goal.p.z());
+    //ROS_INFO("FK pose of goal in map (x,y,z) = (%f,%f,%f)",Frame_map_goal.p.x(),Frame_map_goal.p.y(),Frame_map_goal.p.z());
 
     /// Generate a reference for the cartesian impedance
     KDL::Frame Frame_map_ref;
     refGeneration(Frame_map_goal, Frame_map_ref);
-    //ROS_INFO("Frame_map_ref (x,y,z) = (%f,%f,%f)",Frame_map_ref.p.x(),Frame_map_ref.p.y(),Frame_map_ref.p.z());
+    //ROS_INFO("FK pose of ref in map (x,y,z) = (%f,%f,%f)",Frame_map_ref.p.x(),Frame_map_ref.p.y(),Frame_map_ref.p.z());
 
     /// Compute pose error
     pose_error_ = KDL::diff(Frame_map_tip_ , Frame_map_goal);
@@ -192,18 +223,29 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     //std::cout<<"Before Trans: "<<F_task_map(0)<<" "<<F_task_map(1)<<" "<<F_task_map(2)<<" "<<F_task_map(3)<<" "<<F_task_map(4)<<" "<<F_task_map(5)<<"\n";
 
     /// Transform Force from map to root. Maybe efficienter to check if amcl change is big enough to afford to recalculate new Inverse.
-    F_task_wrench_base = Frame_map_root.Inverse() * F_task_wrench_map;
+    F_task_wrench_root = Frame_map_root.Inverse() * F_task_wrench_map;
+
+    /// Now check if we have a pre_grasp goal
+
+    if(pre_grasp)
+    {
+        std::cout<<"Offset forces: "<<F_task_wrench_root.force.x()<<" "<<F_task_wrench_root.force.y()<<" "<<F_task_wrench_root.force.z()<<" "<<F_task_wrench_root.torque.x()<<" "<<F_task_wrench_root.torque.y()<<" "<<F_task_wrench_root.torque.z()<<std::endl;
+        /// Change the reference point from offset, to tip. No need to change Frame.
+        F_task_wrench_root = F_task_wrench_root.RefPoint(-ref_tip_offset);
+    }
+
 
     /// Transform to Eigen::VectorXd
-    F_task_root(0) = F_task_wrench_base.force.x();
-    F_task_root(1) = F_task_wrench_base.force.y();
-    F_task_root(2) = F_task_wrench_base.force.z();
-    F_task_root(3) = F_task_wrench_base.torque.x();
-    F_task_root(4) = F_task_wrench_base.torque.y();
-    F_task_root(5) = F_task_wrench_base.torque.z();
+    F_task_root(0) = F_task_wrench_root.force.x();
+    F_task_root(1) = F_task_wrench_root.force.y();
+    F_task_root(2) = F_task_wrench_root.force.z();
+    F_task_root(3) = F_task_wrench_root.torque.x();
+    F_task_root(4) = F_task_wrench_root.torque.y();
+    F_task_root(5) = F_task_wrench_root.torque.z();
 
-    //std::cout<<"After Trans: "<<F_task_root(0)<<" "<<F_task_root(1)<<" "<<F_task_root(2)<<" "<<F_task_root(3)<<" "<<F_task_root(4)<<" "<<F_task_root(5)<<"\n\n";
+    //std::cout<<"EE forces in root: "<<F_task_root(0)<<" "<<F_task_root(1)<<" "<<F_task_root(2)<<" "<<F_task_root(3)<<" "<<F_task_root(4)<<" "<<F_task_root(5)<<"\n\n";
 
+    /*
     /// Limit the maximum magnitude of the attractive force so it will always be smaller than the maximum magnitude of the repulisive force generated by the collision avoidance
     for (uint i = 0; i < 3; i++)
     {
@@ -216,7 +258,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
             F_task_root(i) = -f_max_;
         }
     }
-
+    */
     //std::cout << "K_ = " << K_ << std::endl;
     //std::cout << "F_task = " << F_task << std::endl;
     //ROS_INFO("Tip frame = %s",tip_frame_.c_str());
@@ -310,23 +352,23 @@ unsigned int CartesianImpedance::convergedConstraints(){
 
 void CartesianImpedance::refGeneration(KDL::Frame& goal, KDL::Frame& ref)
 {
-    //ToDo assign appropriate velocities and accelerations, now v_max and a_max = 1
+    //ToDo assign appropriate velocities and accelerations, now v_max 0.5 and a_max = 0.8
     std::vector<amigo_msgs::ref_point> ref_points (6);
     double roll, pitch, yaw;
 
-    ref_points[0] = ref_generators[0].generateReference(goal.p.x(), 1, 1, 0.02, false, 0);
+    ref_points[0] = ref_generators[0].generateReference(goal.p.x(), 0.5, 0.8, 0.02, false, 0);
     ref.p.x(ref_points[0].pos);
 
-    ref_points[1] = ref_generators[1].generateReference(goal.p.y(), 1, 1, 0.02, false, 0);
+    ref_points[1] = ref_generators[1].generateReference(goal.p.y(), 0.5, 0.8, 0.02, false, 0);
     ref.p.y(ref_points[1].pos);
 
-    ref_points[2] = ref_generators[2].generateReference(goal.p.z(), 1, 1, 0.02, false, 0);
+    ref_points[2] = ref_generators[2].generateReference(goal.p.z(), 0.5, 0.8, 0.02, false, 0);
     ref.p.z(ref_points[2].pos);
 
     goal.M.GetRPY(roll, pitch, yaw);
-    ref_points[3] = ref_generators[3].generateReference(roll, 1, 1, 0.02, false, 0);
-    ref_points[4] = ref_generators[4].generateReference(pitch, 1, 1, 0.02, false, 0);
-    ref_points[5] = ref_generators[5].generateReference(yaw, 1, 1, 0.02, false, 0);
+    ref_points[3] = ref_generators[3].generateReference(roll, 0.5, 0.8, 0.02, false, 0);
+    ref_points[4] = ref_generators[4].generateReference(pitch, 0.5, 0.8, 0.02, false, 0);
+    ref_points[5] = ref_generators[5].generateReference(yaw, 0.5, 0.8, 0.02, false, 0);
 
     ref.M = KDL::Rotation::RPY(ref_points[3].pos, ref_points[4].pos, ref_points[5].pos);
 }

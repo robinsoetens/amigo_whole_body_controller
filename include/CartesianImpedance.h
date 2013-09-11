@@ -16,6 +16,7 @@
 // Messages
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Wrench.h>
+#include <geometry_msgs/Point.h>
 #include <arm_navigation_msgs/Shape.h>
 
 // Eigen
@@ -58,7 +59,9 @@ public:
 
     void apply(RobotState& robotstate);
 
-    void setGoal(const geometry_msgs::PoseStamped &goal_pose);
+    void setGoal(const geometry_msgs::PoseStamped &goal_pose );
+
+    void setGoalOffset(const geometry_msgs::Point &target_point_offset);
 
     void setImpedance(const geometry_msgs::Wrench &stiffness);
 
@@ -151,6 +154,24 @@ protected:
       *
       */
     void refGeneration(KDL::Frame& goal, KDL::Frame& ref);
+
+    /**
+      * True, if using pre-grasp
+      *
+      */
+    bool pre_grasp;
+
+    /**
+      * Frame for specifiying offset from tip, for pre-grasp
+      *
+      */
+    KDL::Frame Frame_tip_offset;
+
+    /**
+      * Reference point for offset of tip, for pre-grasp
+      *
+      */
+    KDL::Vector ref_tip_offset;
 
 };
 
