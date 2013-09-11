@@ -17,7 +17,11 @@
 	
 	<node pkg="amigo_whole_body_controller" type="whole_body_controller" name="whole_body_controller" respawn="false" output="screen"/> <!-- launch-prefix="${arg launch_prefix}"/> -->
 
-
+	<!-- Node that filters the arms out of the depth image -->
+    <node pkg="depth_map_self_filter" type="self_filter" name="depth_map_self_filter">
+        <!-- <remap from="/camera_info" to="/amigo/top_kinect/rgb/camera_info" />
+        <remap from="/depth_image" to="/amigo/top_kinect/depth_registered/image" />-->
+    </node>
 </launch>
 
 
