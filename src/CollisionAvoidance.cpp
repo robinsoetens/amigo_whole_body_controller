@@ -16,6 +16,9 @@ CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters,
 
 CollisionAvoidance::~CollisionAvoidance()
 {
+    delete octomap_;
+    delete depthSolver;
+    delete simplexSolver;
 }
 
 bool CollisionAvoidance::initialize(RobotState &robotstate)
@@ -44,6 +47,10 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
     initializeCollisionModel(robotstate);
 
+    // Initialize solver for distance calculation
+    depthSolver = new btMinkowskiPenetrationDepthSolver;
+    simplexSolver = new btVoronoiSimplexSolver;
+
     ROS_INFO_STREAM("Initialized Obstacle Avoidance");
 
     return true;
@@ -58,6 +65,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     std::vector<Distance> min_distances_total;
     std::vector<RepulsiveForce> repulsive_forces_total;
     std::vector<Wrench> wrenches_total;
+
     repulsive_forces_total.clear();
     wrenches_total.clear();
 
@@ -65,16 +73,17 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     selfCollision(min_distances_total,repulsive_forces_total);
 
     // Calculate the repulsive forces as a result of the environment collision avoidance.
-    if (octomap_->size() > 0)
-    {
-        environmentCollision(min_distances_total,repulsive_forces_total);
+    if (octomap_){
+        if (octomap_->size() > 0)
+        {
+            environmentCollision(min_distances_total,repulsive_forces_total);
+        }
     }
-
     calculateWrenches(repulsive_forces_total, wrenches_total);
 
     /// Output
     visualize(min_distances_total);
-    //outputWrenches(wrenches_total);
+    outputWrenches(wrenches_total);
 }
 
 
@@ -145,7 +154,6 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
     {
         std::vector<RobotState::CollisionBody> &group = *itrGroups;
-
         for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
         {
             RobotState::CollisionBody &collisionBody = *itrBodies;
@@ -246,6 +254,7 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
                 distanceCalculation(*collisionBody.bt_shape,*envBody.bt_shape,collisionBody.bt_transform,envBody.bt_transform,distance.bt_distance);
 
                 distanceCollection.push_back(distance);
+                delete envBody.bt_shape;
             }
             // Find minimum distance
             pickMinimumDistance(distanceCollection,min_distances);
@@ -416,9 +425,6 @@ void CollisionAvoidance::setTransform(KDL::Frame &fkPose, KDL::Frame &fixPose, b
 
 void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA, btConvexShape& shapeB, btTransform& transformA, btTransform& transformB, btPointCollector &distance_out)
 {
-    // Set solvers
-    btConvexPenetrationDepthSolver*	depthSolver = new btMinkowskiPenetrationDepthSolver;
-    btSimplexSolverInterface* simplexSolver = new btVoronoiSimplexSolver;
     btGjkPairDetector convexConvex(&shapeA, &shapeB, simplexSolver, depthSolver);
 
     // Set input transforms
@@ -747,7 +753,7 @@ void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 m
 
 
 void CollisionAvoidance::setOctoMap(octomap::OcTree* octree)
-{
+{  
     octomap_ = octree;
 }
 

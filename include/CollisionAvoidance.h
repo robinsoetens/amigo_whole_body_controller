@@ -127,6 +127,9 @@ protected:
 
     octomap::OcTree* octomap_;
 
+    btConvexPenetrationDepthSolver*	depthSolver;
+    btSimplexSolverInterface* simplexSolver;
+
     // Minimum and maximum point of the BBX
     std::vector<octomath::Vector3> min_;
     std::vector<octomath::Vector3> max_;
