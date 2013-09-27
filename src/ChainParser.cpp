@@ -27,9 +27,9 @@ bool ChainParser::parse(std::vector<Chain*>& chains,
     /* * * * * * * * PARSE URDF * * * * * * * * */
 
     std::string urdf_xml, full_urdf_xml;
-    n.param("urdf_xml", urdf_xml,std::string("robot_description"));
+    n.param("urdf_xml", urdf_xml,std::string("/amigo/robot_description"));
     n.searchParam(urdf_xml, full_urdf_xml);
-    ROS_DEBUG("Reading xml file from parameter server");
+    ROS_INFO("Reading xml file from parameter server");
     std::string result_string;
     if (!n.getParam(full_urdf_xml, result_string)) {
         ROS_FATAL("Could not load the xml from parameter server: %s", urdf_xml.c_str());
