@@ -87,7 +87,7 @@ public:
 
     void apply(RobotState& robotstate);
 
-    void setOctoMap(octomap::OcTree *octree);
+    void setOctoMap(octomap::OcTreeStamped* octree);
 
 protected:
 
@@ -125,7 +125,7 @@ protected:
 
     KDL::Frame no_fix_;
 
-    octomap::OcTree* octomap_;
+    octomap::OcTreeStamped* octomap_;
 
     btConvexPenetrationDepthSolver*	depthSolver;
     btSimplexSolverInterface* simplexSolver;

@@ -37,7 +37,7 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     pub_bbx_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
 
     // Initialize OctoMap
-    octomap_ = new octomap::OcTree(ca_param_.environment_collision.octomap_resolution);
+    octomap_ = new octomap::OcTreeStamped(ca_param_.environment_collision.octomap_resolution);
 
     // Initialize a frame that indicates no fix is required from a FK pose to the collision shape
     no_fix_.p.x(0);
@@ -78,7 +78,12 @@ void CollisionAvoidance::apply(RobotState &robotstate)
         {
             environmentCollision(min_distances_total,repulsive_forces_total);
         }
+        else{
+            //std::cout<<"NO OCTO"<<std::endl;
+        }
     }
+
+
     calculateWrenches(repulsive_forces_total, wrenches_total);
 
     /// Output
@@ -222,7 +227,7 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
 
             // Find and store all occupied voxels
             std::vector<Voxel> in_range_voxels;
-            for(octomap::OcTree::leaf_bbx_iterator it = octomap_->begin_leafs_bbx(min,max), end=octomap_->end_leafs_bbx(); it!= end; ++it)
+            for(octomap::OcTreeStamped::leaf_bbx_iterator it = octomap_->begin_leafs_bbx(min,max), end=octomap_->end_leafs_bbx(); it!= end; ++it)
             {
                 Voxel vox;
                 if (octomap_->isNodeOccupied(*it))
@@ -752,7 +757,7 @@ void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 m
 }
 
 
-void CollisionAvoidance::setOctoMap(octomap::OcTree* octree)
+void CollisionAvoidance::setOctoMap(octomap::OcTreeStamped* octree)
 {  
     octomap_ = octree;
 }

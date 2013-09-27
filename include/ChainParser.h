@@ -8,6 +8,7 @@
 #include "ConstructChain.h"
 
 #include "TreeDescription.h"
+#include <urdf/model.h>
 
 // KDL
 #include <kdl/chainjnttojacsolver.hpp>

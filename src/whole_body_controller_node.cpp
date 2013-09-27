@@ -32,13 +32,34 @@ struct JointRefPublisher {
 
 map<string, JointRefPublisher*> JOINT_NAME_TO_PUB;
 
-void octoMapCallback(const octomap_msgs::OctomapBinary::ConstPtr& msg)
+void octoMapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
 {
     // Only OctomapBinary is provided as a message in Fuerte
     // In Groovy a general Octomap message will be provided, so for now we'll have to do with the Binary
-    octomap::OcTree* octree;
+    /*octomap::OcTree* octree;
     octree = octomap_msgs::binaryMsgDataToMap(msg->data);
     collision_avoidance->setOctoMap(octree);
+    */
+
+
+    octomap::AbstractOcTree* tree = octomap_msgs::msgToMap(*msg);
+    if(tree){
+        octomap::OcTreeStamped* octree = dynamic_cast<octomap::OcTreeStamped*>(tree);
+        if(!octree){
+            ROS_ERROR("No Octomap created");
+        }
+        else{
+            collision_avoidance->setOctoMap(octree);
+        }
+    }
+    else{
+        ROS_ERROR("Octomap conversion error");
+        exit(1);
+    }
+
+
+
+
 }
 
 void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg) {
@@ -67,14 +88,12 @@ void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std:
     for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
         it_pub->second->msg_ = sensor_msgs::JointState();
     }
-
     for(unsigned int i = 0; i < joint_refs.size(); ++i) {
         map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.find(joint_names[i]);
         it_pub->second->msg_.name.push_back(joint_names[i]);
         it_pub->second->msg_.position.push_back(joint_refs[i]);
         //cout << joint_names[i] << ": " << joint_refs[i] << endl;
     }
-
     for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
         it_pub->second->pub_.publish(it_pub->second->msg_);
     }
@@ -182,15 +201,15 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "whole_body_controller");
     ros::NodeHandle nh_private("~");
 
-    ros::Subscriber sub_octomap   = nh_private.subscribe<octomap_msgs::OctomapBinary>("/octomap_binary", 10, &octoMapCallback);
-    ros::Subscriber sub_left_arm  = nh_private.subscribe<sensor_msgs::JointState>("/arm_left_controller/measurements", 10, &jointMeasurementCallback);
-    ros::Subscriber sub_right_arm = nh_private.subscribe<sensor_msgs::JointState>("/arm_right_controller/measurements", 10, &jointMeasurementCallback);
-    ros::Subscriber sub_torso     = nh_private.subscribe<sensor_msgs::JointState>("/torso_controller/measurements", 10, &jointMeasurementCallback);
+    ros::Subscriber sub_octomap   = nh_private.subscribe<octomap_msgs::Octomap>("/octomap_binary", 10, &octoMapCallback);
+    ros::Subscriber sub_left_arm  = nh_private.subscribe<sensor_msgs::JointState>("/amigo/left_arm/measurements", 10, &jointMeasurementCallback);
+    ros::Subscriber sub_right_arm = nh_private.subscribe<sensor_msgs::JointState>("/amigo/right_arm/measurements", 10, &jointMeasurementCallback);
+    ros::Subscriber sub_torso     = nh_private.subscribe<sensor_msgs::JointState>("/amigo/torso/measurements", 10, &jointMeasurementCallback);
     ros::Subscriber sub_amcl_pose = nh_private.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 10, &amclPoseCallback);
 
-    JointRefPublisher* pub_left_arm = new JointRefPublisher("/arm_left_controller/references");
-    JointRefPublisher* pub_right_arm = new JointRefPublisher("/arm_right_controller/references");
-    JointRefPublisher* pub_torso = new JointRefPublisher("/spindle_controller/references"); //ToDo: Spindle Publisher and Subscriber names don't make sense!
+    JointRefPublisher* pub_left_arm = new JointRefPublisher("/amigo/left_arm/references");
+    JointRefPublisher* pub_right_arm = new JointRefPublisher("/amigo/right_arm/references");
+    JointRefPublisher* pub_torso = new JointRefPublisher("/amigo/torso/references"); //ToDo: Spindle Publisher and Subscriber names don't make sense!
 
     JOINT_NAME_TO_PUB["wrist_yaw_joint_left"] = pub_left_arm;
     JOINT_NAME_TO_PUB["wrist_pitch_joint_left"] = pub_left_arm;
@@ -199,7 +218,7 @@ int main(int argc, char **argv) {
     JOINT_NAME_TO_PUB["shoulder_roll_joint_left"] = pub_left_arm;
     JOINT_NAME_TO_PUB["shoulder_pitch_joint_left"] = pub_left_arm;
     JOINT_NAME_TO_PUB["shoulder_yaw_joint_left"] = pub_left_arm;
-    JOINT_NAME_TO_PUB["spindle_joint"] = pub_torso;
+    JOINT_NAME_TO_PUB["torso_joint"] = pub_torso;
     JOINT_NAME_TO_PUB["wrist_yaw_joint_right"] = pub_right_arm;
     JOINT_NAME_TO_PUB["wrist_pitch_joint_right"] = pub_right_arm;
     JOINT_NAME_TO_PUB["elbow_roll_joint_right"] = pub_right_arm;
@@ -218,10 +237,10 @@ int main(int argc, char **argv) {
     /// Use tf to set the first amcl pose
     tf::TransformListener listener;
     ros::Duration(0.5).sleep();
-    listener.waitForTransform("/map","/base_link",ros::Time(0),ros::Duration(1.0)); // Is the latest available transform
+    listener.waitForTransform("/map","/amigo/base_link",ros::Time(0),ros::Duration(1.0)); // Is the latest available transform
 
     geometry_msgs::PoseStamped base_link_pose, map_pose;
-    base_link_pose.header.frame_id = "/base_link";
+    base_link_pose.header.frame_id = "/amigo/base_link";
     base_link_pose.pose.position.x = 0.0;
     base_link_pose.pose.position.y = 0.0;
     base_link_pose.pose.position.z = 0.0;
@@ -309,9 +328,7 @@ int main(int argc, char **argv) {
         }
 
 
-
         wbc->update(q_ref, qdot_ref);
-
         ///// Teststuff /////
         /*
         std::string root_frame;
