@@ -9,6 +9,7 @@
 
 // ROS
 #include <ros/ros.h>
+#include <urdf/model.h>
 
 // KDL
 #include <kdl_parser/kdl_parser.hpp>

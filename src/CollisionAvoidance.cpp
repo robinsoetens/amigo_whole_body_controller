@@ -759,6 +759,7 @@ void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 m
 
 void CollisionAvoidance::setOctoMap(octomap::OcTreeStamped* octree)
 {  
+    delete octomap_;
     octomap_ = octree;
 }
 
