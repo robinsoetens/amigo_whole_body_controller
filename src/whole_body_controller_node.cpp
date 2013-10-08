@@ -32,16 +32,10 @@ struct JointRefPublisher {
 
 map<string, JointRefPublisher*> JOINT_NAME_TO_PUB;
 
+#if ROS_VERSION_MINIMUM(1,9,0)
+// Groovy
 void octoMapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
 {
-    // Only OctomapBinary is provided as a message in Fuerte
-    // In Groovy a general Octomap message will be provided, so for now we'll have to do with the Binary
-    /*octomap::OcTree* octree;
-    octree = octomap_msgs::binaryMsgDataToMap(msg->data);
-    collision_avoidance->setOctoMap(octree);
-    */
-
-
     octomap::AbstractOcTree* tree = octomap_msgs::msgToMap(*msg);
     if(tree){
         octomap::OcTreeStamped* octree = dynamic_cast<octomap::OcTreeStamped*>(tree);
@@ -56,11 +50,30 @@ void octoMapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
         ROS_ERROR("Octomap conversion error");
         exit(1);
     }
-
-
-
+}
+#elif ROS_VERSION_MINIMUM(1,8,0)
+// Fuerte
+void octoMapCallback(const octomap_msgs::OctomapBinary::ConstPtr& msg)
+{
+    octomap::OcTree* octree;
+    octree = octomap_msgs::binaryMsgDataToMap(msg->data);
+    if (octree) {
+        octomap::OcTreeStamped* octreestamped;
+        octreestamped = dynamic_cast<octomap::OcTreeStamped*>(octree);
+        if (!octreestamped){
+            ROS_ERROR("No Octomap created");
+        }
+        else{
+            collision_avoidance->setOctoMap(octreestamped);
+        }
+    }
+    else{
+        ROS_ERROR("Octomap conversion error");
+        exit(1);
+    }
 
 }
+#endif
 
 void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg) {
     for(unsigned int i = 0; i < msg->name.size(); ++i) {
@@ -200,8 +213,13 @@ int main(int argc, char **argv) {
     // Initialize node
     ros::init(argc, argv, "whole_body_controller");
     ros::NodeHandle nh_private("~");
-
+#if ROS_VERSION_MINIMUM(1,9,0)
+    // Groovy
     ros::Subscriber sub_octomap   = nh_private.subscribe<octomap_msgs::Octomap>("/octomap_binary", 10, &octoMapCallback);
+#elif ROS_VERSION_MINIMUM(1,8,0)
+    // Fuerte
+    ros::Subscriber sub_octomap   = nh_private.subscribe<octomap_msgs::OctomapBinary>("/octomap_binary", 10, &octoMapCallback);
+#endif
     ros::Subscriber sub_left_arm  = nh_private.subscribe<sensor_msgs::JointState>("/amigo/left_arm/measurements", 10, &jointMeasurementCallback);
     ros::Subscriber sub_right_arm = nh_private.subscribe<sensor_msgs::JointState>("/amigo/right_arm/measurements", 10, &jointMeasurementCallback);
     ros::Subscriber sub_torso     = nh_private.subscribe<sensor_msgs::JointState>("/amigo/torso/measurements", 10, &jointMeasurementCallback);
