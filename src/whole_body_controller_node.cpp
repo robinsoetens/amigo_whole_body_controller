@@ -81,6 +81,13 @@ void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg) {
     }
 }
 
+void jointReferenceCallback(const sensor_msgs::JointState::ConstPtr& msg) {
+    for(unsigned int i = 0; i < msg->name.size(); ++i) {
+        //wbc->setMeasuredJointPosition(msg->name[i], msg->position[i]);
+        wbc->setDesiredJointPosition(msg->name[i], msg->position[i]);
+    }
+}
+
 void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
 {
     KDL::Frame frame;
@@ -224,6 +231,11 @@ int main(int argc, char **argv) {
     ros::Subscriber sub_right_arm = nh_private.subscribe<sensor_msgs::JointState>("/amigo/right_arm/measurements", 10, &jointMeasurementCallback);
     ros::Subscriber sub_torso     = nh_private.subscribe<sensor_msgs::JointState>("/amigo/torso/measurements", 10, &jointMeasurementCallback);
     ros::Subscriber sub_amcl_pose = nh_private.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 10, &amclPoseCallback);
+
+    /// Subscribers for references (required for JointTrajectoryAction)
+    ros::Subscriber sub_left_arm_ref  = nh_private.subscribe<sensor_msgs::JointState>("/amigo/left_arm/references", 1, &jointReferenceCallback);
+    ros::Subscriber sub_right_arm_ref = nh_private.subscribe<sensor_msgs::JointState>("/amigo/right_arm/references", 1, &jointReferenceCallback);
+    ros::Subscriber sub_torso_ref     = nh_private.subscribe<sensor_msgs::JointState>("/amigo/torso/references", 1, &jointReferenceCallback);
 
     JointRefPublisher* pub_left_arm = new JointRefPublisher("/amigo/left_arm/references");
     JointRefPublisher* pub_right_arm = new JointRefPublisher("/amigo/right_arm/references");

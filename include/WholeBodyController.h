@@ -53,6 +53,13 @@ public:
 
     void setMeasuredJointPosition(const std::string& joint_name, double pos);
 
+    /**
+      * Sets desired joint position
+      * @param joint_name Joint name
+      * @param reference Desired joint position
+      */
+    void setDesiredJointPosition(const std::string& joint_name, double reference);
+
     const Eigen::VectorXd& getJointReferences() const;
 
     const std::vector<std::string>& getJointNames() const;

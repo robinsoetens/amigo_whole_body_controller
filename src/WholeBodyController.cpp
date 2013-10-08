@@ -85,7 +85,7 @@ bool WholeBodyController::initialize(const double Ts)
     ROS_INFO("Joint limit avoidance initialized");
 
     // Initialize Posture Controller
-    PostureControl_.initialize(q_min_, q_max_, posture_q0, posture_gain);
+    PostureControl_.initialize(q_min_, q_max_, posture_q0, posture_gain, joint_name_to_index_);
     ROS_INFO("Posture Control initialized");
 
     // Resize additional variables
@@ -130,6 +130,11 @@ void WholeBodyController::setMeasuredJointPosition(const std::string& joint_name
     robot_state_.tree_.rearrangeJntArrayToTree(q_current_);
     //robot_state_.collectFKSolutions();
 
+}
+
+void WholeBodyController::setDesiredJointPosition(const std::string& joint_name, double reference)
+{
+    PostureControl_.setJointTarget(joint_name, reference);
 }
 
 bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& qdot_reference)

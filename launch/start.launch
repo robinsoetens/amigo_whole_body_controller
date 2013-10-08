@@ -22,6 +22,9 @@
         <!-- <remap from="/camera_info" to="/amigo/top_kinect/rgb/camera_info" />
         <remap from="/depth_image" to="/amigo/top_kinect/depth_registered/image" />-->
     </node>
+    
+    <!-- Joint trajectory action -->
+    <include file="$(find amigo_arm_navigation)/launch/joint_trajectory_action.launch"/>
 </launch>
 
 

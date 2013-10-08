@@ -9,12 +9,21 @@ PostureControl::~PostureControl() {
 
 }
 
-void PostureControl::initialize(const KDL::JntArray& q_min, const KDL::JntArray& q_max, const std::vector<double>& q0, const std::vector<double>& gain) {
+void PostureControl::initialize(const KDL::JntArray& q_min, const KDL::JntArray& q_max, const std::vector<double>& q0, const std::vector<double>& gain, const std::map<std::string, unsigned int>& joint_name_to_index) {
 
     num_joints_ = q_min.rows();
     q0_.resize(num_joints_);
+    q0_default_.resize(num_joints_);
+    q_min_.resize(num_joints_);
+    q_max_.resize(num_joints_);
     K_.resize(num_joints_);
-    for (uint i = 0; i < num_joints_; i++) q0_[i] = q0[i];
+    joint_name_to_index_ = joint_name_to_index;
+    for (uint i = 0; i < num_joints_; i++) {
+        q0_[i] = q0[i];
+        q0_default_[i] = q0[i];
+        q_min_[i] = q_min(i);
+        q_max_[i] = q_max(i);
+    }
 
     ROS_INFO("Length joint array = %i",num_joints_);
     for (uint i = 0; i < num_joints_; i++) {
@@ -40,6 +49,24 @@ void PostureControl::update(const KDL::JntArray& q_in, Eigen::VectorXd& tau_out)
         current_cost_ += fabs(tau_out(i));
     }
 
+}
+
+void PostureControl::setJointTarget(const std::string& joint_name, const double& value) {
+
+    /// Get joint index
+    unsigned int index = joint_name_to_index_[joint_name];
+
+    /// Check whether the index is not too large
+    if (index >= q0_.size()) {
+        ROS_WARN("Joint index %i is too large: there are only %i joints",(int)index,(int)q0_.size());
+    }
+    /// Check whether value is between bounds
+    else if (value < q_min_[index] || value > q_max_[index]) {
+        ROS_WARN("Joint value %f is not between bounds [%f\t%f]",value,q_min_[index],q_max_[index]);
+    }
+    else {
+        q0_[index] = value;
+    }
 }
 
 double PostureControl::getCost() {
