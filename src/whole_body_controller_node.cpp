@@ -233,10 +233,10 @@ int main(int argc, char **argv) {
     ros::Subscriber sub_amcl_pose = nh_private.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 10, &amclPoseCallback);
 
     /// Subscribers for references (required for JointTrajectoryAction)
-    ros::Subscriber sub_left_arm_ref  = nh_private.subscribe<sensor_msgs::JointState>("/amigo/left_arm/references", 1, &jointReferenceCallback);
+    /*ros::Subscriber sub_left_arm_ref  = nh_private.subscribe<sensor_msgs::JointState>("/amigo/left_arm/references", 1, &jointReferenceCallback);
     ros::Subscriber sub_right_arm_ref = nh_private.subscribe<sensor_msgs::JointState>("/amigo/right_arm/references", 1, &jointReferenceCallback);
     ros::Subscriber sub_torso_ref     = nh_private.subscribe<sensor_msgs::JointState>("/amigo/torso/references", 1, &jointReferenceCallback);
-
+    */
     JointRefPublisher* pub_left_arm = new JointRefPublisher("/amigo/left_arm/references");
     JointRefPublisher* pub_right_arm = new JointRefPublisher("/amigo/right_arm/references");
     JointRefPublisher* pub_torso = new JointRefPublisher("/amigo/torso/references"); //ToDo: Spindle Publisher and Subscriber names don't make sense!
