@@ -1,23 +1,23 @@
 joint_limit_avoidance:
     gain:
-        spindle_joint: 1000.0
-        shoulder_yaw_joint_left: 200.0
-        shoulder_yaw_joint_right: 200.0
-        shoulder_pitch_joint_left: 200.0
-        shoulder_pitch_joint_right: 200.0
-        shoulder_roll_joint_left: 200.0
-        shoulder_roll_joint_right: 200.0
-        elbow_pitch_joint_left: 200.0
-        elbow_pitch_joint_right: 200.0
-        elbow_roll_joint_left: 200.0
-        elbow_roll_joint_right: 200.0
-        wrist_pitch_joint_left: 200.0
-        wrist_pitch_joint_right: 200.0
-        wrist_yaw_joint_left: 200.0
-        wrist_yaw_joint_right: 200.0
+        torso_joint: 1000.0
+        shoulder_yaw_joint_left: 829
+        shoulder_yaw_joint_right: 829
+        shoulder_pitch_joint_left: 1650
+        shoulder_pitch_joint_right: 1650
+        shoulder_roll_joint_left: 615
+        shoulder_roll_joint_right: 615
+        elbow_pitch_joint_left: 523
+        elbow_pitch_joint_right: 523
+        elbow_roll_joint_left: 863
+        elbow_roll_joint_right: 863
+        wrist_pitch_joint_left: 95
+        wrist_pitch_joint_right: 95
+        wrist_yaw_joint_left: 61
+        wrist_yaw_joint_right: 61
         
     workspace:
-        spindle_joint: 0.9
+        torso_joint: 0.9
         shoulder_yaw_joint_left: 0.9
         shoulder_yaw_joint_right: 0.9
         shoulder_pitch_joint_left: 0.9
