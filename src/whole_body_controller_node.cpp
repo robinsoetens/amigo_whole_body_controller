@@ -45,6 +45,7 @@ void octoMapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
         else{
             collision_avoidance->setOctoMap(octree);
         }
+        delete tree;
     }
     else{
         ROS_ERROR("Octomap conversion error");
@@ -55,17 +56,26 @@ void octoMapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
 // Fuerte
 void octoMapCallback(const octomap_msgs::OctomapBinary::ConstPtr& msg)
 {
-    octomap::OcTree* octree;
+    octomap::AbstractOcTree* octree;
     octree = octomap_msgs::binaryMsgDataToMap(msg->data);
+    std::stringstream datastream;
+    //ROS_INFO("Writing data to stream");
+    octree->writeData(datastream);
+    //octree->readBinaryData(datastream);
     if (octree) {
         octomap::OcTreeStamped* octreestamped;
-        octreestamped = dynamic_cast<octomap::OcTreeStamped*>(octree);
+        octreestamped = new octomap::OcTreeStamped(0.05);
+        //ROS_INFO("Reading data from stream");
+        octreestamped->readData(datastream);
+        //ROS_INFO("Read data from stream");
+        //octreestamped = dynamic_cast<octomap::OcTreeStamped*>(octree);
         if (!octreestamped){
             ROS_ERROR("No Octomap created");
         }
         else{
             collision_avoidance->setOctoMap(octreestamped);
         }
+        delete octree;
     }
     else{
         ROS_ERROR("Octomap conversion error");
