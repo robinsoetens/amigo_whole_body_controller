@@ -1,11 +1,5 @@
 #! /usr/bin/env python
-import roslib; 
-#roslib.load_manifest('amigo_whole_body_controller')
-try:
-	roslib.load_manifest('amigo_whole_body_controller')
-except:
-	roslib.load_manifest('amigo_whole_body_controller')
-	
+import roslib; roslib.load_manifest('amigo_whole_body_controller')
 import rospy
 import tf
 import actionlib
