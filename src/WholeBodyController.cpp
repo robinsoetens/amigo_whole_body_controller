@@ -258,6 +258,11 @@ const Eigen::VectorXd& WholeBodyController::getJointReferences() const
     return q_reference_;
 }
 
+const Eigen::VectorXd& WholeBodyController::getJointTorques() const
+{
+    return tau_;
+}
+
 const std::vector<std::string>& WholeBodyController::getJointNames() const
 {
     return index_to_joint_name_;

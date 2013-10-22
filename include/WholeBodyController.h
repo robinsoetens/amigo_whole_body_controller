@@ -62,6 +62,8 @@ public:
 
     const Eigen::VectorXd& getJointReferences() const;
 
+    const Eigen::VectorXd& getJointTorques() const;
+
     const std::vector<std::string>& getJointNames() const;
 
     bool addMotionObjective(MotionObjective* motionobjective);

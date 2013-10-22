@@ -129,6 +129,21 @@ void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std:
     }
 }
 
+void publishJointTorques(const Eigen::VectorXd& joint_torques, const vector<std::string>& joint_names) {
+    for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
+        it_pub->second->msg_ = sensor_msgs::JointState();
+    }
+    for(unsigned int i = 0; i < joint_torques.size(); ++i) {
+        map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.find(joint_names[i]);
+        it_pub->second->msg_.name.push_back(joint_names[i]);
+        it_pub->second->msg_.effort.push_back(joint_torques[i]);
+        //cout << joint_names[i] << ": " << joint_refs[i] << endl;
+    }
+    for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
+        it_pub->second->pub_.publish(it_pub->second->msg_);
+    }
+}
+
 void CancelCB() {
     ROS_INFO("Canceling goal");
     add_motion_objective_server_->setPreempted();
@@ -272,6 +287,12 @@ int main(int argc, char **argv) {
     CollisionAvoidance::collisionAvoidanceParameters ca_param;
     loadParameterFiles(ca_param);
 
+    // Determine whether to publish torques or position references
+    bool omit_admittance = false;
+    std::string ns = ros::this_node::getName();
+    nh_private.param<bool> (ns+"/omit_admittance", omit_admittance, true);
+    ROS_WARN("Omit admittance = %d",omit_admittance);
+
     wbc = new WholeBodyController(1/loop_rate_);
 
     /// Use tf to set the first amcl pose
@@ -384,7 +405,16 @@ int main(int argc, char **argv) {
         /////////////////////
 
         //ToDo: set stuff succeeded
-        publishJointReferences(wbc->getJointReferences(), wbc->getJointNames());
+        if (!omit_admittance)
+        {
+            ROS_WARN_ONCE("Publishing reference positions");
+            publishJointReferences(wbc->getJointReferences(), wbc->getJointNames());
+        }
+        else
+        {
+            ROS_WARN_ONCE("Publishing reference torques");
+            publishJointTorques(wbc->getJointTorques(), wbc->getJointNames());
+        }
 
         r.sleep();
     }
