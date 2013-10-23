@@ -35,10 +35,10 @@ void JointLimitAvoidance::initialize(const KDL::JntArray& q_min, const KDL::JntA
     ROS_INFO("Length joint array = %i",num_joints_);
     for (uint i = 0; i < num_joints_; i++) {
         ///q0_(i) = (q_min[i]+q_max[i])/2;
-        K_[i] = 2*gain[i] / ((q_max(i) - q_min(i))*(q_max(i) - q_min(i)));
+        K_[i] = gain[i] / ((q_max(i) - q_min(i))*(q_max(i) - q_min(i)));
         qmin_threshold_(i) = q_min(i) + (1.0-workspace[i])/2 * (q_max(i) - q_min(i));
         qmax_threshold_(i) = q_max(i) - (1.0-workspace[i])/2 * (q_max(i) - q_min(i));
-        //ROS_INFO("qmin = %f, qthresmin = %f, qthresmax = %f, qmax = %f, K = %f",q_min[i],qmin_threshold_(i),qmax_threshold_(i),q_max[i], K_[i]);
+        //ROS_INFO("qmin = %f, qthresmin = %f, qthresmax = %f, qmax = %f, K = %f",q_min(i),qmin_threshold_(i),qmax_threshold_(i),q_max(i), K_[i]);
     }
 
     current_cost_ = 0;
@@ -58,6 +58,7 @@ void JointLimitAvoidance::update(const KDL::JntArray& q_in, Eigen::VectorXd& tau
         // Add this to the costs
         current_cost_ += fabs(tau_out(i));
     }
+
 }
 
 
