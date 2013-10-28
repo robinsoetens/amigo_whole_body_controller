@@ -1,0 +1,95 @@
+/*!
+ * \author Janno Lunenburg
+ * \date October, 2012
+ * \version 0.1
+ */
+
+#ifndef ROBOTINTERFACE_H
+#define ROBOTINTERFACE_H
+
+#include <ros/ros.h>
+#include <WholeBodyController.h>
+
+class RobotInterface {
+
+public:
+
+    /**
+      * Constructor
+      * @param wbc Pointer to whole-body controller
+      */
+    RobotInterface(WholeBodyController *wbc);
+
+    /**
+      * Deconstructor
+      */
+    virtual ~RobotInterface();
+
+    /**
+      * Initialize function: sets publishers, subscribers, etc.
+      */
+    bool initialize();
+
+    /**
+      * Publishes joint references in jointstate messages
+      * @param joint_refs Desired joint positions
+      * @param joint_names Corresponding joint names
+      */
+    void publishJointReferences(const Eigen::VectorXd& joint_refs, const std::vector<std::string>& joint_names);
+
+    /**
+      * Publishes joint torques in jointstate messages
+      * @param joint_torques Desired joint torques
+      * @param joint_names Corresponding joint names
+      */
+    void publishJointTorques(const Eigen::VectorXd& joint_torques, const std::vector<std::string>& joint_names);
+
+protected:
+
+    /** Pointer to whole-body controller object */
+    WholeBodyController *wbc_;
+
+    /** Subscribers to jointstate topics */
+    ros::Subscriber torso_sub_, left_arm_sub_, right_arm_sub_, neck_sub_;
+
+    /** Subscriber to amcl pose */
+    ros::Subscriber amcl_sub_;
+
+    /** Struct containing publisher and message */
+    struct JointRefPublisher {
+
+        JointRefPublisher(const std::string& ref_topic) {
+            ros::NodeHandle nh;
+            pub_ = nh.advertise<sensor_msgs::JointState>(ref_topic, 10);
+        }
+        ros::Publisher pub_;
+        sensor_msgs::JointState msg_;
+    };
+
+    /** Publishers to jointstate topics */
+    JointRefPublisher *torso_pub_, *left_arm_pub_, *right_arm_pub_, *neck_pub_;
+
+    /** Publisher to cmd_vel */
+    ros::Publisher base_pub_;
+
+    /** Maps joint name to the correct publisher */
+    std::map<std::string, JointRefPublisher*> joint_name_to_pub_;
+
+    /**
+      * Callback function for localization
+      */
+    void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
+
+    /**
+      * Callback function for jointstate messages
+      */
+    void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg);
+
+    /**
+      * Sets initial amcl pose
+      */
+    void setInitialAmclPose();
+
+};
+
+#endif

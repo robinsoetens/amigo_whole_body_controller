@@ -56,8 +56,9 @@ rosbuild_add_library(wholebodycontroller
                                         src/MotionObjective.cpp
                                         src/RobotState.cpp
                                         src/Tree.cpp
+                                        src/interfaces/JointTrajectoryAction.cpp
+                                        src/interfaces/RobotInterface.cpp
 )
-#                                        src/JointTrajectoryAction.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
