@@ -73,7 +73,7 @@ void RobotInterface::publishJointReferences(const Eigen::VectorXd& joint_refs, c
         std::map<std::string, JointRefPublisher*>::iterator it_pub = joint_name_to_pub_.find(joint_names[i]);
         it_pub->second->msg_.name.push_back(joint_names[i]);
         it_pub->second->msg_.position.push_back(joint_refs[i]);
-        std::cout << joint_names[i] << ": " << joint_refs[i] << std::endl;
+        //std::cout << joint_names[i] << ": " << joint_refs[i] << std::endl;
     }
 
     /// Publish results

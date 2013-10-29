@@ -18,21 +18,6 @@ CartesianImpedance* cartesian_impedance;
 
 WholeBodyController* wbc;
 
-struct JointRefPublisher {
-
-    JointRefPublisher(const string& ref_topic) {
-        ros::NodeHandle nh;
-        pub_ = nh.advertise<sensor_msgs::JointState>(ref_topic, 10);
-    }
-
-    ros::Publisher pub_;
-
-    sensor_msgs::JointState msg_;
-
-};
-
-map<string, JointRefPublisher*> JOINT_NAME_TO_PUB;
-
 #if ROS_VERSION_MINIMUM(1,9,0)
 // Groovy
 void octoMapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
@@ -90,36 +75,6 @@ void jointReferenceCallback(const sensor_msgs::JointState::ConstPtr& msg) {
     for(unsigned int i = 0; i < msg->name.size(); ++i) {
         //wbc->setMeasuredJointPosition(msg->name[i], msg->position[i]);
         wbc->setDesiredJointPosition(msg->name[i], msg->position[i]);
-    }
-}
-
-void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std::string>& joint_names) {
-    for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
-        it_pub->second->msg_ = sensor_msgs::JointState();
-    }
-    for(unsigned int i = 0; i < joint_refs.size(); ++i) {
-        map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.find(joint_names[i]);
-        it_pub->second->msg_.name.push_back(joint_names[i]);
-        it_pub->second->msg_.position.push_back(joint_refs[i]);
-        //cout << joint_names[i] << ": " << joint_refs[i] << endl;
-    }
-    for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
-        it_pub->second->pub_.publish(it_pub->second->msg_);
-    }
-}
-
-void publishJointTorques(const Eigen::VectorXd& joint_torques, const vector<std::string>& joint_names) {
-    for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
-        it_pub->second->msg_ = sensor_msgs::JointState();
-    }
-    for(unsigned int i = 0; i < joint_torques.size(); ++i) {
-        map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.find(joint_names[i]);
-        it_pub->second->msg_.name.push_back(joint_names[i]);
-        it_pub->second->msg_.effort.push_back(joint_torques[i]);
-        //cout << joint_names[i] << ": " << joint_refs[i] << endl;
-    }
-    for(map<string, JointRefPublisher*>::iterator it_pub = JOINT_NAME_TO_PUB.begin(); it_pub != JOINT_NAME_TO_PUB.end(); ++it_pub) {
-        it_pub->second->pub_.publish(it_pub->second->msg_);
     }
 }
 
@@ -237,26 +192,6 @@ int main(int argc, char **argv) {
     ros::Subscriber sub_right_arm_ref = nh_private.subscribe<sensor_msgs::JointState>("/amigo/right_arm/references", 1, &jointReferenceCallback);
     ros::Subscriber sub_torso_ref     = nh_private.subscribe<sensor_msgs::JointState>("/amigo/torso/references", 1, &jointReferenceCallback);
     */
-    JointRefPublisher* pub_left_arm = new JointRefPublisher("/amigo/left_arm/references");
-    JointRefPublisher* pub_right_arm = new JointRefPublisher("/amigo/right_arm/references");
-    JointRefPublisher* pub_torso = new JointRefPublisher("/amigo/torso/references"); //ToDo: Spindle Publisher and Subscriber names don't make sense!
-
-    JOINT_NAME_TO_PUB["wrist_yaw_joint_left"] = pub_left_arm;
-    JOINT_NAME_TO_PUB["wrist_pitch_joint_left"] = pub_left_arm;
-    JOINT_NAME_TO_PUB["elbow_roll_joint_left"] = pub_left_arm;
-    JOINT_NAME_TO_PUB["elbow_pitch_joint_left"] = pub_left_arm;
-    JOINT_NAME_TO_PUB["shoulder_roll_joint_left"] = pub_left_arm;
-    JOINT_NAME_TO_PUB["shoulder_pitch_joint_left"] = pub_left_arm;
-    JOINT_NAME_TO_PUB["shoulder_yaw_joint_left"] = pub_left_arm;
-    JOINT_NAME_TO_PUB["torso_joint"] = pub_torso;
-    JOINT_NAME_TO_PUB["wrist_yaw_joint_right"] = pub_right_arm;
-    JOINT_NAME_TO_PUB["wrist_pitch_joint_right"] = pub_right_arm;
-    JOINT_NAME_TO_PUB["elbow_roll_joint_right"] = pub_right_arm;
-    JOINT_NAME_TO_PUB["elbow_pitch_joint_right"] = pub_right_arm;
-    JOINT_NAME_TO_PUB["shoulder_roll_joint_right"] = pub_right_arm;
-    JOINT_NAME_TO_PUB["shoulder_pitch_joint_right"] = pub_right_arm;
-    JOINT_NAME_TO_PUB["shoulder_yaw_joint_right"] = pub_right_arm;
-
 
     // Load parameter files
     CollisionAvoidance::collisionAvoidanceParameters ca_param;
@@ -357,12 +292,12 @@ int main(int argc, char **argv) {
         if (!omit_admittance)
         {
             ROS_WARN_ONCE("Publishing reference positions");
-            publishJointReferences(wbc->getJointReferences(), wbc->getJointNames());
+            robot_interface.publishJointReferences(wbc->getJointReferences(), wbc->getJointNames());
         }
         else
         {
             ROS_WARN_ONCE("Publishing reference torques");
-            publishJointTorques(wbc->getJointTorques(), wbc->getJointNames());
+            robot_interface.publishJointTorques(wbc->getJointTorques(), wbc->getJointNames());
         }
 
         r.sleep();
