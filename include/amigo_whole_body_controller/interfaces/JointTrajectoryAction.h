@@ -45,8 +45,8 @@ private:
     typedef actionlib::SimpleActionServer<control_msgs::FollowJointTrajectoryAction> action_server;
     typedef action_server::GoalHandle GoalHandle;
 
-    action_server* server_;//(node_, "/grasp_precompute_left", boost::bind(&execute, _1, &server, &client), false);
-    //actionlib::SimpleActionServer<control_msgs::FollowJointTrajectoryAction> *server_;
+    action_server *server_, *server_left_, *server_right_;
+
     control_msgs::FollowJointTrajectoryGoal active_goal_;
 
     /** Pointer to whole body controller object */
@@ -57,6 +57,12 @@ private:
 
     /** Time of receiving goal */
     ros::Time goal_reception_time_;
+
+    /** Vector containing joint names */
+    std::vector<std::string> joint_names_;
+
+    /** Map fron joint names to joint index */
+    std::map<std::string, unsigned int> joint_index_;
 
     /** Intermediate goal constraints */
     std::map<std::string,double> intermediate_goal_constraints_;
@@ -71,9 +77,11 @@ private:
     double goal_time_constraint_;
 
     /**
-      * Callback function for Cartesian goal
+      * Callback function for joint goal
       */
     void goalCB();
+    void goalCBLeft();
+    void goalCBRight();
 
     /**
       * Callback function for cancel goal

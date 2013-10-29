@@ -1,5 +1,6 @@
 #include "WholeBodyController.h"
 #include <amigo_whole_body_controller/interfaces/RobotInterface.h>
+#include <amigo_whole_body_controller/interfaces/JointTrajectoryAction.h>
 #include <amigo_whole_body_controller/ArmTaskAction.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
@@ -187,12 +188,6 @@ int main(int argc, char **argv) {
     ros::Subscriber sub_octomap   = nh_private.subscribe<octomap_msgs::OctomapBinary>("/octomap_binary", 10, &octoMapCallback);
 #endif
 
-    /// Subscribers for references (required for JointTrajectoryAction)
-    /*ros::Subscriber sub_left_arm_ref  = nh_private.subscribe<sensor_msgs::JointState>("/amigo/left_arm/references", 1, &jointReferenceCallback);
-    ros::Subscriber sub_right_arm_ref = nh_private.subscribe<sensor_msgs::JointState>("/amigo/right_arm/references", 1, &jointReferenceCallback);
-    ros::Subscriber sub_torso_ref     = nh_private.subscribe<sensor_msgs::JointState>("/amigo/torso/references", 1, &jointReferenceCallback);
-    */
-
     // Load parameter files
     CollisionAvoidance::collisionAvoidanceParameters ca_param;
     loadParameterFiles(ca_param);
@@ -209,6 +204,9 @@ int main(int argc, char **argv) {
     /// Robot interface
     RobotInterface robot_interface(wbc);
     //robot_interface.testPointer();
+
+    /// Joint trajectory executer
+    //JointTrajectoryAction jte(wbc);
 
     ros::Rate r(loop_rate_);
 

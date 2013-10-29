@@ -53,6 +53,7 @@ void PostureControl::update(const KDL::JntArray& q_in, Eigen::VectorXd& tau_out)
 
 void PostureControl::setJointTarget(const std::string& joint_name, const double& value) {
 
+    ROS_INFO("Posture controller: setting joint targets");
     /// Get joint index
     unsigned int index = joint_name_to_index_[joint_name];
 

@@ -13,13 +13,91 @@ bool JointTrajectoryAction::initialize() {
 
     trajectory_index_ = 0;
 
-    ros::NodeHandle nh;
+    ros::NodeHandle n;
 
-    server_ = new action_server(nh, "joint_trajectory_action", false);
+    /// Action server
+    server_ = new action_server(n, "joint_trajectory_action", false);
     server_->registerGoalCallback(boost::bind(&JointTrajectoryAction::goalCB, this));
     server_->start();
 
-    // ToDo: fill constraints etc.
+    server_left_ = new action_server(n, "joint_trajectory_action_left", false);
+    server_left_->registerGoalCallback(boost::bind(&JointTrajectoryAction::goalCBLeft, this));
+    server_left_->start();
+
+    server_right_ = new action_server(n, "joint_trajectory_action_right", false);
+    server_right_->registerGoalCallback(boost::bind(&JointTrajectoryAction::goalCBRight, this));
+    server_right_->start();
+
+    // /joint_trajectory_action_left
+
+    /// Get joint names and constraints from the parameter server
+
+    // ToDo: why not parse this from the URDF or (SRDF?) model?
+    ros::NodeHandle nh("~");
+    using namespace XmlRpc;
+
+    /// Gets all of the joints
+    XmlRpc::XmlRpcValue joint_names;
+    if (!nh.getParam("joint_names", joint_names))
+    {
+        ROS_FATAL("No joints given. (namespace: %s)", nh.getNamespace().c_str());
+        exit(1);
+    }
+    if (joint_names.getType() != XmlRpc::XmlRpcValue::TypeArray)
+    {
+        ROS_FATAL("Malformed joint specification.  (namespace: %s)", nh.getNamespace().c_str());
+        exit(1);
+    }
+    for (int i = 0; i < joint_names.size(); ++i)
+    {
+        XmlRpcValue &name_value = joint_names[i];
+        if (name_value.getType() != XmlRpcValue::TypeString)
+        {
+            ROS_FATAL("Array of joint names should contain all strings.  (namespace: %s)",
+                      nh.getNamespace().c_str());
+            exit(1);
+        }
+
+        joint_index_[(std::string)name_value] = joint_names_.size();
+        joint_names_.push_back((std::string)name_value);
+
+    }
+
+    nh.param("constraints/goal_time", goal_time_constraint_, 0.0);
+
+    /// Gets the constraints for each joint.
+    for (size_t i = 0; i < joint_names_.size(); ++i)
+    {
+        std::string ns = std::string("constraints/") + joint_names_[i];
+        double ig, fg,t;
+        nh.param(ns + "/intermediate_goal", ig, -1.0);
+        nh.param(ns + "/final_goal", fg, -1.0);
+        nh.param(ns + "/trajectory", t, -1.0);
+        intermediate_goal_constraints_[joint_names_[i]] = ig;
+        final_goal_constraints_[joint_names_[i]] = fg;
+        trajectory_constraints_[joint_names_[i]] = t;
+    }
+
+    // Check if it works
+    for (unsigned int i = 0; i < joint_names_.size(); ++i)
+    {
+        std::string joint_name = joint_names_[i];
+        std::map<std::string, unsigned int>::const_iterator index_iter = joint_index_.find(joint_name);
+        if (index_iter != joint_index_.end())
+        {
+            //unsigned int index = index_iter->second;
+            std::map<std::string, double>::const_iterator diter;
+            diter = intermediate_goal_constraints_.find(joint_name);
+            double ig = diter->second;
+            diter = final_goal_constraints_.find(joint_name);
+            double fg = diter->second;
+            diter  = trajectory_constraints_.find(joint_name);
+            double t = diter->second;
+            ROS_INFO("%s\t [%f,\t%f,\t%f]",joint_name.c_str(),ig,fg,t);
+        } else {
+            ROS_ERROR("Something went terribly wrong");
+        }
+    }
 
     return true;
 }
@@ -52,10 +130,10 @@ void JointTrajectoryAction::update() {
                 //    else if ( fabs(ref_pos_[j] - cur_pos_[j]) > final_goal_constraints_[joint_names_[j]]) {
                 //        ROS_WARN("Error joint %s = %f exceeds final joint contraint (%f)",joint_names_[j].c_str(),ref_pos_[j] - cur_pos_[j],final_goal_constraints_[joint_names_[j]]);
                 //    }
-                }
-                server_->setAborted();
-                is_active_=false;
-                return;
+            }
+            server_->setAborted();
+            is_active_=false;
+            return;
 
             /// Check if this joint has converged
             if(trajectory_index_ < ((int)active_goal_.trajectory.points.size()-1))
@@ -100,6 +178,46 @@ void JointTrajectoryAction::goalCB() {
 
     active_goal_ = *server_->acceptNewGoal();
     is_active_ = true;
+
+    if (!setJointPositions())
+    {
+        ROS_ERROR("Cannot set desired joint positions");
+        server_->setAborted();
+    }
+
+}
+
+void JointTrajectoryAction::goalCBLeft() {
+
+    ROS_INFO("Received new joint goal");
+    trajectory_index_ = 0;
+    goal_reception_time_ = ros::Time::now();
+
+    active_goal_ = *server_left_->acceptNewGoal();
+    is_active_ = true;
+
+    if (!setJointPositions())
+    {
+        ROS_ERROR("Cannot set desired joint positions");
+        server_left_->setAborted();
+    }
+
+}
+
+void JointTrajectoryAction::goalCBRight() {
+
+    ROS_INFO("Received new joint goal");
+    trajectory_index_ = 0;
+    goal_reception_time_ = ros::Time::now();
+
+    active_goal_ = *server_right_->acceptNewGoal();
+    is_active_ = true;
+
+    if (!setJointPositions())
+    {
+        ROS_ERROR("Cannot set desired joint positions");
+        server_right_->setAborted();
+    }
 
 }
 
