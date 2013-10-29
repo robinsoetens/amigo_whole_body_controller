@@ -132,6 +132,11 @@ void WholeBodyController::setMeasuredJointPosition(const std::string& joint_name
 
 }
 
+double WholeBodyController::getJointPosition(const std::string& joint_name)
+{
+    return q_current_(joint_name_to_index_[joint_name]);
+}
+
 void WholeBodyController::setDesiredJointPosition(const std::string& joint_name, double reference)
 {
     PostureControl_.setJointTarget(joint_name, reference);

@@ -54,6 +54,13 @@ public:
     void setMeasuredJointPosition(const std::string& joint_name, double pos);
 
     /**
+      * Returns the current joint position
+      * @param joint_name Joint name
+      * @return Joint position
+      */
+    double getJointPosition(const std::string& joint_name);
+
+    /**
       * Sets desired joint position
       * @param joint_name Joint name
       * @param reference Desired joint position
