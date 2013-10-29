@@ -123,18 +123,34 @@ bool WholeBodyController::removeMotionObjective(MotionObjective* motionobjective
 
 void WholeBodyController::setMeasuredJointPosition(const std::string& joint_name, double pos)
 {
-    q_current_(joint_name_to_index_[joint_name]) = pos;
+    std::map<std::string,unsigned int>::iterator index_iter = joint_name_to_index_.find(joint_name);
+    if (index_iter != joint_name_to_index_.end())
+    {
+        unsigned int index = index_iter->second;
+        q_current_(index) = pos;
 
-    //std::cout << joint_name << q_current_(joint_name_to_index_[joint_name]) <<  std::endl;
+        //std::cout << joint_name <<"\t"<<q_current_(index) <<"\t"<<index<< std::endl;
 
-    robot_state_.tree_.rearrangeJntArrayToTree(q_current_);
-    //robot_state_.collectFKSolutions();
+        robot_state_.tree_.rearrangeJntArrayToTree(q_current_);
+        //robot_state_.collectFKSolutions();
+    }
+    else
+    {
+        ROS_ERROR_ONCE("Joint %s is not listed",joint_name.c_str());
+    }
 
 }
 
-double WholeBodyController::getJointPosition(const std::string& joint_name)
+double WholeBodyController::getJointPosition(const std::string& joint_name) const
 {
-    return q_current_(joint_name_to_index_[joint_name]);
+    std::map<std::string,unsigned int>::const_iterator index_iter = joint_name_to_index_.find(joint_name);
+    if (index_iter != joint_name_to_index_.end())
+    {
+        return q_current_(index_iter->second);
+    } else {
+        ROS_ERROR_ONCE("Joint %s is not listed",joint_name.c_str());
+        return 0;
+    }
 }
 
 void WholeBodyController::setDesiredJointPosition(const std::string& joint_name, double reference)

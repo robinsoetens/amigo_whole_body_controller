@@ -29,7 +29,7 @@ public:
 
     /**
       * Sets the desired value of a joint to a specific value
-      * @param index Index to indicate which joint target should be altered
+      * @param joint_name Name the joint which position should be altered
       * @param value Value to which this joint should move to
       */
     void setJointTarget(const std::string &joint_name, const double &value);

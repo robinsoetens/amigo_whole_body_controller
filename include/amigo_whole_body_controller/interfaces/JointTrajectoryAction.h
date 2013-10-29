@@ -42,12 +42,12 @@ public:
 
 private:
 
-    typedef actionlib::ActionServer<control_msgs::FollowJointTrajectoryAction> action_server;
+    typedef actionlib::SimpleActionServer<control_msgs::FollowJointTrajectoryAction> action_server;
     typedef action_server::GoalHandle GoalHandle;
 
-    //action_server* server_;//(node_, "/grasp_precompute_left", boost::bind(&execute, _1, &server, &client), false);
-    actionlib::SimpleActionServer<control_msgs::FollowJointTrajectoryAction> *server_;
-    GoalHandle active_goal_;
+    action_server* server_;//(node_, "/grasp_precompute_left", boost::bind(&execute, _1, &server, &client), false);
+    //actionlib::SimpleActionServer<control_msgs::FollowJointTrajectoryAction> *server_;
+    control_msgs::FollowJointTrajectoryGoal active_goal_;
 
     /** Pointer to whole body controller object */
     WholeBodyController *wbc_;
@@ -73,12 +73,12 @@ private:
     /**
       * Callback function for Cartesian goal
       */
-    void goalCB(GoalHandle gh);
+    void goalCB();
 
     /**
       * Callback function for cancel goal
       */
-    void cancelCB(GoalHandle gh);
+    void cancelCB();
 
     /** Set joint positions */
     bool setJointPositions();

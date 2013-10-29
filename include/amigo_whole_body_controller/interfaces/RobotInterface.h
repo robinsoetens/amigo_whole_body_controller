@@ -44,6 +44,10 @@ public:
       */
     void publishJointTorques(const Eigen::VectorXd& joint_torques, const std::vector<std::string>& joint_names);
 
+    //////////
+    void testPointer();
+    //////////
+
 protected:
 
     /** Pointer to whole-body controller object */

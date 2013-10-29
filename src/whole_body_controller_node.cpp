@@ -1,4 +1,5 @@
 #include "WholeBodyController.h"
+#include <amigo_whole_body_controller/interfaces/RobotInterface.h>
 #include <amigo_whole_body_controller/ArmTaskAction.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
@@ -85,33 +86,11 @@ void octoMapCallback(const octomap_msgs::OctomapBinary::ConstPtr& msg)
 }
 #endif
 
-void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg) {
-    for(unsigned int i = 0; i < msg->name.size(); ++i) {
-        wbc->setMeasuredJointPosition(msg->name[i], msg->position[i]);
-    }
-}
-
 void jointReferenceCallback(const sensor_msgs::JointState::ConstPtr& msg) {
     for(unsigned int i = 0; i < msg->name.size(); ++i) {
         //wbc->setMeasuredJointPosition(msg->name[i], msg->position[i]);
         wbc->setDesiredJointPosition(msg->name[i], msg->position[i]);
     }
-}
-
-void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
-{
-    KDL::Frame frame;
-    // Position
-    frame.p.x(msg->pose.pose.position.x);
-    frame.p.y(msg->pose.pose.position.y);
-    frame.p.z(msg->pose.pose.position.z);
-
-    // Orientation
-    frame.M = KDL::Rotation::Quaternion(msg->pose.pose.orientation.x,
-                                        msg->pose.pose.orientation.y,
-                                        msg->pose.pose.orientation.z,
-                                        msg->pose.pose.orientation.w);
-    wbc->robot_state_.setAmclPose(frame);
 }
 
 void publishJointReferences(const Eigen::VectorXd& joint_refs, const vector<std::string>& joint_names) {
@@ -252,10 +231,6 @@ int main(int argc, char **argv) {
     // Fuerte
     ros::Subscriber sub_octomap   = nh_private.subscribe<octomap_msgs::OctomapBinary>("/octomap_binary", 10, &octoMapCallback);
 #endif
-    ros::Subscriber sub_left_arm  = nh_private.subscribe<sensor_msgs::JointState>("/amigo/left_arm/measurements", 10, &jointMeasurementCallback);
-    ros::Subscriber sub_right_arm = nh_private.subscribe<sensor_msgs::JointState>("/amigo/right_arm/measurements", 10, &jointMeasurementCallback);
-    ros::Subscriber sub_torso     = nh_private.subscribe<sensor_msgs::JointState>("/amigo/torso/measurements", 10, &jointMeasurementCallback);
-    ros::Subscriber sub_amcl_pose = nh_private.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 10, &amclPoseCallback);
 
     /// Subscribers for references (required for JointTrajectoryAction)
     /*ros::Subscriber sub_left_arm_ref  = nh_private.subscribe<sensor_msgs::JointState>("/amigo/left_arm/references", 1, &jointReferenceCallback);
@@ -293,38 +268,12 @@ int main(int argc, char **argv) {
     nh_private.param<bool> (ns+"/omit_admittance", omit_admittance, true);
     ROS_WARN("Omit admittance = %d",omit_admittance);
 
+    /// Whole body controller object
     wbc = new WholeBodyController(1/loop_rate_);
 
-    /// Use tf to set the first amcl pose
-    tf::TransformListener listener;
-    ros::Duration(0.5).sleep();
-    listener.waitForTransform("/map","/amigo/base_link",ros::Time(0),ros::Duration(1.0)); // Is the latest available transform
-
-    geometry_msgs::PoseStamped base_link_pose, map_pose;
-    base_link_pose.header.frame_id = "/amigo/base_link";
-    base_link_pose.pose.position.x = 0.0;
-    base_link_pose.pose.position.y = 0.0;
-    base_link_pose.pose.position.z = 0.0;
-    base_link_pose.pose.orientation.x = 0.0;
-    base_link_pose.pose.orientation.y = 0.0;
-    base_link_pose.pose.orientation.z = 0.0;
-    base_link_pose.pose.orientation.w = 1.0;
-    listener.transformPose("/map", base_link_pose, map_pose);
-
-    KDL::Frame amcl_pose;
-    amcl_pose.p.x(map_pose.pose.position.x);
-    amcl_pose.p.y(map_pose.pose.position.y);
-    amcl_pose.p.z(map_pose.pose.position.z);
-    amcl_pose.M = KDL::Rotation::Quaternion(map_pose.pose.orientation.x,
-                                            map_pose.pose.orientation.y,
-                                            map_pose.pose.orientation.z,
-                                            map_pose.pose.orientation.w);
-
-
-    double roll,pitch,yaw;
-    amcl_pose.M.GetRPY(roll,pitch,yaw);
-    ROS_INFO("Initial amcl pose, x = %f, y = %f, theta = %f",amcl_pose.p.x(),amcl_pose.p.y(),yaw);
-    wbc->robot_state_.setAmclPose(amcl_pose);
+    /// Robot interface
+    RobotInterface robot_interface(wbc);
+    //robot_interface.testPointer();
 
     ros::Rate r(loop_rate_);
 

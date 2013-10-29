@@ -58,7 +58,7 @@ public:
       * @param joint_name Joint name
       * @return Joint position
       */
-    double getJointPosition(const std::string& joint_name);
+    double getJointPosition(const std::string& joint_name) const;
 
     /**
       * Sets desired joint position
