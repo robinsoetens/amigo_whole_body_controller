@@ -72,53 +72,10 @@ void octoMapCallback(const octomap_msgs::OctomapBinary::ConstPtr& msg)
 }
 #endif
 
-void jointReferenceCallback(const sensor_msgs::JointState::ConstPtr& msg) {
-    for(unsigned int i = 0; i < msg->name.size(); ++i) {
-        //wbc->setMeasuredJointPosition(msg->name[i], msg->position[i]);
-        wbc->setDesiredJointPosition(msg->name[i], msg->position[i]);
-    }
-}
-
 void CancelCB() {
     ROS_INFO("Canceling goal");
     add_motion_objective_server_->setPreempted();
     // ToDo: remove motion objective
-}
-
-void setTarget(const amigo_arm_navigation::grasp_precomputeGoal& goal, const std::string& end_effector_frame) {
-    /*
-    geometry_msgs::PoseStamped goal_pose;
-
-    goal_pose.header = goal.goal.header;
-    goal_pose.pose.position.x = goal.goal.x;
-    goal_pose.pose.position.y = goal.goal.y;
-    goal_pose.pose.position.z = goal.goal.z;
-    double roll = goal.goal.roll;
-    double pitch = goal.goal.pitch;
-    double yaw = goal.goal.yaw;
-    geometry_msgs::Quaternion orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
-    goal_pose.pose.orientation = orientation;
-
-    if (end_effector_frame == "/grippoint_left") {
-        cart_imp_left_->setGoal(goal_pose);
-    }
-    else if (end_effector_frame == "/grippoint_right") {
-        cart_imp_right_->setGoal(goal_pose);
-    }
-    else ROS_WARN("Cannot process this goal");*/
-}
-
-void cancelTarget(const std::string& tip_frame, const std::string& root_frame) {
-
-    /*
-    if (end_effector_frame == "/grippoint_left") {
-        cart_imp_left_->cancelGoal();
-    }
-    else if (end_effector_frame == "/grippoint_right") {
-        cart_imp_right_->cancelGoal();
-    }
-    else ROS_WARN("Not clear what to cancel");
-    */
 }
 
 void GoalCB() {
@@ -203,7 +160,6 @@ int main(int argc, char **argv) {
 
     /// Robot interface
     RobotInterface robot_interface(wbc);
-    //robot_interface.testPointer();
 
     /// Joint trajectory executer
     JointTrajectoryAction jte(wbc);
@@ -221,31 +177,6 @@ int main(int argc, char **argv) {
         exit(-1);
     }
 
-    ///// Teststuff /////
-    /*
-    CartesianImpedance* cartesian_impedance;
-    cartesian_impedance = new CartesianImpedance("grippoint_left");
-    if (!wbc->addMotionObjective(cartesian_impedance)) {
-        ROS_ERROR("Could not initialize collision avoidance");
-        exit(-1);
-    }
-    cartesian_impedance = new CartesianImpedance("grippoint_right");
-    if (!wbc->addMotionObjective(cartesian_impedance)) {
-        ROS_ERROR("Could not initialize collision avoidance");
-        exit(-1);
-    }
-    cartesian_impedance = new CartesianImpedance("grippoint_left");
-    if (!wbc->addMotionObjective(cartesian_impedance)) {
-        ROS_ERROR("Could not initialize collision avoidance");
-        exit(-1);
-    }
-    int ctr = 0;
-    */
-    /////////////////////
-
-    //KDL::JntArray q_current;
-    Eigen::VectorXd q_ref;
-    Eigen::VectorXd qdot_ref;
     std::string root_frame;
 
     while(ros::ok()) {
@@ -270,29 +201,15 @@ int main(int argc, char **argv) {
             }
         }
 
-
-        /// Set base pose in whole-body controller
+        /// Set base pose in whole-body controller (remaining joints are set implicitly in the callback functions in robot_interface)
         robot_interface.setAmclPose();
 
         /// Update whole-body controller
+        Eigen::VectorXd q_ref, qdot_ref;
         wbc->update(q_ref, qdot_ref);
 
+        /// Update the joint trajectory executer
         jte.update();
-
-
-        ///// Teststuff /////
-        /*
-        std::string root_frame;
-        std::vector<MotionObjective*> leftimp = wbc->getCartesianImpedances("grippoint_left",root_frame);
-        std::vector<MotionObjective*> rightimp = wbc->getCartesianImpedances("grippoint_right",root_frame);
-        ctr++;
-        if (ctr == 50) {
-            for (unsigned int i = 0; i < leftimp.size(); i++) ROS_INFO("Tip frame: %s\t root frame: %s",leftimp[i]->tip_frame_.c_str(),leftimp[i]->root_frame_.c_str());
-            for (unsigned int i = 0; i < rightimp.size(); i++) ROS_INFO("Tip frame: %s\t root frame: %s",rightimp[i]->tip_frame_.c_str(),rightimp[i]->root_frame_.c_str());
-            ctr = 0;
-        }
-        */
-        /////////////////////
 
         //ToDo: set stuff succeeded
         if (!omit_admittance)

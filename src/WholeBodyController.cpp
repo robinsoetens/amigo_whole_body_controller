@@ -245,18 +245,14 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Total torques (%i) = %f",i,tau_(i));
     //cout << "tau_ = " << endl << tau_ << endl;
 
-
     AdmitCont_.update(tau_, qdot_reference_, q_current_, q_reference_);
 
     //for (uint i = 0; i < qdot_reference_.rows(); i++) ROS_INFO("qd joint %i = %f",i,qdot_reference_(i));
     //for (uint i = 0; i < q_current_.rows(); i++) ROS_INFO("Position joint %i = %f",i,q_current_(i));
     //for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));
 
-    //q_current = q_current_;
     q_reference = q_reference_;
     qdot_reference = qdot_reference_;
-
-    //ROS_INFO("WholeBodyController::update() - end");
 
     return true;
 
