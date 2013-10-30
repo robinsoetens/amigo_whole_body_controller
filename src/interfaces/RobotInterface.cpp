@@ -21,8 +21,13 @@ bool RobotInterface::initialize()
     ros::NodeHandle nh_private("~");
 
     /// Subscribers
-    // ToDo: convert amcl_sub_ to tf object
-    amcl_sub_       = nh_private.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl/pose",1, &RobotInterface::amclPoseCallback, this);
+    /// Use tf listener in case no pose is published
+    bool tf_present = false;
+    while (!tf_present)
+    {
+        ROS_INFO("Waiting for transform from map to base link");
+        tf_present = listener_.waitForTransform("/map","/amigo/base_link",ros::Time(0),ros::Duration(1.0)); // Is the latest available transform
+    }
     torso_sub_      = nh_private.subscribe<sensor_msgs::JointState>("/amigo/torso/measurements", 1, &RobotInterface::jointMeasurementCallback, this);
     left_arm_sub_   = nh_private.subscribe<sensor_msgs::JointState>("/amigo/left_arm/measurements", 1, &RobotInterface::jointMeasurementCallback, this);
     right_arm_sub_  = nh_private.subscribe<sensor_msgs::JointState>("/amigo/right_arm/measurements", 1, &RobotInterface::jointMeasurementCallback, this);
@@ -55,8 +60,7 @@ bool RobotInterface::initialize()
     joint_name_to_pub_["neck_pan_joint"] = neck_pub_;
     joint_name_to_pub_["neck_tilt_joint"] = neck_pub_;
 
-    ROS_WARN("AMCL Pose topic needs to be checked!!!");
-    setInitialAmclPose();
+    setAmclPose();
 
     return true;
 }
@@ -104,29 +108,8 @@ void RobotInterface::publishJointTorques(const Eigen::VectorXd& joint_torques, c
     }
 }
 
-void RobotInterface::amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
+void RobotInterface::setAmclPose()
 {
-    KDL::Frame frame;
-    /// Position
-    frame.p.x(msg->pose.pose.position.x);
-    frame.p.y(msg->pose.pose.position.y);
-    frame.p.z(msg->pose.pose.position.z);
-
-    /// Orientation
-    frame.M = KDL::Rotation::Quaternion(msg->pose.pose.orientation.x,
-                                        msg->pose.pose.orientation.y,
-                                        msg->pose.pose.orientation.z,
-                                        msg->pose.pose.orientation.w);
-    wbc_->robot_state_.setAmclPose(frame);
-}
-
-void RobotInterface::setInitialAmclPose()
-{
-    /// Use tf listener in case no pose is published
-    tf::TransformListener listener;
-    ros::Duration(0.5).sleep();
-    listener.waitForTransform("/map","/amigo/base_link",ros::Time(0),ros::Duration(1.0)); // Is the latest available transform
-
     /// Get transform from base_link to map
     geometry_msgs::PoseStamped base_link_pose, map_pose;
     base_link_pose.header.frame_id = "/amigo/base_link";
@@ -137,7 +120,13 @@ void RobotInterface::setInitialAmclPose()
     base_link_pose.pose.orientation.y = 0.0;
     base_link_pose.pose.orientation.z = 0.0;
     base_link_pose.pose.orientation.w = 1.0;
-    listener.transformPose("/map", base_link_pose, map_pose);
+    try
+    {
+        listener_.transformPose("/map", base_link_pose, map_pose);
+    } catch (tf::TransformException ex) {
+        ROS_ERROR("%s",ex.what());
+        return;
+    }
 
     /// Convert to KDL frame
     KDL::Frame frame;
@@ -157,21 +146,5 @@ void RobotInterface::jointMeasurementCallback(const sensor_msgs::JointState::Con
     for(unsigned int i = 0; i < msg->name.size(); ++i) {
         //ROS_INFO("Setting joint %s to %f",msg->name[i].c_str(), msg->position[i]);
         wbc_->setMeasuredJointPosition(msg->name[i], msg->position[i]);
-    }
-}
-
-void RobotInterface::testPointer()
-{
-    /// Check validity of pointer
-    for (std::map<std::string, JointRefPublisher*>::iterator iter = joint_name_to_pub_.begin(); iter != joint_name_to_pub_.end(); iter++)
-    {
-        std::string joint_name = iter->first;
-        ROS_WARN("%s: %f", joint_name.c_str(), wbc_->getJointPosition(joint_name));
-    }
-
-    std::vector<std::string> joint_names = wbc_->getJointNames();
-    for (unsigned int i = 0; i < joint_names.size(); i++)
-    {
-        ROS_WARN("Joint name %i: %s",i,joint_names[i].c_str());
     }
 }

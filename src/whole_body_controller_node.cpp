@@ -271,9 +271,15 @@ int main(int argc, char **argv) {
         }
 
 
+        /// Set base pose in whole-body controller
+        robot_interface.setAmclPose();
+
+        /// Update whole-body controller
         wbc->update(q_ref, qdot_ref);
 
         jte.update();
+
+
         ///// Teststuff /////
         /*
         std::string root_frame;

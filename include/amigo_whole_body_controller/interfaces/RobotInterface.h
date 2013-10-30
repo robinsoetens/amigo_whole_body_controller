@@ -44,9 +44,10 @@ public:
       */
     void publishJointTorques(const Eigen::VectorXd& joint_torques, const std::vector<std::string>& joint_names);
 
-    //////////
-    void testPointer();
-    //////////
+    /**
+      * Sets base pose into whole-body controller using tf
+      */
+    void setAmclPose();
 
 protected:
 
@@ -56,8 +57,8 @@ protected:
     /** Subscribers to jointstate topics */
     ros::Subscriber torso_sub_, left_arm_sub_, right_arm_sub_, neck_sub_;
 
-    /** Subscriber to amcl pose */
-    ros::Subscriber amcl_sub_;
+    /** Tf listener (required for base pose) */
+    tf::TransformListener listener_;
 
     /** Struct containing publisher and message */
     struct JointRefPublisher {
@@ -80,19 +81,9 @@ protected:
     std::map<std::string, JointRefPublisher*> joint_name_to_pub_;
 
     /**
-      * Callback function for localization
-      */
-    void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
-
-    /**
       * Callback function for jointstate messages
       */
     void jointMeasurementCallback(const sensor_msgs::JointState::ConstPtr& msg);
-
-    /**
-      * Sets initial amcl pose
-      */
-    void setInitialAmclPose();
 
 };
 
