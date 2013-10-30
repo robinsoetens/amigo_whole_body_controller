@@ -32,7 +32,7 @@ public:
       * @param joint_name Name the joint which position should be altered
       * @param value Value to which this joint should move to
       */
-    void setJointTarget(const std::string &joint_name, const double &value);
+    bool setJointTarget(const std::string &joint_name, const double &value);
 
     /**
       * Returns cost, i.e., the absolute value of the torque of every single plugin

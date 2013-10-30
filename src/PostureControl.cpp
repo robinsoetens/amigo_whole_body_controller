@@ -51,23 +51,31 @@ void PostureControl::update(const KDL::JntArray& q_in, Eigen::VectorXd& tau_out)
 
 }
 
-void PostureControl::setJointTarget(const std::string& joint_name, const double& value) {
+bool PostureControl::setJointTarget(const std::string& joint_name, const double& value) {
+
+    // ToDo: return bool
 
     ROS_INFO("Posture controller: setting joint targets");
     /// Get joint index
-    unsigned int index = joint_name_to_index_[joint_name];
+    std::map<std::string, unsigned int>::const_iterator index_iter = joint_name_to_index_.find(joint_name);
+    if (index_iter != joint_name_to_index_.end())
+    {
+        unsigned int index = index_iter->second;
+        /// Check whether value is between bounds
+        if (value < q_min_[index] || value > q_max_[index]) {
+            ROS_WARN("Joint value %f is not between bounds [%f\t%f]",value,q_min_[index],q_max_[index]);
+            return false;
+        }
+        else {
+            ROS_INFO("Posture controller: %s (%i) to %f", joint_name.c_str(), (int)index, value);
+            q0_[index] = value;
+        }
+    } else {
+        ROS_ERROR("Joint %s not in posture controller", joint_name.c_str());
+        return false;
+    }
+    return true;
 
-    /// Check whether the index is not too large
-    if (index >= q0_.size()) {
-        ROS_WARN("Joint index %i is too large: there are only %i joints",(int)index,(int)q0_.size());
-    }
-    /// Check whether value is between bounds
-    else if (value < q_min_[index] || value > q_max_[index]) {
-        ROS_WARN("Joint value %f is not between bounds [%f\t%f]",value,q_min_[index],q_max_[index]);
-    }
-    else {
-        q0_[index] = value;
-    }
 }
 
 double PostureControl::getCost() {

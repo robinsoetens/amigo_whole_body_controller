@@ -1,6 +1,7 @@
 #include <amigo_whole_body_controller/interfaces/JointTrajectoryAction.h>
 
-JointTrajectoryAction::JointTrajectoryAction(WholeBodyController *wbc) {
+JointTrajectoryAction::JointTrajectoryAction(WholeBodyController *wbc)
+{
     wbc_ = wbc;
     initialize();
 }
@@ -11,6 +12,7 @@ JointTrajectoryAction::~JointTrajectoryAction() {
 
 bool JointTrajectoryAction::initialize() {
 
+    ROS_INFO("JTE: Initializing");
     trajectory_index_ = 0;
 
     ros::NodeHandle n;
@@ -27,8 +29,6 @@ bool JointTrajectoryAction::initialize() {
     server_right_ = new action_server(n, "joint_trajectory_action_right", false);
     server_right_->registerGoalCallback(boost::bind(&JointTrajectoryAction::goalCBRight, this));
     server_right_->start();
-
-    // /joint_trajectory_action_left
 
     /// Get joint names and constraints from the parameter server
 
@@ -131,7 +131,7 @@ void JointTrajectoryAction::update() {
                 //        ROS_WARN("Error joint %s = %f exceeds final joint contraint (%f)",joint_names_[j].c_str(),ref_pos_[j] - cur_pos_[j],final_goal_constraints_[joint_names_[j]]);
                 //    }
             }
-            server_->setAborted();
+            setAborted();
             is_active_=false;
             return;
 
@@ -164,7 +164,7 @@ void JointTrajectoryAction::update() {
         /// Check whether the final goal is achieved
         if (trajectory_index_ == active_goal_.trajectory.points.size())
         {
-            server_->setSucceeded();
+            setSucceeded();
             is_active_ = false;
         }
     }
@@ -178,6 +178,7 @@ void JointTrajectoryAction::goalCB() {
 
     active_goal_ = *server_->acceptNewGoal();
     is_active_ = true;
+    recent_server_ = "";
 
     if (!setJointPositions())
     {
@@ -195,6 +196,7 @@ void JointTrajectoryAction::goalCBLeft() {
 
     active_goal_ = *server_left_->acceptNewGoal();
     is_active_ = true;
+    recent_server_ = "left";
 
     if (!setJointPositions())
     {
@@ -212,6 +214,7 @@ void JointTrajectoryAction::goalCBRight() {
 
     active_goal_ = *server_right_->acceptNewGoal();
     is_active_ = true;
+    recent_server_ = "right";
 
     if (!setJointPositions())
     {
@@ -225,11 +228,35 @@ void JointTrajectoryAction::cancelCB() {
     is_active_ = false;
 }
 
+void JointTrajectoryAction::setSucceeded()
+{
+    if (recent_server_ == "left") {
+        server_left_->setSucceeded();
+    } else if (recent_server_ == "right") {
+        server_right_->setSucceeded();
+    } else {
+        server_->setSucceeded();
+    }
+}
+
+void JointTrajectoryAction::setAborted()
+{
+    if (recent_server_ == "left") {
+        server_left_->setAborted();
+    } else if (recent_server_ == "right") {
+        server_right_->setAborted();
+    } else {
+        server_->setAborted();
+    }
+}
+
 bool JointTrajectoryAction::setJointPositions()
 {
+    ROS_INFO("JTE: Setting joint positions");
     /// Loop over joints
     for (unsigned i = 0; i < active_goal_.trajectory.joint_names.size(); i++)
     {
+        ROS_INFO("JTE: Set joint: %s to %f", active_goal_.trajectory.joint_names[i].c_str(), active_goal_.trajectory.points[trajectory_index_].positions[i]);
         wbc_->setDesiredJointPosition(active_goal_.trajectory.joint_names[i], active_goal_.trajectory.points[trajectory_index_].positions[i]);
     }
     return true;

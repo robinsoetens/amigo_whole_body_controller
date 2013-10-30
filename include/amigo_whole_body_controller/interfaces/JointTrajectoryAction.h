@@ -49,6 +49,9 @@ private:
 
     control_msgs::FollowJointTrajectoryGoal active_goal_;
 
+    /** Indicates from which server the active_goal comes from */
+    std::string recent_server_;
+
     /** Pointer to whole body controller object */
     WholeBodyController *wbc_;
 
@@ -76,17 +79,19 @@ private:
     /** Goal time constraint */
     double goal_time_constraint_;
 
-    /**
-      * Callback function for joint goal
-      */
+    /** Callback function for joint goal */
     void goalCB();
     void goalCBLeft();
     void goalCBRight();
 
-    /**
-      * Callback function for cancel goal
-      */
+    /** Callback function for cancel goal */
     void cancelCB();
+
+    /** Sets one of the action servers succeeded */
+    void setSucceeded();
+
+    /** Sets one of the action servers aborted */
+    void setAborted();
 
     /** Set joint positions */
     bool setJointPositions();

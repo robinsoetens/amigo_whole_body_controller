@@ -46,11 +46,18 @@ public:
      */
     virtual ~WholeBodyController();
 
-    /*
+    /**
      * Updatehook
+     * @param q_reference: Eigen vector with reference joint positions
+     * @param qdot_reference: Eigen vector with reference joint velocities
      */
     bool update(Eigen::VectorXd &q_reference, Eigen::VectorXd &qdot_reference);
 
+    /**
+      * Sets current joint position in whole-body controller object
+      * @param joint_name: Joint name
+      * @param pos: Current joint position
+      */
     void setMeasuredJointPosition(const std::string& joint_name, double pos);
 
     /**
@@ -65,18 +72,34 @@ public:
       * @param joint_name Joint name
       * @param reference Desired joint position
       */
-    void setDesiredJointPosition(const std::string& joint_name, double reference);
+    bool setDesiredJointPosition(const std::string& joint_name, double reference);
 
+    /**
+      * Returns eigen vector with joint reference positions
+      */
     const Eigen::VectorXd& getJointReferences() const;
 
+    /**
+      * Returns eigen vector with joint reference velocities
+      */
     const Eigen::VectorXd& getJointTorques() const;
 
+    /**
+      * Returns vector with joint names
+      * @return Vector with joint names
+      */
     const std::vector<std::string>& getJointNames() const;
 
+    /**
+      * Adds motion objective to the whole-body controller
+      * @param motionobjective: pointer to the motion objective that is added
+      */
     bool addMotionObjective(MotionObjective* motionobjective);
 
-//    bool addMotionObjective(amigo_whole_body_controller::ArmTaskGoal& goal);
-
+    /**
+      * Removes motion objective from the whole-body controller
+      * @param motionobjective: pointer to the motionobjective to remove
+      */
     bool removeMotionObjective(MotionObjective* motionobjective);
 
     /**
@@ -86,26 +109,26 @@ public:
 
     RobotState robot_state_;
     
+    /**
+      * @return Returns a map from joint names to indexes of the various Eigen vectors and KDL JntArrays
+      */
     std::map<std::string, unsigned int> getJointNameToIndex();
 
+    /**
+      * Returns a vector with all motion objectives of the type CartesianImpedance with the tip and root frame as asked
+      * @param tip_frame: end-effector frame of the motion objective
+      * @param root_frame: root frame of the motion objective
+      */
     std::vector<MotionObjective*> getCartesianImpedances(const std::string& tip_frame, const std::string& root_frame);
 
 protected:
-
-    ros::Publisher pub_joint_torques_;
-
-    std::vector<Chain*> chains_;
 
     std::map<std::string, unsigned int> joint_name_to_index_;
 
     std::vector<std::string> index_to_joint_name_;
 
-    // The total measured joint array
+    /** Joint array containing the current joint positions */
     KDL::JntArray q_current_;
-
-    KDL::JntArray q_min_;
-
-    KDL::JntArray q_max_;
 
     //! Unsigned integer containing the total number of joints
     uint num_joints_;
@@ -119,12 +142,6 @@ protected:
     JointLimitAvoidance JointLimitAvoidance_;
     PostureControl PostureControl_;
 
-    //! Map contains a string to describe the (root joint of the component) this concerns and a vector (is sufficient) with the current joint values
-    //std::map<std::string, std::vector<double> > q_current_map_;
-    //std::map<std::string, Component*> component_map_;
-    //std::map<std::string, uint> joint_name_index_map_;
-
-    ///KDL::Jacobian Jacobian_;
     Eigen::MatrixXd Jacobian_;
 
     Eigen::VectorXd tau_;
@@ -136,22 +153,9 @@ protected:
     Eigen::VectorXd qdot_reference_;
 
     Eigen::VectorXd q_reference_;
-    sensor_msgs::JointState left_arm_msg_;
-    sensor_msgs::JointState right_arm_msg_;
-    sensor_msgs::JointState torso_msg_;
-    sensor_msgs::JointState head_msg_;
 
     //! Nullspace projection matrix
     Eigen::MatrixXd N_;
-
-    //! Vector containing bools to indicate the previous 'active' chains (an update is provided as function of the update hook)
-    //std::vector<bool> isactive_vector_;
-
-    //! Vector containing the number of active tasks during previous loop
-    //uint previous_num_active_tasks_;
-
-    //! Sampling time
-    double Ts_;
 
     /**
      * Initialize function
@@ -159,21 +163,9 @@ protected:
     bool initialize(const double Ts);
 
     /**
-     * Publish reference positions
-     */
-    void publishReferences();
-
-
-    /**
       * Subtracts information from the parameter files
       */
     void loadParameterFiles(RobotState &robot_state);
-
-    /**
-      * End-effector pose based on forward kinematics computation
-      */
-    KDL::Frame end_effector_pose_;
-    KDL::Frame FK_end_effector_pose_;
 
 };
 

@@ -23,10 +23,9 @@ bool WholeBodyController::initialize(const double Ts)
     //ROS_INFO("Nodehandle %s",n.getNamespace().c_str());
     ROS_INFO("Initializing whole body controller");
 
-    // ToDo: Parameterize
-    Ts_ = Ts;
+    KDL::JntArray q_min, q_max;
 
-    ChainParser::parse(robot_state_.chains_,robot_state_.tree_, joint_name_to_index_, index_to_joint_name_, q_min_, q_max_);
+    ChainParser::parse(robot_state_.chains_,robot_state_.tree_, joint_name_to_index_, index_to_joint_name_, q_min, q_max);
     num_joints_ = joint_name_to_index_.size();
     robot_state_.tree_.getJointNames(joint_name_to_index_,robot_state_.tree_.joint_name_to_index_);
     robot_state_.tree_.getTreeJointIndex(robot_state_.tree_.kdl_tree_, robot_state_.tree_.tree_joint_index_);
@@ -59,9 +58,6 @@ bool WholeBodyController::initialize(const double Ts)
         n.param<double> ("/whole_body_controller/admittance_control/damping/"+iter->first, admittance_damping[iter->second], 10);
     }
 
-    // Initialize output topics
-    pub_joint_torques_ = n.advertise<std_msgs::Float64MultiArray>("/whole_body_controller/joint_torques/", 10);
-
     loadParameterFiles(robot_state_);
 
     // Construct the FK and Jacobian solvers
@@ -69,7 +65,7 @@ bool WholeBodyController::initialize(const double Ts)
     robot_state_.tree_.jac_solver_ = new KDL::TreeJntToJacSolver(robot_state_.tree_.kdl_tree_);
 
     // Initialize admittance controller
-    AdmitCont_.initialize(Ts_,q_min_, q_max_, admittance_mass, admittance_damping);
+    AdmitCont_.initialize(Ts,q_min, q_max, admittance_mass, admittance_damping);
 
     // Initialize nullspace calculator
     // ToDo: Make this variable
@@ -81,11 +77,11 @@ bool WholeBodyController::initialize(const double Ts)
 
     // Initialize Joint Limit Avoidance
     //for (uint i = 0; i < num_joints_; i++) ROS_INFO("JLA gain of joint %i is %f",i,JLA_gain[i]);
-    JointLimitAvoidance_.initialize(q_min_, q_max_, JLA_gain, JLA_workspace);
+    JointLimitAvoidance_.initialize(q_min, q_max, JLA_gain, JLA_workspace);
     ROS_INFO("Joint limit avoidance initialized");
 
     // Initialize Posture Controller
-    PostureControl_.initialize(q_min_, q_max_, posture_q0, posture_gain, joint_name_to_index_);
+    PostureControl_.initialize(q_min, q_max, posture_q0, posture_gain, joint_name_to_index_);
     ROS_INFO("Posture Control initialized");
 
     // Resize additional variables
@@ -153,9 +149,9 @@ double WholeBodyController::getJointPosition(const std::string& joint_name) cons
     }
 }
 
-void WholeBodyController::setDesiredJointPosition(const std::string& joint_name, double reference)
+bool WholeBodyController::setDesiredJointPosition(const std::string& joint_name, double reference)
 {
-    PostureControl_.setJointTarget(joint_name, reference);
+    return PostureControl_.setJointTarget(joint_name, reference);
 }
 
 bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& qdot_reference)
@@ -234,14 +230,6 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
     //cout << "all_wrenches = " << endl << all_wrenches << endl;
     tau_ = jacobian_tree.transpose() * all_wrenches;
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
-
-    // Publish the joint torques
-    std_msgs::Float64MultiArray msgTau;
-    for (uint i = 0; i < tau_.rows(); i++)
-    {
-        msgTau.data.push_back(tau_(i));
-    }
-    pub_joint_torques_.publish(msgTau);
 
     ComputeNullspace_.update(jacobian_tree, N_);
     //ROS_INFO("Nullspace updated");

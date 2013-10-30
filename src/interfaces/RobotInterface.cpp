@@ -21,6 +21,7 @@ bool RobotInterface::initialize()
     ros::NodeHandle nh_private("~");
 
     /// Subscribers
+    // ToDo: convert amcl_sub_ to tf object
     amcl_sub_       = nh_private.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl/pose",1, &RobotInterface::amclPoseCallback, this);
     torso_sub_      = nh_private.subscribe<sensor_msgs::JointState>("/amigo/torso/measurements", 1, &RobotInterface::jointMeasurementCallback, this);
     left_arm_sub_   = nh_private.subscribe<sensor_msgs::JointState>("/amigo/left_arm/measurements", 1, &RobotInterface::jointMeasurementCallback, this);

@@ -206,7 +206,7 @@ int main(int argc, char **argv) {
     //robot_interface.testPointer();
 
     /// Joint trajectory executer
-    //JointTrajectoryAction jte(wbc);
+    JointTrajectoryAction jte(wbc);
 
     ros::Rate r(loop_rate_);
 
@@ -272,6 +272,8 @@ int main(int argc, char **argv) {
 
 
         wbc->update(q_ref, qdot_ref);
+
+        jte.update();
         ///// Teststuff /////
         /*
         std::string root_frame;
