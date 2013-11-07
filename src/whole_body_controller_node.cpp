@@ -107,6 +107,7 @@ void GoalCB() {
         goal_pose.header.frame_id = goal.position_constraint.header.frame_id;
         // ToDo: include offset
         cartesian_impedance->setGoal(goal_pose);
+        cartesian_impedance->setGoalOffset(goal.position_constraint.target_point_offset);
         cartesian_impedance->setImpedance(goal.stiffness);
         cartesian_impedance->setPositionTolerance(goal.position_constraint.constraint_region_shape);
         cartesian_impedance->setOrientationTolerance(goal.orientation_constraint.absolute_roll_tolerance, goal.orientation_constraint.absolute_pitch_tolerance, goal.orientation_constraint.absolute_yaw_tolerance);

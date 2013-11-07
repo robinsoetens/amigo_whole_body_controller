@@ -44,9 +44,8 @@ bool CartesianImpedance::initialize(RobotState &robotstate) {
     std::map<std::string, KDL::Frame>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
     Frame_map_tip_ = (*itrFK).second;
 
-    if(pre_grasp){
-        Frame_map_tip_ =  Frame_map_tip_* Frame_tip_offset;
-    }
+    /// Add offset
+    Frame_map_tip_ =  Frame_map_tip_* Frame_tip_offset;
 
     /// Init the reference generators
     ref_generators.resize(6);
@@ -60,6 +59,7 @@ bool CartesianImpedance::initialize(RobotState &robotstate) {
     ref_generators[3].setRefGen(roll);
     ref_generators[4].setRefGen(pitch);
     ref_generators[5].setRefGen(yaw);
+
     return true;
 }
 
@@ -72,7 +72,6 @@ void CartesianImpedance::setGoal(const geometry_msgs::PoseStamped& goal_pose ) {
     root_frame_ = goal_pose.header.frame_id;
 
     stampedPoseToKDLframe(goal_pose, Frame_root_goal_);
-    pre_grasp = false;
 
     /// Maximum magnitude of the repulsive force
     // ToDo: get rid of hardcoding
@@ -81,19 +80,20 @@ void CartesianImpedance::setGoal(const geometry_msgs::PoseStamped& goal_pose ) {
 
 void CartesianImpedance::setGoalOffset(const geometry_msgs::Point& target_point_offset ) {
 
-    ROS_INFO("PRE-GRAPSP: Received target point offset (x,y,z): %f, %f, %f", target_point_offset.x, target_point_offset.y, target_point_offset.z);
+    ROS_INFO("PRE-GRASP: Received target point offset (x,y,z): %f, %f, %f", target_point_offset.x, target_point_offset.y, target_point_offset.z);
 
-    Frame_tip_offset.p.x(-target_point_offset.x);
-    Frame_tip_offset.p.y(-target_point_offset.y);
-    Frame_tip_offset.p.z(-target_point_offset.z);
+    //Frame_tip_offset.p.x(-target_point_offset.x);
+    //Frame_tip_offset.p.y(-target_point_offset.y);
+    //Frame_tip_offset.p.z(-target_point_offset.z);
+    Frame_tip_offset.p.x(target_point_offset.x);
+    Frame_tip_offset.p.y(target_point_offset.y);
+    Frame_tip_offset.p.z(target_point_offset.z);
 
     ref_tip_offset.x(target_point_offset.x);
     ref_tip_offset.y(target_point_offset.y);
     ref_tip_offset.z(target_point_offset.z);
 
-    pre_grasp = true;
 }
-
 
 void CartesianImpedance::setImpedance(const geometry_msgs::Wrench &stiffness) {
 
@@ -173,13 +173,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     Frame_map_tip_  = (*itrFK).second;
     //ROS_INFO("FK pose tip frame in map  = (%f,%f,%f)", Frame_map_tip_.p.x(), Frame_map_tip_.p.y(), Frame_map_tip_.p.z());
 
-    if(pre_grasp){
-
-        ROS_INFO_ONCE("Tip at (x,y,z): %f, %f, %f", Frame_map_tip_.p.x(), Frame_map_tip_.p.y(), Frame_map_tip_.p.z());
-        Frame_map_tip_ =  Frame_map_tip_* Frame_tip_offset;
-        ROS_INFO_ONCE("Offset at (x,y,z): %f, %f, %f", Frame_map_tip_.p.x(), Frame_map_tip_.p.y(), Frame_map_tip_.p.z());
-
-    }
+    Frame_map_tip_ =  Frame_map_tip_* Frame_tip_offset;
 
     /// Get the pose of the root frame (of the goal) in map
     std::map<std::string, KDL::Frame>::iterator itrRF = robotstate.fk_poses_.find(root_frame_);
@@ -200,6 +194,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     ref_pose_error_ = KDL::diff(Frame_map_tip_ , Frame_map_ref);
 
     /// Error between tip and reference frame
+    //ROS_WARN("Error [x,y,z] = %f\t%f\t%f", pose_error_.vel.x(), pose_error_.vel.y(), pose_error_.vel.z());
     error_vector(0) = ref_pose_error_.vel.x();
     error_vector(1) = ref_pose_error_.vel.y();
     error_vector(2) = ref_pose_error_.vel.z();
@@ -225,15 +220,8 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     /// Transform Force from map to root. Maybe efficienter to check if amcl change is big enough to afford to recalculate new Inverse.
     F_task_wrench_root = Frame_map_root.Inverse() * F_task_wrench_map;
 
-    /// Now check if we have a pre_grasp goal
-
-    if(pre_grasp)
-    {
-        std::cout<<"Offset forces: "<<F_task_wrench_root.force.x()<<" "<<F_task_wrench_root.force.y()<<" "<<F_task_wrench_root.force.z()<<" "<<F_task_wrench_root.torque.x()<<" "<<F_task_wrench_root.torque.y()<<" "<<F_task_wrench_root.torque.z()<<std::endl;
-        /// Change the reference point from offset, to tip. No need to change Frame.
-        F_task_wrench_root = F_task_wrench_root.RefPoint(-ref_tip_offset);
-    }
-
+    /// Change the reference point from offset, to tip. No need to change Frame.
+    F_task_wrench_root = F_task_wrench_root.RefPoint(-ref_tip_offset);
 
     /// Transform to Eigen::VectorXd
     F_task_root(0) = F_task_wrench_root.force.x();

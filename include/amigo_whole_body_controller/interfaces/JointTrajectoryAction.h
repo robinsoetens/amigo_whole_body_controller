@@ -8,7 +8,8 @@
 #define JOINTTRAJECTORYACTION_H
 
 #include <ros/ros.h>
-#include <actionlib/server/action_server.h>
+//#include <actionlib/server/action_server.h>
+#include <actionlib/server/simple_action_server.h>
 
 #include <control_msgs/FollowJointTrajectoryAction.h>
 #include "WholeBodyController.h"

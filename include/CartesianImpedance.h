@@ -8,10 +8,10 @@
 #define CARTESIANIMPEDANCE_H_
 
 #include "MotionObjective.h"
-#include "CollisionAvoidance.h"
+//#include "CollisionAvoidance.h"
 
 // ROS
-#include "ros/ros.h"
+//#include "ros/ros.h"
 
 // Messages
 #include <geometry_msgs/PoseStamped.h>
@@ -23,14 +23,14 @@
 #include <Eigen/Core>
 
 // tf
-#include <tf/transform_listener.h>
+//#include <tf/transform_listener.h>
 
 // Action server
-#include <actionlib/server/action_server.h>
-#include <actionlib/server/simple_action_server.h>
+//#include <actionlib/server/action_server.h>
+//#include <actionlib/server/simple_action_server.h>
 
 // Action definition
-#include <amigo_arm_navigation/grasp_precomputeAction.h>
+//#include <amigo_arm_navigation/grasp_precomputeAction.h>
 
 // KDL
 #include <kdl/chain.hpp>
@@ -154,12 +154,6 @@ protected:
       *
       */
     void refGeneration(KDL::Frame& goal, KDL::Frame& ref);
-
-    /**
-      * True, if using pre-grasp
-      *
-      */
-    bool pre_grasp;
 
     /**
       * Frame for specifiying offset from tip, for pre-grasp

@@ -8,7 +8,7 @@
 #define CONSTRUCT_CHAIN_H_
 
 // ROS
-#include <ros/ros.h>
+//#include <ros/ros.h>
 #include <urdf/model.h>
 
 // KDL

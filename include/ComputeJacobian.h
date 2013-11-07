@@ -8,7 +8,7 @@
 #define COMPUTE_JACOBIAN_H_
 
 // ROS
-#include <ros/ros.h>
+//#include <ros/ros.h>
 
 // Construct Chain
 #include "ConstructChain.h"

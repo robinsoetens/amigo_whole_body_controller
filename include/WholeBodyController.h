@@ -8,16 +8,13 @@
 #define WHOLEBODYCONTROLLER_H_
 
 // ROS
-#include "ros/ros.h"
+//#include "ros/ros.h"
 
-#include <Eigen/Core>
+//#include <Eigen/Core>
 
 // Messages
 #include <std_msgs/Float64.h>
-#include <sensor_msgs/JointState.h>
-///#include <amigo_msgs/arm_joints.h>
-///#include <amigo_msgs/spindle_setpoint.h>
-///#include <amigo_msgs/head_ref.h>
+//#include <sensor_msgs/JointState.h>
 
 // WholeBodyController
 #include "CartesianImpedance.h"
@@ -30,7 +27,7 @@
 //#include "TreeDescription.h"
 
 // Vector
-#include <vector>
+//#include <vector>
 
 class WholeBodyController {
 

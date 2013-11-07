@@ -1,12 +1,12 @@
 #ifndef WBC_MOTIONOBJECTIVE_H_
 #define WBC_MOTIONOBJECTIVE_H_
 
-#include "Chain.h"
-#include "Component.h"
+//#include "Chain.h"
+//#include "Component.h"
 #include "RobotState.h"
 
 // Eigen
-#include <Eigen/Core>
+//#include <Eigen/Core>
 
 class MotionObjective {
 
