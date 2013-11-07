@@ -182,15 +182,16 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
 
     /*
     std::cout << "==================================" << std::endl;
-    for (std::map<std::string, geometry_msgs::PoseStamped>::iterator itrFK = robot_state_.fk_poses_.begin(); itrFK != robot_state_.fk_poses_.end(); ++itrFK)
+    for (std::map<std::string, KDL::Frame>::iterator itrFK = robot_state_.fk_poses_.begin(); itrFK != robot_state_.fk_poses_.end(); ++itrFK)
     {
-        std::pair<std::string, geometry_msgs::PoseStamped> FK = *itrFK;
+        std::pair<std::string, KDL::Frame> FK = *itrFK;
         std::cout << "frame = " << FK.first << std::endl;
-        std::cout << "X = " <<  FK.second.pose.position.x << std::endl;
-        std::cout << "Y = " <<  FK.second.pose.position.y << std::endl;
-        std::cout << "Z = " <<  FK.second.pose.position.z << std::endl;
+        std::cout << "X = " <<  FK.second.p.x() << std::endl;
+        std::cout << "Y = " <<  FK.second.p.y() << std::endl;
+        std::cout << "Z = " <<  FK.second.p.z() << std::endl;
     }
     */
+    
 
     /// Apply the corresponding FK solution to the collision bodies
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
