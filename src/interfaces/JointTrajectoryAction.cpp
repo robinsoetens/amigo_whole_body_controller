@@ -198,6 +198,14 @@ void JointTrajectoryAction::goalCBLeft() {
     is_active_ = true;
     recent_server_ = "left";
 
+    /// Remove motion objective because this will typically be conflicting
+    /// Although not really neat, this is how our executives are set up
+    std::vector<MotionObjective*> imps_to_remove = wbc_->getCartesianImpedances("grippoint_left", "");
+    ROS_DEBUG("Removing %i impedances",(int)imps_to_remove.size());
+    for (unsigned int i = 0; i < imps_to_remove.size(); i++) {
+        wbc_->removeMotionObjective(imps_to_remove[i]);
+    }
+
     if (!setJointPositions())
     {
         ROS_ERROR("Cannot set desired joint positions");
@@ -215,6 +223,14 @@ void JointTrajectoryAction::goalCBRight() {
     active_goal_ = *server_right_->acceptNewGoal();
     is_active_ = true;
     recent_server_ = "right";
+
+    /// Remove motion objective because this will typically be conflicting
+    /// Although not really neat, this is how our executives are set up
+    std::vector<MotionObjective*> imps_to_remove = wbc_->getCartesianImpedances("grippoint_right", "");
+    ROS_DEBUG("Removing %i impedances",(int)imps_to_remove.size());
+    for (unsigned int i = 0; i < imps_to_remove.size(); i++) {
+        wbc_->removeMotionObjective(imps_to_remove[i]);
+    }
 
     if (!setJointPositions())
     {
@@ -252,11 +268,10 @@ void JointTrajectoryAction::setAborted()
 
 bool JointTrajectoryAction::setJointPositions()
 {
-    ROS_INFO("JTE: Setting joint positions");
+    ROS_DEBUG("JTE: Setting joint positions");
     /// Loop over joints
     for (unsigned i = 0; i < active_goal_.trajectory.joint_names.size(); i++)
     {
-        ROS_INFO("JTE: Set joint: %s to %f", active_goal_.trajectory.joint_names[i].c_str(), active_goal_.trajectory.points[trajectory_index_].positions[i]);
         wbc_->setDesiredJointPosition(active_goal_.trajectory.joint_names[i], active_goal_.trajectory.points[trajectory_index_].positions[i]);
     }
     return true;

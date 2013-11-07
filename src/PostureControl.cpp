@@ -55,7 +55,7 @@ bool PostureControl::setJointTarget(const std::string& joint_name, const double&
 
     // ToDo: return bool
 
-    ROS_INFO("Posture controller: setting joint targets");
+    ROS_DEBUG("Posture controller: setting joint targets");
     /// Get joint index
     std::map<std::string, unsigned int>::const_iterator index_iter = joint_name_to_index_.find(joint_name);
     if (index_iter != joint_name_to_index_.end())
@@ -67,7 +67,7 @@ bool PostureControl::setJointTarget(const std::string& joint_name, const double&
             return false;
         }
         else {
-            ROS_INFO("Posture controller: %s (%i) to %f", joint_name.c_str(), (int)index, value);
+            //ROS_INFO("Posture controller: %s (%i) to %f", joint_name.c_str(), (int)index, value);
             q0_[index] = value;
         }
     } else {
