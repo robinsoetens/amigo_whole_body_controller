@@ -110,12 +110,7 @@ public:
         std::vector<Exclusion> checks;
     } exclusion_checks;
 
-    geometry_msgs::PoseStamped poseGrippointLeft_;
-    geometry_msgs::PoseStamped poseGrippointRight_;
-
     Tree tree_;
-    Chain* chain_left_;
-    Chain* chain_right_;
     std::vector<Chain*> chains_;
     KDL::Frame amcl_pose_;
 
