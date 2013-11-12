@@ -1,9 +1,6 @@
 #include "CartesianImpedance.h"
 #include <tf/transform_datatypes.h>
 
-#include <amigo_whole_body_controller/ArmTaskAction.h>
-#include <actionlib/server/simple_action_server.h>
-
 #include <std_msgs/Float64MultiArray.h>
 
 
@@ -31,7 +28,6 @@ CartesianImpedance::CartesianImpedance(const std::string& tip_frame) :
     cylinder_tolerance_[0] = cylinder_tolerance_[1] = 0;
 
     pose_error_.Zero();
-    ref_pose_error_.Zero();
     ref_tip_offset.Zero();
 
     ROS_INFO("Initialized Cartesian Impedance");
@@ -41,24 +37,34 @@ bool CartesianImpedance::initialize(RobotState &robotstate) {
 
     /// Find the pose of the goal frame
     robotstate.collectFKSolutions();
-    std::map<std::string, KDL::Frame>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
-    Frame_map_tip_ = (*itrFK).second;
 
-    /// Add offset
-    Frame_map_tip_ =  Frame_map_tip_* Frame_tip_offset;
+    /// Get end effector pose (is in map frame)
+    std::map<std::string, KDL::Frame>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
+    KDL::Frame frame_map_tip  = (*itrFK).second;
+
+    /// Include tip offset
+    frame_map_tip =  frame_map_tip * Frame_tip_offset;
+
+    /// Get the pose of the root frame (of the goal) in map
+    std::map<std::string, KDL::Frame>::iterator itrRF = robotstate.fk_poses_.find(root_frame_);
+    KDL::Frame frame_map_root = itrRF->second;
+
+    /// Convert end-effector pose to root
+    KDL::Frame frame_root_tip = frame_map_root.Inverse() * frame_map_tip;
 
     /// Init the reference generators
     ref_generators.resize(6);
-    ref_generators[0].setRefGen(Frame_map_tip_.p.x());
-    ref_generators[1].setRefGen(Frame_map_tip_.p.y());
-    ref_generators[2].setRefGen(Frame_map_tip_.p.z());
-
+    ref_generators[0].setRefGen(frame_root_tip.p.x());
+    ref_generators[1].setRefGen(frame_root_tip.p.y());
+    ref_generators[2].setRefGen(frame_root_tip.p.z());
 
     double roll, pitch, yaw;
-    Frame_map_tip_.M.GetRPY(roll, pitch, yaw);
+    frame_root_tip.M.GetRPY(roll, pitch, yaw);
     ref_generators[3].setRefGen(roll);
     ref_generators[4].setRefGen(pitch);
     ref_generators[5].setRefGen(yaw);
+
+    ROS_DEBUG("Initializing refgens at [%f,\t%f,\t%f,\t%f,\t%f,\t%f,\t]", frame_root_tip.p.x(), frame_root_tip.p.y(), frame_root_tip.p.z(), roll, pitch, yaw);
 
     return true;
 }
@@ -82,9 +88,6 @@ void CartesianImpedance::setGoalOffset(const geometry_msgs::Point& target_point_
 
     ROS_INFO("PRE-GRASP: Received target point offset (x,y,z): %f, %f, %f", target_point_offset.x, target_point_offset.y, target_point_offset.z);
 
-    //Frame_tip_offset.p.x(-target_point_offset.x);
-    //Frame_tip_offset.p.y(-target_point_offset.y);
-    //Frame_tip_offset.p.z(-target_point_offset.z);
     Frame_tip_offset.p.x(target_point_offset.x);
     Frame_tip_offset.p.y(target_point_offset.y);
     Frame_tip_offset.p.z(target_point_offset.z);
@@ -161,77 +164,65 @@ void CartesianImpedance::cancelGoal() {
 
 void CartesianImpedance::apply(RobotState &robotstate) {
 
-    Eigen::VectorXd F_task_root(6);
-    Eigen::VectorXd F_task_map(6);
-    KDL::Wrench F_task_wrench_root;
-    KDL::Wrench F_task_wrench_map;
-    Eigen::VectorXd error_vector(6);
-
-    // ToDo: create get function
     /// Get end effector pose (is in map frame)
     std::map<std::string, KDL::Frame>::iterator itrFK = robotstate.fk_poses_.find(tip_frame_);
-    Frame_map_tip_  = (*itrFK).second;
+    KDL::Frame frame_map_tip  = (*itrFK).second;
     //ROS_INFO("FK pose tip frame in map  = (%f,%f,%f)", Frame_map_tip_.p.x(), Frame_map_tip_.p.y(), Frame_map_tip_.p.z());
 
-    Frame_map_tip_ =  Frame_map_tip_* Frame_tip_offset;
+    /// Include tip offset
+    frame_map_tip =  frame_map_tip * Frame_tip_offset;
 
     /// Get the pose of the root frame (of the goal) in map
     std::map<std::string, KDL::Frame>::iterator itrRF = robotstate.fk_poses_.find(root_frame_);
     KDL::Frame Frame_map_root = itrRF->second;
     //ROS_INFO("FK pose root frame in map (x,y,z) = (%f,%f,%f)", Frame_map_root.p.x(), Frame_map_root.p.y(), Frame_map_root.p.z());
 
-    /// Convert the goal pose to map (is required because pose of robot in map (amcl_pose) may have been updated)
-    KDL::Frame Frame_map_goal = Frame_map_root * Frame_root_goal_;
-    //ROS_INFO("FK pose of goal in map (x,y,z) = (%f,%f,%f)",Frame_map_goal.p.x(),Frame_map_goal.p.y(),Frame_map_goal.p.z());
+    /// Convert end-effector pose to root
+    KDL::Frame frame_root_tip = Frame_map_root.Inverse() * frame_map_tip;
+    //ROS_INFO("Tip frame expressed in root [x, y, z] = [%f,\t%f,\t%f]",frame_root_tip.p.x(),frame_root_tip.p.y(),frame_root_tip.p.z());
 
     /// Generate a reference for the cartesian impedance
-    KDL::Frame Frame_map_ref;
-    refGeneration(Frame_map_goal, Frame_map_ref);
-    //ROS_INFO("FK pose of ref in map (x,y,z) = (%f,%f,%f)",Frame_map_ref.p.x(),Frame_map_ref.p.y(),Frame_map_ref.p.z());
+    KDL::Frame frame_root_ref;
+    refGeneration(Frame_root_goal_, frame_root_ref);
 
     /// Compute pose error
-    pose_error_ = KDL::diff(Frame_map_tip_ , Frame_map_goal);
-    ref_pose_error_ = KDL::diff(Frame_map_tip_ , Frame_map_ref);
+    pose_error_ = KDL::diff(frame_root_tip , Frame_root_goal_);
+    KDL::Twist ref_pose_error = KDL::diff(frame_root_tip , frame_root_ref);
+    //ROS_INFO("Error [x, y, z, roll, pitch, yaw] = [%f,\t%f,\t%f,\t%f,\t%f,\t%f", pose_error_.vel.x(), pose_error_.vel.y(), pose_error_.vel.z(), pose_error_.rot.x(), pose_error_.rot.y(), pose_error_.rot.z());
 
     /// Error between tip and reference frame
     //ROS_WARN("Error [x,y,z] = %f\t%f\t%f", pose_error_.vel.x(), pose_error_.vel.y(), pose_error_.vel.z());
-    error_vector(0) = ref_pose_error_.vel.x();
-    error_vector(1) = ref_pose_error_.vel.y();
-    error_vector(2) = ref_pose_error_.vel.z();
-    error_vector(3) = ref_pose_error_.rot.x();//goal_RPY(0) - end_effector_RPY(0)/ Ts;
-    error_vector(4) = ref_pose_error_.rot.y();//goal_RPY(1) - end_effector_RPY(1)/ Ts;
-    error_vector(5) = ref_pose_error_.rot.z();//goal_RPY(2) - end_effector_RPY(2)/ Ts;
-
-    //std::cout << "error_vector = " << error_vector << std::endl;
+    Eigen::VectorXd error_vector(6);
+    error_vector(0) = ref_pose_error.vel.x();
+    error_vector(1) = ref_pose_error.vel.y();
+    error_vector(2) = ref_pose_error.vel.z();
+    error_vector(3) = ref_pose_error.rot.x();
+    error_vector(4) = ref_pose_error.rot.y();
+    error_vector(5) = ref_pose_error.rot.z();
 
     /// Compute Force in map frame
-    F_task_map = K_ * error_vector;
+    Eigen::VectorXd F_task = K_ * error_vector;
 
     /// Transform to KDL::Wrench
-    F_task_wrench_map.force.x(F_task_map(0));
-    F_task_wrench_map.force.y(F_task_map(1));
-    F_task_wrench_map.force.z(F_task_map(2));
-    F_task_wrench_map.torque.x(F_task_map(3));
-    F_task_wrench_map.torque.y(F_task_map(4));
-    F_task_wrench_map.torque.z(F_task_map(5));
-
-    //std::cout<<"Before Trans: "<<F_task_map(0)<<" "<<F_task_map(1)<<" "<<F_task_map(2)<<" "<<F_task_map(3)<<" "<<F_task_map(4)<<" "<<F_task_map(5)<<"\n";
-
-    /// Transform Force from map to root. Maybe efficienter to check if amcl change is big enough to afford to recalculate new Inverse.
-    F_task_wrench_root = Frame_map_root.Inverse() * F_task_wrench_map;
+    KDL::Wrench W_task;
+    W_task.force.x(F_task(0));
+    W_task.force.y(F_task(1));
+    W_task.force.z(F_task(2));
+    W_task.torque.x(F_task(3));
+    W_task.torque.y(F_task(4));
+    W_task.torque.z(F_task(5));
 
     /// Change the reference point from offset, to tip. No need to change Frame.
-    F_task_wrench_root = F_task_wrench_root.RefPoint(-ref_tip_offset);
+    W_task = W_task.RefPoint(-ref_tip_offset);
 
     /// Transform to Eigen::VectorXd
-    F_task_root(0) = F_task_wrench_root.force.x();
-    F_task_root(1) = F_task_wrench_root.force.y();
-    F_task_root(2) = F_task_wrench_root.force.z();
-    F_task_root(3) = F_task_wrench_root.torque.x();
-    F_task_root(4) = F_task_wrench_root.torque.y();
-    F_task_root(5) = F_task_wrench_root.torque.z();
-
-    //std::cout<<"EE forces in root: "<<F_task_root(0)<<" "<<F_task_root(1)<<" "<<F_task_root(2)<<" "<<F_task_root(3)<<" "<<F_task_root(4)<<" "<<F_task_root(5)<<"\n\n";
+    Eigen::VectorXd W_task_vec(6);
+    W_task_vec(0) = W_task.force.x();
+    W_task_vec(1) = W_task.force.y();
+    W_task_vec(2) = W_task.force.z();
+    W_task_vec(3) = W_task.torque.x();
+    W_task_vec(4) = W_task.torque.y();
+    W_task_vec(5) = W_task.torque.z();
 
     /*
     /// Limit the maximum magnitude of the attractive force so it will always be smaller than the maximum magnitude of the repulisive force generated by the collision avoidance
@@ -252,15 +243,15 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     //ROS_INFO("Tip frame = %s",tip_frame_.c_str());
 
     // add the wrench to the end effector of the kinematic chain
-    robotstate.tree_.addCartesianWrench(tip_frame_,F_task_root);
+    robotstate.tree_.addCartesianWrench(tip_frame_, W_task_vec);
 
     if (tip_frame_ == "grippoint_left")
     {
         // Publish the wrench
         std_msgs::Float64MultiArray msgW;
-        for (uint i = 0; i < F_task_root.rows(); i++)
+        for (uint i = 0; i < W_task_vec.rows(); i++)
         {
-            msgW.data.push_back(F_task_root(i));
+            msgW.data.push_back(W_task_vec(i));
         }
         pub_CI_wrench_.publish(msgW);
     }
