@@ -76,8 +76,9 @@ bool JointTrajectoryAction::initialize() {
         intermediate_goal_constraints_[joint_names_[i]] = ig;
         final_goal_constraints_[joint_names_[i]] = fg;
         trajectory_constraints_[joint_names_[i]] = t;
+        ROS_DEBUG("JTE: %s\t [%f,\t%f,\t%f]",joint_names_[i].c_str(),ig,fg,t);
     }
-
+/*
     // Check if it works
     for (unsigned int i = 0; i < joint_names_.size(); ++i)
     {
@@ -93,12 +94,12 @@ bool JointTrajectoryAction::initialize() {
             double fg = diter->second;
             diter  = trajectory_constraints_.find(joint_name);
             double t = diter->second;
-            ROS_INFO("%s\t [%f,\t%f,\t%f]",joint_name.c_str(),ig,fg,t);
+            ROS_DEBUG("%s\t [%f,\t%f,\t%f]",joint_name.c_str(),ig,fg,t);
         } else {
             ROS_ERROR("Something went terribly wrong");
         }
     }
-
+*/
     return true;
 }
 

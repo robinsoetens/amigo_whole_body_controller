@@ -82,11 +82,13 @@ void CartesianImpedance::setGoal(const geometry_msgs::PoseStamped& goal_pose ) {
     /// Maximum magnitude of the repulsive force
     // ToDo: get rid of hardcoding
     f_max_ = 75;
+
+    ROS_INFO("Cartesian Impedance: set goal %s w.r.t. %s", tip_frame_.c_str(), root_frame_.c_str() );
 }
 
 void CartesianImpedance::setGoalOffset(const geometry_msgs::Point& target_point_offset ) {
 
-    ROS_INFO("PRE-GRASP: Received target point offset (x,y,z): %f, %f, %f", target_point_offset.x, target_point_offset.y, target_point_offset.z);
+    ROS_DEBUG("Target point offset (x,y,z): %f, %f, %f", target_point_offset.x, target_point_offset.y, target_point_offset.z);
 
     Frame_tip_offset.p.x(target_point_offset.x);
     Frame_tip_offset.p.y(target_point_offset.y);

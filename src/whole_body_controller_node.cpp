@@ -32,7 +32,7 @@ void octoMapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
         else{
             collision_avoidance->setOctoMap(octree);
         }
-        delete tree;
+        //delete tree;
     }
     else{
         ROS_ERROR("Octomap conversion error");
@@ -62,7 +62,7 @@ void octoMapCallback(const octomap_msgs::OctomapBinary::ConstPtr& msg)
         else{
             collision_avoidance->setOctoMap(octreestamped);
         }
-        delete octree;
+        //delete octree;
     }
     else{
         ROS_ERROR("Octomap conversion error");

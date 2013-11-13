@@ -83,7 +83,10 @@ void RobotInterface::publishJointReferences(const Eigen::VectorXd& joint_refs, c
 
     /// Publish results
     for(std::map<std::string, JointRefPublisher*>::iterator it_pub = joint_name_to_pub_.begin(); it_pub != joint_name_to_pub_.end(); ++it_pub) {
+        /// Temporary hack!!!
+        if (it_pub->first != "neck_pan_joint" && it_pub->first != "neck_tilt_joint") {
         it_pub->second->pub_.publish(it_pub->second->msg_);
+        }
     }
 }
 

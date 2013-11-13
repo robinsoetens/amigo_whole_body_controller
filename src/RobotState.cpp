@@ -84,6 +84,7 @@ geometry_msgs::PoseStamped RobotState::getFKPoseStamped(const std::string& tip_f
     geometry_msgs::PoseStamped pose_out;
     KDLFrameToStampedPose(end_effector_pose, pose_out);
     pose_out.header.frame_id = "/map"; //Robot state performs these computations in map
+    pose_out.header.stamp = ros::Time::now();
     return pose_out;
 
 }

@@ -233,6 +233,7 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
     //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
 
     ComputeNullspace_.update(jacobian_tree, N_);
+
     //ROS_INFO("Nullspace updated");
     //cout << "nullspace = " << endl << N_ << endl;
 
