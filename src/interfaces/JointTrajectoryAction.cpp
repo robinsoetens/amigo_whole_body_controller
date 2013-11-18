@@ -8,6 +8,11 @@ JointTrajectoryAction::JointTrajectoryAction(WholeBodyController *wbc)
 
 JointTrajectoryAction::~JointTrajectoryAction() {
     delete server_;
+    server_ = NULL;
+    delete server_left_;
+    server_left_ = NULL;
+    delete server_right_;
+    server_right_ = NULL;
 }
 
 bool JointTrajectoryAction::initialize() {

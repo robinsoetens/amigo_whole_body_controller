@@ -322,7 +322,13 @@ unsigned int CartesianImpedance::convergedConstraints(){
 
     else if (constraint_type_ == 2) //Cylinder, what is the height axis?, how to define this in the message?
     {
-        ROS_INFO("CYLINDER NOT IMPLEMENTED");
+        double radius2 = error_vector(0)*error_vector(0) + error_vector(1)*error_vector(1);
+        if (radius2 < (cylinder_tolerance_[0]*cylinder_tolerance_[0]) ) {
+            num_converged_dof += 2;
+        }
+        if (fabs(error_vector(2)) < cylinder_tolerance_[1]) {
+            num_converged_dof += 1;
+        }
     }
     else if (constraint_type_ == 3) //Mesh
     {
