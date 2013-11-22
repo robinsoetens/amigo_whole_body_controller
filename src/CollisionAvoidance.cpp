@@ -79,7 +79,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
             environmentCollision(min_distances_total,repulsive_forces_total);
         }
         else{
-            //std::cout<<"NO OCTO"<<std::endl;
+            ROS_WARN_ONCE("Collision Avoidance: No octomap created!");
         }
     }
 
@@ -763,7 +763,7 @@ void CollisionAvoidance::setOctoMap(octomap::OcTreeStamped* octree)
     octomap_ = octree;
     double x,y,z;
     octomap_->getMetricSize(x,y,z);
-    //ROS_INFO("Size = %f, %f, %f",x,y,z);
+    ROS_INFO("Size = %f, %f, %f",x,y,z);
 }
 
 
