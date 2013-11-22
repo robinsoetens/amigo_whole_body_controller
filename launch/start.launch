@@ -20,6 +20,10 @@
 	
 	<node pkg="amigo_whole_body_controller" type="whole_body_controller" name="whole_body_controller" respawn="false" output="screen"> <!-- launch-prefix="${arg launch_prefix}"/> -->
 		<param name="omit_admittance" value="$(arg ROBOT_REAL)"/> <!--If ROBOT_REAL is true, admittance controller is omitted since this is implemented in Orocos-->
+	<!--<remap from="/amigo/right_arm/references" to="/TEST_TORQUES_RIGHT" />
+		<remap from="/amigo/left_arm/references" to="/TEST_TORQUES_LEFT" /> 
+		<remap from="/amigo/torso/references" to="/TEST_TORQUES_TORSO" /> 
+		<remap from="/amigo/neck/references" to="/TEST_TORQUES_NECK" /> -->
 	</node>
 </launch>
 
