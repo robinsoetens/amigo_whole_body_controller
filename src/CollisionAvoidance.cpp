@@ -761,9 +761,6 @@ void CollisionAvoidance::setOctoMap(octomap::OcTreeStamped* octree)
 {  
     delete octomap_;
     octomap_ = octree;
-    double x,y,z;
-    octomap_->getMetricSize(x,y,z);
-    ROS_INFO("Size = %f, %f, %f",x,y,z);
 }
 
 
