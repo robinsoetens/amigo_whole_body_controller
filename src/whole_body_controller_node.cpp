@@ -226,6 +226,7 @@ int main(int argc, char **argv) {
 
         r.sleep();
     }
+
     //ToDo: delete all motion objectives
     delete add_motion_objective_server_;
     delete collision_avoidance;

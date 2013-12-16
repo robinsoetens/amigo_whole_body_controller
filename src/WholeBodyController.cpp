@@ -3,6 +3,11 @@
 #include <tf/transform_datatypes.h>
 #include <std_msgs/Float64MultiArray.h>
 
+/// For tracing
+#include <iostream>
+#include <fstream>
+#include <time.h>
+
 
 using namespace std;
 
@@ -13,6 +18,7 @@ WholeBodyController::WholeBodyController(const double Ts)
 
 WholeBodyController::~WholeBodyController() {
     ROS_INFO("Shutting down whole body controller");
+
     // ToDo: delete all motion objectives nicely?
 }
 
@@ -92,6 +98,18 @@ bool WholeBodyController::initialize(const double Ts)
     tau_.resize(num_joints_);
     tau_nullspace_.resize(num_joints_);
     F_task_.resize(12);
+
+    /// Initialize tracer
+    std::vector<std::string> column_names = index_to_joint_name_;
+    column_names.push_back("joint_limit_cost");
+    column_names.push_back("posture_cost");
+    int buffersize;
+    std::string foldername;
+    n.param<int> ("/whole_body_controller/tracing_buffersize", buffersize, 0);
+    n.param<std::string> ("/whole_body_controller/tracing_folder", foldername, "/tmp/");
+    std::string filename = "wbc";
+    std::string folderfilename = foldername + filename; // ToDo: make nice
+    tracer_.Initialize(folderfilename, column_names, buffersize);
 
     ROS_INFO("Whole Body Controller Initialized");
 
@@ -256,6 +274,14 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
     q_reference = q_reference_;
     qdot_reference = qdot_reference_;
 
+    /// Only trace useful data (there are more motion objectives than the collision avoidance)...
+    if (motionobjectives_.size() > 1) {
+        tracer_.newLine();
+        tracer_.collectTracing(1, q_current_.data);
+        tracer_.collectTracing(num_joints_+1, JointLimitAvoidance_.getCost());
+        tracer_.collectTracing(num_joints_+2, PostureControl_.getCost());
+    }
+
     return true;
 
 }
@@ -385,5 +411,5 @@ void WholeBodyController::loadParameterFiles(RobotState &robot_state)
 
 std::map<std::string, unsigned int> WholeBodyController::getJointNameToIndex()
 {
-	return joint_name_to_index_;
+    return joint_name_to_index_;
 }

@@ -13,7 +13,7 @@
 //#include <Eigen/Core>
 
 // Messages
-#include <std_msgs/Float64.h>
+//#include <std_msgs/Float64.h>
 //#include <sensor_msgs/JointState.h>
 
 // WholeBodyController
@@ -24,6 +24,7 @@
 #include "JointLimitAvoidance.h"
 #include "PostureControl.h"
 #include "CollisionAvoidance.h"
+#include "amigo_whole_body_controller/Tracing.hpp"
 //#include "TreeDescription.h"
 
 // Vector
@@ -41,7 +42,7 @@ public:
     /**
      * Deconstructor
      */
-    virtual ~WholeBodyController();
+    ~WholeBodyController();
 
     /**
      * Updatehook
@@ -120,8 +121,10 @@ public:
 
 protected:
 
+    /** Maps joint names to vector indices */
     std::map<std::string, unsigned int> joint_name_to_index_;
 
+    /** Maps indices to joint names */
     std::vector<std::string> index_to_joint_name_;
 
     /** Joint array containing the current joint positions */
@@ -130,39 +133,55 @@ protected:
     //! Unsigned integer containing the total number of joints
     uint num_joints_;
 
+    /** Vector containing pointers to the various motion objectives */
     std::vector<MotionObjective*> motionobjectives_;
 
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+    /** Admittance controller: integrates desired torques to velocities and positions
+      using M \ddot q + D \dot q = tau */
     AdmittanceController AdmitCont_;
+
+    /** Computes the null space of the combined Jacobian (Cartesian impedances + collision avoidance) */
     ComputeNullspace ComputeNullspace_;
+
+    /** Joint limit avoidance: pushes joints away from their joint limits if they come to close
+      Is projected into the task null space to avoid interference with the main tasks */
     JointLimitAvoidance JointLimitAvoidance_;
+
+    /** Keeps the robot in a desired posture. Is also used to handle joint goals
+      Is projected into the task null space to avoid interference with the main tasks */
     PostureControl PostureControl_;
 
+    /** Matrix containing the combined Jacobian (Cartesian impedances + collision avoidance) */
     Eigen::MatrixXd Jacobian_;
 
+    /** Vector containing the desired joint torques */
     Eigen::VectorXd tau_;
 
+    /** Vector containing the joint torques that are projected in the null space */
     Eigen::VectorXd tau_nullspace_;
 
+    /** Vector containing the elements of all wrenches */
     Eigen::VectorXd F_task_;
 
+    /** Vector containing the desired joint velocities */
     Eigen::VectorXd qdot_reference_;
 
+    /** Vector containing the desired joint positions */
     Eigen::VectorXd q_reference_;
 
     //! Nullspace projection matrix
     Eigen::MatrixXd N_;
 
-    /**
-     * Initialize function
-     */
+    /** Initialize function */
     bool initialize(const double Ts);
 
-    /**
-      * Subtracts information from the parameter files
-      */
+    /** Subtracts information from the parameter files */
     void loadParameterFiles(RobotState &robot_state);
+
+    /** Tracing object */
+    Tracing tracer_;
 
 };
 

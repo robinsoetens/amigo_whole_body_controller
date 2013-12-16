@@ -56,6 +56,7 @@ rosbuild_add_library(wholebodycontroller
                                         src/MotionObjective.cpp
                                         src/RobotState.cpp
                                         src/Tree.cpp
+                                        src/Tracing.cpp
                                         src/interfaces/JointTrajectoryAction.cpp
                                         src/interfaces/RobotInterface.cpp
 )

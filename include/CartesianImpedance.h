@@ -40,6 +40,7 @@
 //
 #include <fstream>
 #include <amigo_ref_interpolator/interpolator.h>
+#include "amigo_whole_body_controller/Tracing.hpp"
 
 class CartesianImpedance : public MotionObjective {
 
@@ -85,8 +86,6 @@ protected:
     // ToDo: SHOULD be obsolete
     Chain* chain_;
 
-    ros::Publisher pub_CI_wrench_;
-
     //////geometry_msgs::PoseStamped end_effector_pose_,goal_pose_;
     KDL::Frame Frame_root_goal_;
 
@@ -118,6 +117,7 @@ protected:
       * A DoF is converged if error < (dimension/2)
       */
     double box_tolerance_[3];
+
     /**
       * Array containing the radius of the sphere for the position constraint
       * A DoF is converged if error is inside sphere, error_x^2 + error_y^2 + error_z^2 < radius
@@ -129,7 +129,6 @@ protected:
       * A DoF is converged if error is inside cylinder, error_x^2 + error_y^2 + error_z^2 < radius
       */
     double cylinder_tolerance_[2];
-
 
     /**
       * Array containing the absolute_roll_tolerance, absolute_pitch_tolerance and absolute_yaw_tolerance
@@ -166,6 +165,9 @@ protected:
       *
       */
     KDL::Vector ref_tip_offset;
+
+    /** Tracing object */
+    Tracing tracer_;
 
 };
 
