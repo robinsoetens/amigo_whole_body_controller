@@ -142,7 +142,7 @@ void Tracing::newLine() {
             buffers_[buffer_index_][0] = stamp;
         }
 
-    } else {
+    } else if (buffer_length_ > 0) {
         if (!wroteToFile_) {
             ROS_WARN_ONCE("Buffer of length %i is full", (int)buffer_length_);
             ros::Time start = ros::Time::now();
