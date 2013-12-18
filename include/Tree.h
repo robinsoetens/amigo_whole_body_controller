@@ -72,7 +72,8 @@ public:
 
 protected:
 
-    std::map<std::string, Eigen::VectorXd> cartesian_wrenches_;
+    //std::map<std::string, Eigen::VectorXd> cartesian_wrenches_;
+    std::map<std::string, std::map<std::string, double> > cartesian_wrenches_;
 
     int number_of_joints_;
 
