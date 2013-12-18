@@ -250,14 +250,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     /// Change the reference point from offset, to tip. No need to change Frame.
     W_task = W_task.RefPoint(-ref_tip_offset);
 
-    /// Transform to Eigen::VectorXd
-    //Eigen::VectorXd W_task_vec(6);
-    //W_task_vec(0) = W_task.force.x();
-    //W_task_vec(1) = W_task.force.y();
-    //W_task_vec(2) = W_task.force.z();
-    //W_task_vec(3) = W_task.torque.x();
-    //W_task_vec(4) = W_task.torque.y();
-    //W_task_vec(5) = W_task.torque.z();
+    /// Transform to map
     std::map<std::string, double> W_task_map;
     if (K_(0,0) > 0.0) W_task_map["x"] = W_task.force.x();
     if (K_(1,1) > 0.0) W_task_map["y"] = W_task.force.y();
@@ -265,7 +258,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     if (K_(3,3) > 0.0) W_task_map["rx"] = W_task.torque.x();
     if (K_(4,4) > 0.0) W_task_map["ry"] = W_task.torque.y();
     if (K_(5,5) > 0.0) W_task_map["rz"] = W_task.torque.z();
-    ROS_INFO("Wtask = %f, %f, %f, %f, %f, %f", W_task.force.x(), W_task.force.y(), W_task.force.z(), W_task.torque.x(), W_task.torque.y(), W_task.torque.z());
+    //ROS_INFO("Wtask = %f, %f, %f, %f, %f, %f", W_task.force.x(), W_task.force.y(), W_task.force.z(), W_task.torque.x(), W_task.torque.y(), W_task.torque.z());
 
     /// Log data
     tracer_.newLine();
@@ -292,7 +285,7 @@ void CartesianImpedance::apply(RobotState &robotstate) {
     //std::cout << "F_task = " << F_task << std::endl;
     //ROS_INFO("Tip frame = %s",tip_frame_.c_str());
 
-    // add the wrench to the end effector of the kinematic chain
+    /// Add the wrench to the end effector of the kinematic chain
     robotstate.tree_.addCartesianWrench(tip_frame_, W_task_map);
 
     if (convergedConstraints() == num_constrained_dofs_ && status_ == 2) {

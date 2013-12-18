@@ -17,7 +17,7 @@ void Tree::fillJacobian(Eigen::MatrixXd& jacobian)
 
     for(std::map<std::string, std::map<std::string, double> >::iterator it_wrench = cartesian_wrenches_.begin(); it_wrench != cartesian_wrenches_.end(); ++it_wrench)
     {
-        // ToDo: more efficient
+        // ToDo: entire function way more efficient
         std::pair<std::string, std::map<std::string, double> > wrench = *it_wrench;
 
         if (tree_joint_index_.size() == 0){
@@ -34,19 +34,13 @@ void Tree::fillJacobian(Eigen::MatrixXd& jacobian)
         Eigen::MatrixXd jacobian_new(jacobian.rows() + wrench.second.size(), jacobian.cols());
         jacobian_new.setZero();
 
-        // Add 6 new rows to the current whole body jacobian (ToDo: could be much more efficient)
         /// Copy data of old to new Jacobian
         jacobian_new.block(0,0,jacobian.rows(),jacobian.cols()) = jacobian;
-        //for(unsigned int i = 0; i < jacobian.rows(); ++i) {
-        //    for(unsigned int j = 0; j < jacobian.cols(); ++j) {
-        //        jacobian_new(i, j) = jacobian(i, j);
-        //    }
-        //}
+
         /// Make old new again
         jacobian = jacobian_new;
 
         /// Copy data from partial Jacobian: only copy data if DoF is present
-        //std::map<std::string, std::double>::iterator it;
         unsigned int add_index = 0;
         if (wrench.second.find("x") != wrench.second.end()) {
             jacobian.block(link_start_index + add_index, 0, 1, number_of_joints_) = partial_jacobian.block(0, 0, 1, number_of_joints_);
@@ -72,14 +66,6 @@ void Tree::fillJacobian(Eigen::MatrixXd& jacobian)
             jacobian.block(link_start_index + add_index, 0, 1, number_of_joints_) = partial_jacobian.block(5, 0, 1, number_of_joints_);
             ++add_index;
         }
-
-        /*for(unsigned int i = 0; i < partial_jacobian.rows(); ++i)
-        {
-            for(unsigned int j = 0; j < partial_jacobian.cols(); ++j)
-            {
-                jacobian(link_start_index + i, j) = partial_jacobian(i,j);
-            }
-        }*/
     }
 }
 
@@ -90,7 +76,6 @@ void Tree::fillCartesianWrench(Eigen::VectorXd& all_wrenches) {
     for (std::map<std::string, std::map<std::string, double> >::iterator it_wrench = cartesian_wrenches_.begin(); it_wrench != cartesian_wrenches_.end(); ++it_wrench) {
         num_constrained_dofs += it_wrench->second.size();
     }
-    //ROS_INFO("Num constrained DoFs = %d", num_constrained_dofs);
 
     /// Resize vector
     all_wrenches.resize(num_constrained_dofs);
@@ -98,7 +83,7 @@ void Tree::fillCartesianWrench(Eigen::VectorXd& all_wrenches) {
     /// Loop over wrenches again to fill in the numbers
     unsigned int index = 0;
     for (std::map<std::string, std::map<std::string, double> >::iterator it_wrench = cartesian_wrenches_.begin(); it_wrench != cartesian_wrenches_.end(); ++it_wrench) {
-        //ROS_INFO("Add wrench of %s", it_wrench->first.c_str());
+
         if (it_wrench->second.find("x") != it_wrench->second.end()) {
             all_wrenches(index) = it_wrench->second["x"];
             ++index;
@@ -124,49 +109,7 @@ void Tree::fillCartesianWrench(Eigen::VectorXd& all_wrenches) {
             ++index;
         }
     }
-    //for (unsigned int i = 0; i < num_constrained_dofs; i++) ROS_INFO("F(%d) = %f", i, all_wrenches(i));
-
-/*
-    unsigned int link_start_index = all_wrenches.rows();
-
-    // Add 6 new values to current whole body wrench vector (TODO: could be much more efficient)
-
-    Eigen::VectorXd wrench_new(all_wrenches.rows() + 6 * cartesian_wrenches_.size());
-    wrench_new.setZero();
-
-    for(unsigned int i = 0; i < all_wrenches.rows(); ++i) {
-        wrench_new(i) = all_wrenches(i);
-    }
-    all_wrenches = wrench_new;
-
-    // Fill all_wrenches with the wrenches added to this chain
-
-    for(std::map<std::string, Eigen::VectorXd>::iterator it_wrench = cartesian_wrenches_.begin(); it_wrench != cartesian_wrenches_.end(); ++it_wrench)
-    {
-        for(unsigned int i = 0; i < 6; ++i)
-        {
-            all_wrenches(i + link_start_index) = it_wrench->second(i);
-        }
-        link_start_index += 6;
-    }
-
-    //cout << "torque = " << endl;
-    //cout << torque << endl;*/
 }
-
-//void Tree::addCartesianWrench(const std::string& link_name, const Eigen::VectorXd& wrench)
-//{
-//    std::map<std::string, Eigen::VectorXd>::iterator it_wrench = cartesian_wrenches_.find(link_name);
-//    if (it_wrench == cartesian_wrenches_.end())
-//    {
-//        cartesian_wrenches_[link_name] = wrench;
-//    }
-//    else
-//    {
-//        it_wrench->second += wrench;
-//    }
-//    //std::cout << cartesian_wrenches_.size() << std::endl;
-//}
 
 void Tree::addCartesianWrench(const std::string& link_name, const std::map<std::string, double>& wrench) {
 
@@ -209,16 +152,6 @@ void Tree::calcPartialJacobian(std::string& link_name,
 
     jac_solver_->JntToJac(q_tree_,kdl_jacobian,link_name);
 
-    //std::cout << kdl_jacobian.rows() << std::endl;
-    //std::cout << kdl_jacobian.columns() << std::endl;
-    /*
-    std::cout << "tree_joint_index_" << std::endl;
-    for (std::vector<int>::iterator it = tree_joint_index_.begin(); it != tree_joint_index_.end(); ++it)
-    {
-        std::cout << *it << std::endl;
-    }
-    */
-
     for(unsigned int i = 0; i < kdl_jacobian.rows(); ++i)
     {
         for(unsigned int j = 0; j < kdl_jacobian.columns(); ++j)
@@ -229,26 +162,6 @@ void Tree::calcPartialJacobian(std::string& link_name,
             }
         }
     }
-
-    /*
-    Eigen::MatrixXd printJ(kdl_jacobian.rows(),kdl_jacobian.columns());
-    for(unsigned int i = 0; i < kdl_jacobian.rows(); ++i)
-    {
-        for(unsigned int j = 0; j < kdl_jacobian.columns(); ++j)
-        {
-            printJ(i, j) = kdl_jacobian(i, j);
-        }
-    }
-
-    //std::map<std::string,KDL::TreeElement>::const_iterator it_segment = kdl_tree_.getRootSegment();
-    //std::pair<std::string,KDL::TreeElement> pair = *it_segment;
-
-    //cout << "root segment = " << pair.first << std::endl;
-    //cout << "link_name = " << link_name << std::endl;
-    //cout << "q_in = " << endl << q_tree.data << endl;
-    //cout << "printJ = " << endl << printJ << endl;
-    //cout << "partial_jacobian = " << endl << jacobian << endl;
-    */
 }
 
 void Tree::getJointNames(std::map<string, unsigned int> &jnt_name_to_index_in,std::map<string, unsigned int> &jnt_name_to_index_out)

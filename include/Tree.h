@@ -34,7 +34,6 @@ public:
      * @param link_name The name of the link to which the wrench should be applied
      * @param wrench The wrench to apply: defined by a map that contains one or more of the following strings DoFs "x", "y", "z", "rx", "ry", "rz" and the corresponding value
      */
-    //void addCartesianWrench(const std::string& link_name, const Eigen::VectorXd& wrench);
     void addCartesianWrench(const std::string& link_name, const std::map<std::string, double>& wrench);
 
     /**

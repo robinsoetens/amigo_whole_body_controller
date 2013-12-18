@@ -7,9 +7,6 @@
 #ifndef WBC_TRACING_H_
 #define WBC_TRACING_H_
 
-// ROS
-//#include "ros/ros.h"
-
 #include <string>
 #include <vector>
 #include <Eigen/Core>
