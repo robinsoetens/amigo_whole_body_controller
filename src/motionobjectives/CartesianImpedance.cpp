@@ -1,8 +1,7 @@
 #include "amigo_whole_body_controller/motionobjectives/CartesianImpedance.h"
 #include <tf/transform_datatypes.h>
 
-CartesianImpedance::CartesianImpedance(const std::string& tip_frame) :
-    chain_(0) {
+CartesianImpedance::CartesianImpedance(const std::string& tip_frame) {
 
     type_ = "CartesianImpedance";
     tip_frame_ = tip_frame;

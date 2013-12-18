@@ -8,10 +8,6 @@
 #define CARTESIANIMPEDANCE_H_
 
 #include "MotionObjective.h"
-//#include "CollisionAvoidance.h"
-
-// ROS
-//#include "ros/ros.h"
 
 // Messages
 #include <geometry_msgs/PoseStamped.h>
@@ -21,16 +17,6 @@
 
 // Eigen
 #include <Eigen/Core>
-
-// tf
-//#include <tf/transform_listener.h>
-
-// Action server
-//#include <actionlib/server/action_server.h>
-//#include <actionlib/server/simple_action_server.h>
-
-// Action definition
-//#include <amigo_arm_navigation/grasp_precomputeAction.h>
 
 // KDL
 #include <kdl/chain.hpp>
@@ -83,12 +69,10 @@ protected:
     //! Sampling time
     double Ts;
 
-    // ToDo: SHOULD be obsolete
-    Chain* chain_;
-
-    //////geometry_msgs::PoseStamped end_effector_pose_,goal_pose_;
+    /** Pose of the goal in root frame */
     KDL::Frame Frame_root_goal_;
 
+    /** Pose error */
     KDL::Twist pose_error_;
 
     // Maximum magnitude of the attractive force;

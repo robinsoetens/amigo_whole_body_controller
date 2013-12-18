@@ -91,7 +91,7 @@ if __name__ == '__main__':
         rospy.sleep(0.02)
         
     #actionClients.move_arm.send_goal_and_wait(goal, rospy.Duration(time_out))
-    result = move_arm.send_goal_and_wait(goal, rospy.Duration(1.0))
+    result = move_arm.send_goal(goal)
     rospy.loginfo("Result = {0}".format(result))
     
     #ctr = 5
