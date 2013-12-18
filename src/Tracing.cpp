@@ -113,6 +113,21 @@ void Tracing::collectTracing(unsigned int start_index, const KDL::Twist &data) {
     }
 }
 
+void Tracing::collectTracing(unsigned int start_index, const KDL::Wrench& data) {
+
+    /// Only perform if data fits
+    if (start_index + 6 <= number_columns_ && buffer_index_ < (int)buffer_length_) {
+
+        /// Data
+        buffers_[buffer_index_][start_index] = data.force.x();
+        buffers_[buffer_index_][1+start_index] = data.force.y();
+        buffers_[buffer_index_][2+start_index] = data.force.z();
+        buffers_[buffer_index_][3+start_index] = data.torque.x();
+        buffers_[buffer_index_][4+start_index] = data.torque.y();
+        buffers_[buffer_index_][5+start_index] = data.torque.z();
+    }
+}
+
 void Tracing::newLine() {
 
     /// Only do when buffer is not yet full

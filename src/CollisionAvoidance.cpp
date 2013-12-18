@@ -665,8 +665,22 @@ void CollisionAvoidance::outputWrenches(std::vector<Wrench> &wrenches)
 {
     for (std::vector<Wrench>::iterator itrW = wrenches.begin(); itrW != wrenches.end(); ++itrW)
     {
-        Wrench W = *itrW;
-        robot_state_->tree_.addCartesianWrench(W.frame_id,W.wrench);
+         Wrench W = *itrW;
+
+        // Original
+        //robot_state_->tree_.addCartesianWrench(W.frame_id,W.wrench);
+
+        // Updated with new datatype
+        std::map<std::string, double> wrench;
+        wrench["x"] = W.wrench(0);
+        wrench["y"] = W.wrench(1);
+        wrench["z"] = W.wrench(2);
+        wrench["rx"] = W.wrench(3);
+        wrench["ry"] = W.wrench(4);
+        wrench["rz"] = W.wrench(5);
+        robot_state_->tree_.addCartesianWrench(W.frame_id, wrench);
+        //ROS_INFO("ColAvoid link %s", W.frame_id.c_str());
+        //for (std::map<std::string, double>::const_iterator iter = wrench.begin(); iter != wrench.end(); ++iter) ROS_INFO("CWrench %s = %f", iter->first.c_str(), iter->second);
     }
 }
 

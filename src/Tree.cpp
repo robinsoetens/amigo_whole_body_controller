@@ -15,41 +15,118 @@ void Tree::fillJacobian(Eigen::MatrixXd& jacobian)
         return;
     }
 
-    for(std::map<std::string, Eigen::VectorXd>::iterator it_wrench = cartesian_wrenches_.begin(); it_wrench != cartesian_wrenches_.end(); ++it_wrench)
+    for(std::map<std::string, std::map<std::string, double> >::iterator it_wrench = cartesian_wrenches_.begin(); it_wrench != cartesian_wrenches_.end(); ++it_wrench)
     {
-        std::pair<std::string, Eigen::VectorXd> wrench = *it_wrench;
+        // ToDo: more efficient
+        std::pair<std::string, std::map<std::string, double> > wrench = *it_wrench;
 
         if (tree_joint_index_.size() == 0){
             ROS_WARN("Tree joint index is empty");
         }
 
+        /// Computes 6xn Jacobian
         Eigen::MatrixXd partial_jacobian(6, number_of_joints_);
         partial_jacobian.setZero();
         calcPartialJacobian(wrench.first,partial_jacobian);
 
+        /// Create new Jacobian of the correct size
         unsigned int link_start_index = jacobian.rows();
-        Eigen::MatrixXd jacobian_new(jacobian.rows() + 6, jacobian.cols());
+        Eigen::MatrixXd jacobian_new(jacobian.rows() + wrench.second.size(), jacobian.cols());
         jacobian_new.setZero();
 
-        // Add 6 new rows to the current whole body jacobian (TODO: could be much more efficient)
-        for(unsigned int i = 0; i < jacobian.rows(); ++i) {
-            for(unsigned int j = 0; j < jacobian.cols(); ++j) {
-                jacobian_new(i, j) = jacobian(i, j);
-            }
-        }
+        // Add 6 new rows to the current whole body jacobian (ToDo: could be much more efficient)
+        /// Copy data of old to new Jacobian
+        jacobian_new.block(0,0,jacobian.rows(),jacobian.cols()) = jacobian;
+        //for(unsigned int i = 0; i < jacobian.rows(); ++i) {
+        //    for(unsigned int j = 0; j < jacobian.cols(); ++j) {
+        //        jacobian_new(i, j) = jacobian(i, j);
+        //    }
+        //}
+        /// Make old new again
         jacobian = jacobian_new;
 
-        for(unsigned int i = 0; i < partial_jacobian.rows(); ++i)
+        /// Copy data from partial Jacobian: only copy data if DoF is present
+        //std::map<std::string, std::double>::iterator it;
+        unsigned int add_index = 0;
+        if (wrench.second.find("x") != wrench.second.end()) {
+            jacobian.block(link_start_index + add_index, 0, 1, number_of_joints_) = partial_jacobian.block(0, 0, 1, number_of_joints_);
+            ++add_index;
+        }
+        if (wrench.second.find("y") != wrench.second.end()) {
+            jacobian.block(link_start_index + add_index, 0, 1, number_of_joints_) = partial_jacobian.block(1, 0, 1, number_of_joints_);
+            ++add_index;
+        }
+        if (wrench.second.find("z") != wrench.second.end()) {
+            jacobian.block(link_start_index + add_index, 0, 1, number_of_joints_) = partial_jacobian.block(2, 0, 1, number_of_joints_);
+            ++add_index;
+        }
+        if (wrench.second.find("rx") != wrench.second.end()) {
+            jacobian.block(link_start_index + add_index, 0, 1, number_of_joints_) = partial_jacobian.block(3, 0, 1, number_of_joints_);
+            ++add_index;
+        }
+        if (wrench.second.find("ry") != wrench.second.end()) {
+            jacobian.block(link_start_index + add_index, 0, 1, number_of_joints_) = partial_jacobian.block(4, 0, 1, number_of_joints_);
+            ++add_index;
+        }
+        if (wrench.second.find("rz") != wrench.second.end()) {
+            jacobian.block(link_start_index + add_index, 0, 1, number_of_joints_) = partial_jacobian.block(5, 0, 1, number_of_joints_);
+            ++add_index;
+        }
+
+        /*for(unsigned int i = 0; i < partial_jacobian.rows(); ++i)
         {
             for(unsigned int j = 0; j < partial_jacobian.cols(); ++j)
             {
                 jacobian(link_start_index + i, j) = partial_jacobian(i,j);
             }
-        }
+        }*/
     }
 }
 
 void Tree::fillCartesianWrench(Eigen::VectorXd& all_wrenches) {
+
+    /// Loop over wrenches to determine size
+    unsigned int num_constrained_dofs = 0;
+    for (std::map<std::string, std::map<std::string, double> >::iterator it_wrench = cartesian_wrenches_.begin(); it_wrench != cartesian_wrenches_.end(); ++it_wrench) {
+        num_constrained_dofs += it_wrench->second.size();
+    }
+    //ROS_INFO("Num constrained DoFs = %d", num_constrained_dofs);
+
+    /// Resize vector
+    all_wrenches.resize(num_constrained_dofs);
+
+    /// Loop over wrenches again to fill in the numbers
+    unsigned int index = 0;
+    for (std::map<std::string, std::map<std::string, double> >::iterator it_wrench = cartesian_wrenches_.begin(); it_wrench != cartesian_wrenches_.end(); ++it_wrench) {
+        //ROS_INFO("Add wrench of %s", it_wrench->first.c_str());
+        if (it_wrench->second.find("x") != it_wrench->second.end()) {
+            all_wrenches(index) = it_wrench->second["x"];
+            ++index;
+        }
+        if (it_wrench->second.find("y") != it_wrench->second.end()) {
+            all_wrenches(index) = it_wrench->second["y"];
+            ++index;
+        }
+        if (it_wrench->second.find("z") != it_wrench->second.end()) {
+            all_wrenches(index) = it_wrench->second["z"];
+            ++index;
+        }
+        if (it_wrench->second.find("rx") != it_wrench->second.end()) {
+            all_wrenches(index) = it_wrench->second["rx"];
+            ++index;
+        }
+        if (it_wrench->second.find("ry") != it_wrench->second.end()) {
+            all_wrenches(index) = it_wrench->second["ry"];
+            ++index;
+        }
+        if (it_wrench->second.find("rz") != it_wrench->second.end()) {
+            all_wrenches(index) = it_wrench->second["rz"];
+            ++index;
+        }
+    }
+    //for (unsigned int i = 0; i < num_constrained_dofs; i++) ROS_INFO("F(%d) = %f", i, all_wrenches(i));
+
+/*
     unsigned int link_start_index = all_wrenches.rows();
 
     // Add 6 new values to current whole body wrench vector (TODO: could be much more efficient)
@@ -74,21 +151,47 @@ void Tree::fillCartesianWrench(Eigen::VectorXd& all_wrenches) {
     }
 
     //cout << "torque = " << endl;
-    //cout << torque << endl;
+    //cout << torque << endl;*/
 }
 
-void Tree::addCartesianWrench(const std::string& link_name, const Eigen::VectorXd& wrench)
-{
-    std::map<std::string, Eigen::VectorXd>::iterator it_wrench = cartesian_wrenches_.find(link_name);
-    if (it_wrench == cartesian_wrenches_.end())
-    {
+//void Tree::addCartesianWrench(const std::string& link_name, const Eigen::VectorXd& wrench)
+//{
+//    std::map<std::string, Eigen::VectorXd>::iterator it_wrench = cartesian_wrenches_.find(link_name);
+//    if (it_wrench == cartesian_wrenches_.end())
+//    {
+//        cartesian_wrenches_[link_name] = wrench;
+//    }
+//    else
+//    {
+//        it_wrench->second += wrench;
+//    }
+//    //std::cout << cartesian_wrenches_.size() << std::endl;
+//}
+
+void Tree::addCartesianWrench(const std::string& link_name, const std::map<std::string, double>& wrench) {
+
+    /// See if there's already a wrench for this link
+    std::map<std::string, std::map<std::string, double> >::iterator it_wrench = cartesian_wrenches_.find(link_name);
+    //ROS_INFO("Link %s", link_name.c_str());
+    /// If not: create a new one
+    if (it_wrench == cartesian_wrenches_.end()) {
         cartesian_wrenches_[link_name] = wrench;
+        //for (std::map<std::string, double>::const_iterator iter = wrench.begin(); iter != wrench.end(); ++iter) ROS_INFO("DoF: %s = %f", iter->first.c_str(), iter->second);
+    } else {
+        /// Iterate over DoFs of input wrench
+        for (std::map<std::string, double>::const_iterator iter_new = wrench.begin(); iter_new !=wrench.end(); ++iter_new) {
+
+            /// Check whether this DoF is already constrained (iter_new->first = ConstrainedDoF, iter_new->second = value)
+            std::map< std::string, double>::iterator iter_old = it_wrench->second.find(iter_new->first);
+
+            /// If not: add new constrained DoF
+            if (iter_old == it_wrench->second.end()) {
+                it_wrench->second[iter_new->first] = iter_new->second;
+            } else {
+                it_wrench->second[iter_new->first] += iter_new->second;
+            }
+        }
     }
-    else
-    {
-        it_wrench->second += wrench;
-    }
-    //std::cout << cartesian_wrenches_.size() << std::endl;
 }
 
 void Tree::removeCartesianWrenches() {

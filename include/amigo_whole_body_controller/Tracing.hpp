@@ -40,6 +40,7 @@ public:
     void collectTracing(unsigned int start_index, const Eigen::VectorXd& data);
     void collectTracing(unsigned int start_index, const KDL::Frame& data);
     void collectTracing(unsigned int start_index, const KDL::Twist& data);
+    void collectTracing(unsigned int start_index, const KDL::Wrench& data);
 
     /** Sets buffer to next line (increases buffer_index_)
       * There should always be a newLine() before tracing starts */

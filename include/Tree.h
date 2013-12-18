@@ -32,9 +32,10 @@ public:
     /**
      * @brief Adds a wrench in cartesian space (force + torque) to a link in the chain
      * @param link_name The name of the link to which the wrench should be applied
-     * @param wrench The wrench to apply
+     * @param wrench The wrench to apply: defined by a map that contains one or more of the following strings DoFs "x", "y", "z", "rx", "ry", "rz" and the corresponding value
      */
-    void addCartesianWrench(const std::string& link_name, const Eigen::VectorXd& wrench);
+    //void addCartesianWrench(const std::string& link_name, const Eigen::VectorXd& wrench);
+    void addCartesianWrench(const std::string& link_name, const std::map<std::string, double>& wrench);
 
     /**
      * @brief Remove all wrenches from all links in this chain
@@ -72,8 +73,13 @@ public:
 
 protected:
 
-    std::map<std::string, Eigen::VectorXd> cartesian_wrenches_;
+    // Original
+    //std::map<std::string, Eigen::VectorXd> cartesian_wrenches_;
+    // Update
+    /** Maps from link name to wrench (map from DoF to value) */
+    std::map<std::string, std::map<std::string, double> > cartesian_wrenches_;
 
+    /** Number of joints in this tree */
     int number_of_joints_;
 
 };

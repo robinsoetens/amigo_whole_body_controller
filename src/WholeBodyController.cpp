@@ -241,10 +241,10 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
     jacobian_tree.setZero();
 
     //Eigen::MatrixXd jacobian(0, num_joints_);
-
+    // ToDo: why can't we combine these functions?
     robot_state_.tree_.fillCartesianWrench(all_wrenches);
     robot_state_.tree_.fillJacobian(jacobian_tree);
-
+    //ROS_INFO("Jacobian has %i rows", (int)jacobian_tree.rows());
     //cout << "jacobian = " << endl << jacobian_tree << endl;
     //cout << "all_wrenches = " << endl << all_wrenches << endl;
     tau_ = jacobian_tree.transpose() * all_wrenches;
