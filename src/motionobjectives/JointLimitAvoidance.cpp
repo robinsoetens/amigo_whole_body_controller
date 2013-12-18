@@ -1,4 +1,4 @@
-#include "JointLimitAvoidance.h"
+#include "amigo_whole_body_controller/motionobjectives/JointLimitAvoidance.h"
 #include <ros/ros.h>
 
 JointLimitAvoidance::JointLimitAvoidance() {

@@ -7,28 +7,15 @@
 #ifndef WHOLEBODYCONTROLLER_H_
 #define WHOLEBODYCONTROLLER_H_
 
-// ROS
-//#include "ros/ros.h"
-
-//#include <Eigen/Core>
-
-// Messages
-//#include <std_msgs/Float64.h>
-//#include <sensor_msgs/JointState.h>
-
 // WholeBodyController
-#include "CartesianImpedance.h"
+#include "amigo_whole_body_controller/motionobjectives/CartesianImpedance.h"
+#include "amigo_whole_body_controller/motionobjectives/JointLimitAvoidance.h"
+#include "amigo_whole_body_controller/motionobjectives/PostureControl.h"
+#include "amigo_whole_body_controller/motionobjectives/CollisionAvoidance.h"
 #include "ComputeJacobian.h"
 #include "AdmittanceController.h"
 #include "ComputeNullspace.h"
-#include "JointLimitAvoidance.h"
-#include "PostureControl.h"
-#include "CollisionAvoidance.h"
 #include "amigo_whole_body_controller/Tracing.hpp"
-//#include "TreeDescription.h"
-
-// Vector
-//#include <vector>
 
 class WholeBodyController {
 

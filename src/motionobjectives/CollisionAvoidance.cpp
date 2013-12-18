@@ -1,4 +1,4 @@
-#include "CollisionAvoidance.h"
+#include "amigo_whole_body_controller/motionobjectives/CollisionAvoidance.h"
 #include <math.h>
 
 #include <std_msgs/Float64.h>

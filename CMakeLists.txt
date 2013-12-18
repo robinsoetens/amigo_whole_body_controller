@@ -44,21 +44,25 @@ add_definitions(${EIGEN_DEFINITIONS})
 # OBSOLETE???: src/TreeDescription.cpp
 rosbuild_add_library(wholebodycontroller 
                                         src/WholeBodyController.cpp
-                                        src/CartesianImpedance.cpp
                                         src/AdmittanceController.cpp
                                         src/ComputeNullspace.cpp
-                                        src/CollisionAvoidance.cpp
-                                        src/JointLimitAvoidance.cpp
-                                        src/PostureControl.cpp
                                         src/Component.cpp
                                         src/Chain.cpp
                                         src/ChainParser.cpp
-                                        src/MotionObjective.cpp
                                         src/RobotState.cpp
                                         src/Tree.cpp
                                         src/Tracing.cpp
-                                        src/interfaces/JointTrajectoryAction.cpp
-                                        src/interfaces/RobotInterface.cpp
+)
+rosbuild_add_library(motionobjectives
+                                     src/motionobjectives/MotionObjective.cpp
+                                     src/motionobjectives/CartesianImpedance.cpp
+                                     src/motionobjectives/CollisionAvoidance.cpp
+                                     src/motionobjectives/JointLimitAvoidance.cpp
+                                     src/motionobjectives/PostureControl.cpp
+)
+rosbuild_add_library(interfaces
+                               src/interfaces/JointTrajectoryAction.cpp
+                               src/interfaces/RobotInterface.cpp
 )
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
@@ -66,3 +70,5 @@ rosbuild_add_library(wholebodycontroller
 rosbuild_add_executable(whole_body_controller src/whole_body_controller_node.cpp ${HEADER_FILES})
 #rosbuild_add_executable(grasp_precompute src/GraspPrecompute.cpp ${HEADER_FILES})
 target_link_libraries(whole_body_controller wholebodycontroller codeprofiler)
+target_link_libraries(whole_body_controller motionobjectives)
+target_link_libraries(whole_body_controller interfaces)
