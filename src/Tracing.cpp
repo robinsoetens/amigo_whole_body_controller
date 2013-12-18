@@ -52,7 +52,7 @@ bool Tracing::Initialize(std::string& filename, const std::vector<std::string>& 
 void Tracing::collectTracing(unsigned int start_index, const double& data) {
 
     /// Only perform if data fits
-    if (start_index <= number_columns_) {
+    if (start_index <= number_columns_ && buffer_index_ < (int)buffer_length_) {
         buffers_[buffer_index_][start_index] = data;
     }
 }
@@ -60,7 +60,7 @@ void Tracing::collectTracing(unsigned int start_index, const double& data) {
 void Tracing::collectTracing(unsigned int start_index, const std::vector<double>& data) {
 
     /// Only perform if data fits
-    if (start_index + data.size() <= number_columns_) {
+    if (start_index + data.size() <= number_columns_ && buffer_index_ < (int)buffer_length_) {
 
         /// Data
         for (unsigned int i = 0; i < data.size(); i++) {
@@ -72,7 +72,7 @@ void Tracing::collectTracing(unsigned int start_index, const std::vector<double>
 void Tracing::collectTracing(unsigned int start_index, const Eigen::VectorXd& data) {
 
     /// Only perform if data fits
-    if (start_index + data.rows() <= number_columns_) {
+    if (start_index + data.rows() <= number_columns_ && buffer_index_ < (int)buffer_length_) {
 
         /// Data
         for (unsigned int i = 0; i < data.rows(); i++) {
@@ -84,7 +84,7 @@ void Tracing::collectTracing(unsigned int start_index, const Eigen::VectorXd& da
 void Tracing::collectTracing(unsigned int start_index, const KDL::Frame& data) {
 
     /// Only perform if data fits
-    if (start_index + 6 <= number_columns_) {
+    if (start_index + 6 <= number_columns_ && buffer_index_ < (int)buffer_length_) {
 
         /// Data
         buffers_[buffer_index_][start_index] = data.p.x();
@@ -101,7 +101,7 @@ void Tracing::collectTracing(unsigned int start_index, const KDL::Frame& data) {
 void Tracing::collectTracing(unsigned int start_index, const KDL::Twist &data) {
 
     /// Only perform if data fits
-    if (start_index + 6 <= number_columns_) {
+    if (start_index + 6 <= number_columns_ && buffer_index_ < (int)buffer_length_) {
 
         /// Data
         buffers_[buffer_index_][start_index] = data.vel.x();
@@ -116,14 +116,16 @@ void Tracing::collectTracing(unsigned int start_index, const KDL::Twist &data) {
 void Tracing::newLine() {
 
     /// Only do when buffer is not yet full
-    if (buffer_index_ < int(buffer_length_-1)) {
+    if (buffer_index_ < int(buffer_length_)) {
 
         /// Increase buffer index
         ++buffer_index_;
 
         /// Time
-        double stamp = ros::Time::now().toSec();
-        buffers_[buffer_index_][0] = stamp;
+        if (buffer_index_ >= 0 && buffer_index_ < (int)buffer_length_) {
+            double stamp = ros::Time::now().toSec();
+            buffers_[buffer_index_][0] = stamp;
+        }
 
     } else {
         if (!wroteToFile_) {
@@ -144,11 +146,11 @@ void Tracing::newLine() {
 void Tracing::writeToFile() {
 
     ROS_INFO("Write to file: %s", filename_.c_str());
-    ROS_INFO("Number of rows and columns = %i, %i", (int)buffers_.size(), (int)buffers_[0].size());
+    //ROS_INFO("Number of rows and columns = %i, %i", (int)buffers_.size(), (int)buffers_[0].size());
 
     /// Only write if buffer is not empty
     if (buffers_.size() > 0) {
-        ROS_INFO("Write data to file");
+        ROS_INFO("Write data to file, size = %i", (int)buffers_.size());
 
         /// Take value of first stamp such that time starts counting from 0
         double first_stamp = buffers_[0][0];
@@ -177,7 +179,6 @@ void Tracing::writeToFile() {
             my_file << "\n";
         }
         my_file.close();
-        wroteToFile_ = true;
     }
-
+    wroteToFile_ = true;
 }
