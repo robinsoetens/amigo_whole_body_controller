@@ -88,6 +88,9 @@ public:
     void apply(RobotState& robotstate);
 
     void setOctoMap(octomap::OcTreeStamped* octree);
+    
+    void removeOctomapBBX(const geometry_msgs::Point& goal, const std::string& root);
+
 
 protected:
 
