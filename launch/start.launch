@@ -24,8 +24,8 @@
 		<param name="tracing_buffersize" value="0"/>
 	<!--<remap from="/amigo/right_arm/references" to="/TEST_TORQUES_RIGHT" />
 		<remap from="/amigo/left_arm/references" to="/TEST_TORQUES_LEFT" /> 
-		<remap from="/amigo/torso/references" to="/TEST_TORQUES_TORSO" /> 
-		<remap from="/amigo/neck/references" to="/TEST_TORQUES_NECK" /> -->
+		<remap from="/amigo/torso/references" to="/TEST_TORQUES_TORSO" />-->
+		<remap from="/amigo/neck/references" to="/TEST_TORQUES_NECK" /> 
 	</node>
 </launch>
 

@@ -831,3 +831,43 @@ void CollisionAvoidance::findOuterPoints(RobotState::CollisionBody& collisionBod
         }
     }
 }
+
+void CollisionAvoidance::removeOctomapBBX(const geometry_msgs::Point& goal, const string& root){
+
+    if (octomap_){
+        if (octomap_->size() > 0){
+            std::map<std::string, KDL::Frame>::iterator itrRF = robot_state_->fk_poses_.find(root);
+            KDL::Frame Frame_map_root = itrRF->second;
+            KDL::Frame Frame_root_goal;
+            Frame_root_goal.p.x(goal.x);
+            Frame_root_goal.p.y(goal.y);
+            Frame_root_goal.p.z(goal.z);
+
+            // Convert goal pose to map
+            KDL::Frame Frame_map_goal = Frame_map_root*Frame_root_goal;
+            ROS_INFO("Collision Avoidance: Bounding box removed from octomap in /map (%f,%f,%f)",Frame_map_goal.p.x(),Frame_map_goal.p.y(),Frame_map_goal.p.z());
+
+            // Set up bounding box dimension
+            geometry_msgs::Point bbx_min;
+            geometry_msgs::Point bbx_max;
+
+            bbx_max.x = Frame_map_goal.p.x() + 0.1;
+            bbx_max.y = Frame_map_goal.p.y() + 0.1;
+            bbx_max.z = Frame_map_goal.p.z() + 0.1;
+            bbx_min.x = Frame_map_goal.p.x() - 0.1;
+            bbx_min.y = Frame_map_goal.p.y() - 0.1;
+            bbx_min.z = Frame_map_goal.p.z() - 0.1;
+
+            ROS_INFO("Bounding box max: (%f %f %f), min (%f %f %f)",bbx_max.x,bbx_max.y,bbx_max.z,bbx_min.x, bbx_min.y, bbx_min.z );
+            octomath::Vector3 min = octomap::pointMsgToOctomap(bbx_min);
+            octomath::Vector3 max = octomap::pointMsgToOctomap(bbx_max);
+
+            for(OctreeType::leaf_bbx_iterator it = octomap_->begin_leafs_bbx(min,max),
+                end=octomap_->end_leafs_bbx(); it!= end; ++it){
+
+                it->setLogOdds(octomap::logodds(0.0));
+            }
+            octomap_->updateInnerOccupancy();
+        }
+    }
+}

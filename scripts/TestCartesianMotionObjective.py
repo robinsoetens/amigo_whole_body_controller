@@ -39,7 +39,7 @@ if __name__ == '__main__':
     goal.goal_type = "grasp"
     position_constraint = PositionConstraint()
     position_constraint.header.frame_id = "base_link"
-    position_constraint.link_name = "grippoint_left"
+    position_constraint.link_name = "grippoint_right"
     position_constraint.target_point_offset.x = 0.0
     position_constraint.target_point_offset.y = 0.0
     position_constraint.target_point_offset.z = 0.0
@@ -51,15 +51,15 @@ if __name__ == '__main__':
     
     orientation_constraint = OrientationConstraint()
     orientation_constraint.header.frame_id = "base_link"
-    orientation_constraint.link_name = "grippoint_left"
+    orientation_constraint.link_name = "grippoint_right"
     orientation_constraint.orientation = euler_z_to_quaternion(float(sys.argv[4]),float(sys.argv[5]),float(sys.argv[6]))
     goal.orientation_constraint = orientation_constraint
     rospy.loginfo("Type link or header not yet taken into account")
     rospy.logwarn("Orientation constraint tolerances etc not yet defined")
 
-    goal.stiffness.force.x = 100.0
-    goal.stiffness.force.y = 100.0
-    goal.stiffness.force.z = 100.0
+    goal.stiffness.force.x = 70.0
+    goal.stiffness.force.y = 60.0
+    goal.stiffness.force.z = 50.0
     goal.stiffness.torque.x = 5.0
     goal.stiffness.torque.y = 5.0
     goal.stiffness.torque.z = 5.0

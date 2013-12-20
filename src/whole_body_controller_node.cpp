@@ -19,25 +19,32 @@ CartesianImpedance* cartesian_impedance;
 
 WholeBodyController* wbc;
 
+/// For using a static octomap during grasp 
+bool octomap_cb = true;
+
+
 #if ROS_VERSION_MINIMUM(1,9,0)
 // Groovy
 void octoMapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
 {
-    octomap::AbstractOcTree* tree = octomap_msgs::msgToMap(*msg);
-    if(tree){
-        octomap::OcTreeStamped* octree = dynamic_cast<octomap::OcTreeStamped*>(tree);
-        if(!octree){
-            ROS_ERROR("No Octomap created");
-        }
-        else{
-            collision_avoidance->setOctoMap(octree);
-        }
-        //delete tree;
-    }
-    else{
-        ROS_ERROR("Octomap conversion error");
-        exit(1);
-    }
+    if (octomap_cb){
+        octomap::AbstractOcTree* tree = octomap_msgs::msgToMap(*msg);
+        if(tree){
+            octomap::OcTreeStamped* octree = dynamic_cast<octomap::OcTreeStamped*>(tree);
+            if(!octree){
+                ROS_ERROR("No Octomap created");
+            }
+            else{
+                collision_avoidance->setOctoMap(octree);
+            }
+            //delete tree;
+         }
+         else{
+            ROS_ERROR("Octomap conversion error");
+            exit(1);
+         }
+		//delete tree;
+     }
 }
 #elif ROS_VERSION_MINIMUM(1,8,0)
 // Fuerte
@@ -85,7 +92,14 @@ void GoalCB() {
     // ToDo: keep track of all goals (this most probably means we can't use SIMPLEactionserver stuff)
     // We can keep using the simple action server stuff but in that case cannot keep track of multiple goals at once
     ROS_INFO("Received new motion objective");
-
+	if (goal.goal_type.compare("grasp")==0){
+		octomap_cb = false;
+		ROS_INFO("Received grasp goal, removing object pose from STATIC octomap, this should be generalized!");
+		collision_avoidance->removeOctomapBBX(goal.position_constraint.position, goal.position_constraint.header.frame_id);
+	}
+	else{
+		octomap_cb = true;
+	}
     /// If a remove tip frame is present: remove objective
     if (!goal.remove_tip_frame.empty()) {
         std::vector<MotionObjective*> imps_to_remove = wbc->getCartesianImpedances(goal.remove_tip_frame,goal.remove_root_frame);
