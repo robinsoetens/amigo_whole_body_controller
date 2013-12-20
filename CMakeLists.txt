@@ -70,5 +70,5 @@ rosbuild_add_library(interfaces
 rosbuild_add_executable(whole_body_controller src/whole_body_controller_node.cpp ${HEADER_FILES})
 #rosbuild_add_executable(grasp_precompute src/GraspPrecompute.cpp ${HEADER_FILES})
 target_link_libraries(whole_body_controller wholebodycontroller codeprofiler)
-target_link_libraries(whole_body_controller motionobjectives)
-target_link_libraries(whole_body_controller interfaces)
+target_link_libraries(wholebodycontroller motionobjectives)
+target_link_libraries(wholebodycontroller interfaces)
