@@ -59,6 +59,12 @@ bool RobotInterface::initialize()
     joint_name_to_pub_["shoulder_yaw_joint_right"] = right_arm_pub_;
     joint_name_to_pub_["neck_pan_joint"] = neck_pub_;
     joint_name_to_pub_["neck_tilt_joint"] = neck_pub_;
+    
+    for (std::map<std::string, JointRefPublisher*>::iterator iter = joint_name_to_pub_.begin(); iter !=joint_name_to_pub_.end(); ++iter) {
+		initialize_map_[iter->first] = false;
+	}
+	initialized_ = false;
+	base_initialized_ = false;
 
     setAmclPose();
 
@@ -126,6 +132,7 @@ void RobotInterface::setAmclPose()
     try
     {
         listener_.transformPose("/map", base_link_pose, map_pose);
+        base_initialized_ = true;
     } catch (tf::TransformException ex) {
         ROS_ERROR("%s",ex.what());
         return;
@@ -150,4 +157,30 @@ void RobotInterface::jointMeasurementCallback(const sensor_msgs::JointState::Con
         //ROS_INFO("Setting joint %s to %f",msg->name[i].c_str(), msg->position[i]);
         wbc_->setMeasuredJointPosition(msg->name[i], msg->position[i]);
     }
+    
+    if (!initialized_) {
+		for(unsigned int i = 0; i < msg->name.size(); ++i) {
+			initialize_map_[msg->name[i]] = true;
+			ROS_INFO("Initializing %s",msg->name[i].c_str());
+		}
+		bool tmpcheck = true;
+		
+		/// Check if all joints have been initialized
+		for (std::map<std::string, bool>::iterator iter = initialize_map_.begin(); iter != initialize_map_.end(); ++iter) {
+			if (!initialize_map_[iter->first]) tmpcheck = false;
+		}
+		
+		/// Check if base is initialized
+		if (!base_initialized_) tmpcheck = false;
+		
+		/// If everything initialized --> set initialized to true
+		if (tmpcheck) {
+			initialized_ = true;
+			ROS_INFO("All joints initialized");
+		}
+	}
+}
+
+bool RobotInterface::isInitialized() {
+	return initialized_;
 }

@@ -42,11 +42,12 @@ void PostureControl::update(const KDL::JntArray& q_in, Eigen::VectorXd& tau_out)
     Eigen::VectorXd tau_ps;
     tau_ps.resize(num_joints_);
     for (uint i = 0; i < num_joints_; i++) {
-        tau_out(i) += K_[i]*(q0_[i] - q_in(i));
+		double d_tau = K_[i]*(q0_[i] - q_in(i));
+        tau_out(i) += d_tau;
         //ROS_INFO("q(%i) = %f\tq0 = %f\ttau = %f",i,q_in(i),q0_[i],tau_out(i));
 
         // Add this to the costs
-        current_cost_ += fabs(tau_out(i));
+        current_cost_ += fabs(d_tau);
     }
 
 }

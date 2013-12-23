@@ -51,12 +51,14 @@ void JointLimitAvoidance::update(const KDL::JntArray& q_in, Eigen::VectorXd& tau
 
     //ToDo: Check joint limit avoidance algorithm
     for (uint i = 0; i < num_joints_; i++) {
-        if (q_in(i) < qmin_threshold_(i)) tau_out(i) += K_[i]*(qmin_threshold_(i) - q_in(i));
-        else if (q_in(i) > qmax_threshold_(i)) tau_out(i) += K_[i]*(qmax_threshold_(i) - q_in(i));
+		double d_tau = 0.0;
+        if (q_in(i) < qmin_threshold_(i)) d_tau = K_[i]*(qmin_threshold_(i) - q_in(i));
+        else if (q_in(i) > qmax_threshold_(i)) d_tau = K_[i]*(qmax_threshold_(i) - q_in(i));
 
+		tau_out(i) += d_tau;
 
         // Add this to the costs
-        current_cost_ += fabs(tau_out(i));
+        current_cost_ += fabs(d_tau);
     }
 
 }

@@ -193,6 +193,17 @@ int main(int argc, char **argv) {
     }
 
     std::string root_frame;
+    
+    /// Before startup: make sure all joint values are initialized properly
+    bool initcheck = false;
+    ros::spinOnce();
+    while(!initcheck && ros::ok()) {
+		ros::spinOnce();
+		robot_interface.setAmclPose();
+		initcheck = robot_interface.isInitialized();
+		if (!initcheck) ROS_INFO("Waiting for all joints to be initialized");
+		r.sleep();
+	}
 
     while(ros::ok()) {
 

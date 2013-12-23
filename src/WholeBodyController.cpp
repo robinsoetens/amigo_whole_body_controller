@@ -41,7 +41,7 @@ bool WholeBodyController::initialize(const double Ts)
     q_current_.resize(num_joints_);
     for(unsigned int i = 0; i < q_current_.rows(); ++i)
     {
-        q_current_(i) = 0;
+        q_current_(i) = 0.0;
     }
 
     // Read parameters

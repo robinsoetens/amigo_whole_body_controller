@@ -209,7 +209,7 @@ void Tree::rearrangeJntArrayToTree(KDL::JntArray& q_in)
 {
     q_tree_.resize(kdl_tree_.getNrOfJoints());
     uint i = 0;
-
+	// ToDo: why is this so difficult?
     for(std::vector<int>::iterator it_index = tree_joint_index_.begin(); it_index != tree_joint_index_.end(); ++it_index, ++i)
     {
         int index = *it_index;
