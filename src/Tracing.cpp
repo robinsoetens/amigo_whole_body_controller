@@ -21,9 +21,21 @@ Tracing::~Tracing() {
 
 }
 
-bool Tracing::Initialize(std::string& filename, const std::vector<std::string>& column_names, unsigned int buffer_length) {
+bool Tracing::Initialize(const std::string& foldername, const std::string& filename, const std::vector<std::string>& column_names, unsigned int buffer_length) {
 
-    /// Add timestamp to filename
+    /// Add namespace andtimestamp to filename
+    ros::NodeHandle n("~");
+    std::string ns = n.getNamespace();
+    std::string prefix;
+    if (ns == "/whole_body_controller") {
+        prefix = "wbc_";
+    } else if (ns == "/whole_body_planner") {
+        prefix = "wbp_";
+    } else {
+        prefix = "";
+        ROS_WARN("No prefix for tracing");
+    }
+
     time_t rawtime;
     struct tm * timeinfo;
     char buffer [80];
@@ -31,7 +43,9 @@ bool Tracing::Initialize(std::string& filename, const std::vector<std::string>& 
     timeinfo = localtime (&rawtime);
     strftime (buffer,80,"_%Y%m%d%H%M%S.dat",timeinfo);
     std::string fileext(buffer);
-    filename_ = filename + fileext;
+
+    filename_ = foldername + prefix + filename + fileext;
+    ROS_DEBUG("Filename = %s", filename_.c_str());
 
     column_names_ = column_names;
     number_columns_ = column_names.size()+1; /// Number of columns + time column
@@ -160,12 +174,12 @@ void Tracing::newLine() {
 
 void Tracing::writeToFile() {
 
-    ROS_INFO("Write to file: %s", filename_.c_str());
+    ROS_DEBUG("Write to file: %s", filename_.c_str());
     //ROS_INFO("Number of rows and columns = %i, %i", (int)buffers_.size(), (int)buffers_[0].size());
 
     /// Only write if buffer is not empty
     if (buffers_.size() > 0) {
-        ROS_INFO("Write data to file, size = %i", (int)buffers_.size());
+        ROS_DEBUG("Write data to file, size = %i", (int)buffers_.size());
 
         /// Take value of first stamp such that time starts counting from 0
         double first_stamp = buffers_[0][0];

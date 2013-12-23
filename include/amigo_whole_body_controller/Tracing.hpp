@@ -27,7 +27,7 @@ public:
       * @param column_names: vector with strings containing the column names
       * @param buffer_length: length of tracing
       */
-    bool Initialize(std::string& filename, const std::vector<std::string>& column_names, unsigned int buffer_length);
+    bool Initialize(const std::string& foldername, const std::string &filename, const std::vector<std::string> &column_names, unsigned int buffer_length);
 
     /** Writes all relevant data to the tracing buffer
       * with various data types

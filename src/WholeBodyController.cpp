@@ -107,9 +107,9 @@ bool WholeBodyController::initialize(const double Ts)
     std::string foldername;
     n.param<int> ("/whole_body_controller/tracing_buffersize", buffersize, 0);
     n.param<std::string> ("/whole_body_controller/tracing_folder", foldername, "/tmp/");
-    std::string filename = "wbc";
-    std::string folderfilename = foldername + filename; // ToDo: make nice
-    tracer_.Initialize(folderfilename, column_names, buffersize);
+    std::string filename = "joints";
+    //std::string folderfilename = foldername + filename; // ToDo: make nice
+    tracer_.Initialize(foldername, filename, column_names, buffersize);
 
     ROS_INFO("Whole Body Controller Initialized");
 
