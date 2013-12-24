@@ -46,20 +46,36 @@ if __name__ == '__main__':
     position_constraint = PositionConstraint()
     position_constraint.header.frame_id = "base_link"
     position_constraint.link_name = "grippoint_left"
-    position_constraint.target_point_offset.x = 0.0
+    
+    # Position offset
+    position_constraint.target_point_offset.x = 0.2
     position_constraint.target_point_offset.y = 0.0
     position_constraint.target_point_offset.z = 0.0
+    
+    # Position
     position_constraint.position.x = 0.5
     position_constraint.position.y = 0.2
     position_constraint.position.z = 0.8
-    position_constraint.target_point_offset.x = 0.2
+    
+    # Position constraint (cylinder)
+    position_constraint.constraint_region_shape.type = 2
+    position_constraint.constraint_region_shape.dimensions.append(0.04)
+    position_constraint.constraint_region_shape.dimensions.append(0.03)
+    
     goal.position_constraint = position_constraint
     rospy.logwarn("Position constraint region shapes etc. not yet defined")
     
+    # Orientation
     orientation_constraint = OrientationConstraint()
     orientation_constraint.header.frame_id = "base_link"
     orientation_constraint.link_name = "grippoint_left"
     orientation_constraint.orientation = euler_z_to_quaternion(0, 0, 0)
+    
+    # Orientation constraint
+    orientation_constraint.absolute_roll_tolerance = 0.087
+    orientation_constraint.absolute_pitch_tolerance = 0.087
+    orientation_constraint.absolute_yaw_tolerance = 6.28
+    
     goal.orientation_constraint = orientation_constraint
     rospy.loginfo("Type link or header not yet taken into account")
     rospy.logwarn("Orientation constraint tolerances etc not yet defined")
