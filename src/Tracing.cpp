@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 
+
 #include <ros/ros.h>
 #include <time.h>
 
@@ -41,10 +42,21 @@ bool Tracing::Initialize(const std::string& foldername, const std::string& filen
     char buffer [80];
     time (&rawtime);
     timeinfo = localtime (&rawtime);
-    strftime (buffer,80,"_%Y%m%d%H%M%S.dat",timeinfo);
-    std::string fileext(buffer);
+    strftime (buffer,80,"_%Y%m%d%H%M%S",timeinfo);
+    std::string filestamp(buffer);
+    std::string fileext = ".dat";
 
-    filename_ = foldername + prefix + filename + fileext;
+    filename_ = foldername + prefix + filename + filestamp + fileext;
+
+    /// Check if file already exists
+    int addition = 1;
+    std::ifstream testfile(filename_.c_str());
+    while (testfile.good()) {
+        std::string fileaddition = static_cast<std::ostringstream*>( &(std::ostringstream() << addition) )->str();
+        filename_ = foldername + prefix + filename + filestamp + "_" + fileaddition + fileext;
+        ++addition;
+    }
+
     ROS_DEBUG("Filename = %s", filename_.c_str());
 
     column_names_ = column_names;

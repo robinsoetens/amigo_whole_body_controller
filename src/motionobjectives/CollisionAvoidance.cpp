@@ -12,6 +12,8 @@ using namespace std;
 CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts)
     : ca_param_(parameters), Ts_ (Ts), octomap_(NULL)
 {
+    /// Status is always 2 (always active)
+    status_  = 2;
 }
 
 CollisionAvoidance::~CollisionAvoidance()

@@ -274,12 +274,14 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
     q_reference = q_reference_;
     qdot_reference = qdot_reference_;
 
-    /// Only trace useful data (there are more motion objectives than the collision avoidance)...
-    if (motionobjectives_.size() > 1) {
-        tracer_.newLine();
-        tracer_.collectTracing(1, q_current_.data);
-        tracer_.collectTracing(num_joints_+1, JointLimitAvoidance_.getCost());
-        tracer_.collectTracing(num_joints_+2, PostureControl_.getCost());
+    /// Only trace useful data (there is an Cartesian Impedance which has not yet converged)...
+    for (unsigned int i = 0; i < motionobjectives_.size(); i++) {
+        if (motionobjectives_[i]->type_ == "CartesianImpedance" && motionobjectives_[i]->getStatus() == 2) {
+            tracer_.newLine();
+            tracer_.collectTracing(1, q_current_.data);
+            tracer_.collectTracing(num_joints_+1, JointLimitAvoidance_.getCost());
+            tracer_.collectTracing(num_joints_+2, PostureControl_.getCost());
+        }
     }
 
     return true;

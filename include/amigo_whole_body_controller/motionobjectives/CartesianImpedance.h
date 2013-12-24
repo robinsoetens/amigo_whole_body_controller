@@ -58,8 +58,6 @@ public:
 
     void cancelGoal();
 
-    unsigned int getStatus();
-
     KDL::Twist getError();
 
     std::vector<refgen::RefGenerator> ref_generators;
@@ -119,12 +117,6 @@ protected:
       * A DoFs is converged if error < tolerance
       */
     double orientation_tolerance_[3];
-
-    // Status for the Cartesian Impedance
-    // IDLE=0
-    // AT_GOAL_POSE=1
-    // MOVING_TO_GOAL_POSE=2
-    unsigned int status_;
 
     /**
       *
