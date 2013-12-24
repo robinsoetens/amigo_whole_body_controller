@@ -161,7 +161,7 @@ void RobotInterface::jointMeasurementCallback(const sensor_msgs::JointState::Con
     if (!initialized_) {
 		for(unsigned int i = 0; i < msg->name.size(); ++i) {
 			initialize_map_[msg->name[i]] = true;
-			ROS_INFO("Initializing %s",msg->name[i].c_str());
+			ROS_DEBUG("Initializing %s",msg->name[i].c_str());
 		}
 		bool tmpcheck = true;
 		

@@ -316,8 +316,8 @@ void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsiv
 
         W.frame_id = RF.frame_id;
         W.wrench = wrench_calc;
-
-        wrenches_out.push_back(W);
+ROS_ERROR_ONCE("Collision avoidance disabled!!!");
+        //wrenches_out.push_back(W);
     }
 }
 

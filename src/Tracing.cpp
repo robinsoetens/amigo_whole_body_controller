@@ -24,7 +24,7 @@ Tracing::~Tracing() {
 
 bool Tracing::Initialize(const std::string& foldername, const std::string& filename, const std::vector<std::string>& column_names, unsigned int buffer_length) {
 
-    /// Add namespace andtimestamp to filename
+    /// Add namespace to filename
     ros::NodeHandle n("~");
     std::string ns = n.getNamespace();
     std::string prefix;
@@ -37,6 +37,7 @@ bool Tracing::Initialize(const std::string& foldername, const std::string& filen
         ROS_WARN("No prefix for tracing");
     }
 
+	/// Add timestamp to filename
     time_t rawtime;
     struct tm * timeinfo;
     char buffer [80];
@@ -50,11 +51,16 @@ bool Tracing::Initialize(const std::string& foldername, const std::string& filen
 
     /// Check if file already exists
     int addition = 1;
-    std::ifstream testfile(filename_.c_str());
-    while (testfile.good()) {
-        std::string fileaddition = static_cast<std::ostringstream*>( &(std::ostringstream() << addition) )->str();
-        filename_ = foldername + prefix + filename + filestamp + "_" + fileaddition + fileext;
-        ++addition;
+    bool add_index = true;
+    while (add_index) {
+		std::ifstream testfile(filename_.c_str());
+		if (testfile.good()) {
+			std::string fileaddition = static_cast<std::ostringstream*>( &(std::ostringstream() << addition) )->str();
+			filename_ = foldername + prefix + filename + filestamp + "_" + fileaddition + fileext;
+			++addition;
+        } else {
+			add_index = false;
+		}
     }
 
     ROS_DEBUG("Filename = %s", filename_.c_str());
