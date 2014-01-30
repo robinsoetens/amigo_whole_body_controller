@@ -1,59 +1,68 @@
 <?xml version="1.0"?>
 
 <launch>
-	
-	<arg name="ROBOT_REAL" default="$(optenv ROBOT_REAL false)" />
-	
-	<group if="$(arg ROBOT_REAL)">
-		<!-- REAL ROBOT -->
+    
+    <arg name="ROBOT_REAL" default="$(optenv ROBOT_REAL false)" />
+    <arg if="$(optenv ROBOT_REAL false)" name="machine" default="amigo4"/>
+    <arg unless="$(optenv ROBOT_REAL false)" name="machine" default="localhost"/>
+    <arg name="env" default="$(optenv ROBOT_ENV robotics_testlab_A)"/>
+    
+    
+    <!-- Localization -->
+    <include file="$(find amigo_launch_files)/launch/middleware/localization.launch" />
+    
+    <!-- OctoMap -->
+    <!--<node pkg="tue_map_3d" type="map_3d" name="map_3d" machine="$(arg machine)"> -->
+            <!-- Map parameters for octomap -->        
+    <!--        <rosparam file="$(find tue_move_base_3d)/parameters/map3d_params.yaml" command="load" /> -->
 
-		<!-- Start all sensors -->
-		<include file="$(find amigo_launch_files)/launch/sensors/sensors.launch" />	
-		
-		<!-- PEIN Perception -->
-		<include file="$(find pein_supervisor)/launch/start.launch" />
+            <!-- Projected map settings for octomap -->
+    <!--        <rosparam file="$(find tue_move_base_3d)/parameters/projected_map_params.yaml" command="load" /> -->
+            
+            <!-- Set correct map topics for tue_map_3d node -->
+    <!--        <remap from="/cloud_in" to="/fused_pointclouds" />  -->
+    <!--        <remap from="/map" to="/octree_map" /> -->
+    <!--</node> -->
+    
+    <!-- Start the node that converts the laser data to a pointcloud -->
+        <!-- <node pkg="tue_laser_to_pointcloud" type="laser_to_pointcloud" name="laser_to_pointcloud" machine="$(arg machine)"/> -->
+        <node pkg="scan_to_cloud_converter" type="scan_to_cloud_converter_node" name="scan_to_cloud_converter_node" machine="$(arg machine)">
+            <remap from="/scan" to="/base_scan" /> 
+            <remap from="/cloud" to="/base_scan_pointcloud" />
+        </node>  
+                
+        <!-- REAL ROBOT: use throttled and voxelized topics -->
+        <group if="$(arg ROBOT_REAL)">
+        <!-- Base Kinect (only for real robot; in simulation Kinect is loaded by Gazebo) -->
+            <!--<include file="$(find amigo_launch_files)/launch/sensors/base_kinect.launch"/>-->
+        <!-- Relay laser, base- and head kinect pointclouds to fused_pointclouds topic -->
+             <node args="/base_scan_pointcloud /fused_pointclouds" name="base_scan_to_fused_pointclouds" pkg="topic_tools" type="relay" />
+             <!-- <node args="/base_camera/depth/points_throttled_and_voxelized /fused_pointclouds" name="base_camera_to_fused_pointclouds" pkg="topic_tools" type="relay" /> -->
+             <node args="/camera/depth/points_throttled_and_voxelized /fused_pointclouds" name="camera_to_fused_pointclouds" pkg="topic_tools" type="relay" /> 
+        </group>
+        
+        <!-- SIMULATION: use original topics, note that the camera namespace is absent for base_camera! (must be fixed in urdf model) -->
+        <group unless="$(arg ROBOT_REAL)">
+        <!-- Relay laser, base- and head kinect pointclouds to fused_pointclouds topic -->
+             <node args="/base_scan_pointcloud /fused_pointclouds" name="base_scan_to_fused_pointclouds" pkg="topic_tools" type="relay" /> 
+             <!--<node args="/base_camera/rgb/points /fused_pointclouds" name="base_camera_to_fused_pointclouds" pkg="topic_tools" type="relay" /> -->
+             <node args="/camera/rgb/points /fused_pointclouds" name="camera_to_fused_pointclouds" pkg="topic_tools" type="relay" />
+        </group>
 
-		 <!-- face segmentation -->
-		<include file="$(find pein_face_recognition)/launch/start.launch" />
-		
-		<!-- Template matching -->
-		<node pkg="pein_template_matching" type="detection_node" name="template_matching" machine="amigo1"/>		
-	</group>
-	
-	<group unless="$(arg ROBOT_REAL)">
-		<!-- SIMULATION -->
-		
-		<!-- Gazebo perception -->
-		<include file="$(find gazebo_perception)/launch/start.launch" />
-		
-	</group>
-	
-	<!-- Localization -->
-	<include file="$(find amigo_launch_files)/launch/middleware/localization.launch" />
+    <!-- Navigation -->
+    <!--<include file="$(find amigo_launch_files)/launch/middleware/base_navigation_3d.launch"/> -->
+    <include file="$(find amigo_launch_files)/launch/middleware/base_navigation.launch">
+        <arg name="env" value="$(arg env)"/>
+    </include>
+    
+    <!-- Arm & gripper control -->
+    <!--<include file="$(find amigo_launch_files)/launch/middleware/arms.launch" />-->
+    <include file="$(find amigo_gripper_server)/launch/start.launch" />
+    
+    <!-- Head control -->
+    <include file="$(find amigo_launch_files)/launch/middleware/head.launch" /> 
 
-	<!-- Navigation -->
-	<include file="$(find amigo_launch_files)/launch/middleware/base_navigation.launch" />
-	
-	<!-- Inverse reachability -->
-	<include file="$(find amigo_launch_files)/launch/middleware/inverse_reachability.launch" />
-	
-	<!-- Arm & gripper control -->
-	<!--<include file="$(find amigo_launch_files)/launch/middleware/arms.launch" />-->
-	<include file="$(find amigo_gripper_server)/launch/start.launch" />
-	
-	<!-- Head control -->
-	<include file="$(find amigo_launch_files)/launch/middleware/head.launch" />	
-
-	<!-- Spindle --> 
-	<!--<include file="$(find amigo_launch_files)/launch/middleware/spindle.launch" />-->
-	
-	<!-- Reasoner (including World Model) -->
-	<include file="$(find amigo_launch_files)/launch/middleware/reasoner.launch"/>
-
-	<!-- Node to attach world model object to gripper-->
-	<node pkg="obj_in_gripper" type="obj_in_gripper_pub" name="obj_in_gripper"/>
-	
-	<!-- Start text to speech -->
-    <include file="$(find amigo_launch_files)/launch/interaction/text_to_speech.launch" />	
-	
+    <!-- Spindle -->
+    <include file="$(find amigo_launch_files)/launch/middleware/spindle.launch" />  
+    
 </launch>

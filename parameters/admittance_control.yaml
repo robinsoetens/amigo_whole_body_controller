@@ -1,0 +1,35 @@
+admittance_control:
+    mass:
+        torso_joint: 10
+        shoulder_yaw_joint_left: 0.2
+        shoulder_yaw_joint_right: 0.2
+        shoulder_pitch_joint_left: 0.2
+        shoulder_pitch_joint_right: 0.2
+        shoulder_roll_joint_left: 0.1
+        shoulder_roll_joint_right: 0.1
+        elbow_pitch_joint_left: 0.15
+        elbow_pitch_joint_right: 0.15
+        elbow_roll_joint_left: 0.1
+        elbow_roll_joint_right: 0.1
+        wrist_pitch_joint_left: 0.1
+        wrist_pitch_joint_right: 0.1
+        wrist_yaw_joint_left: 0.1
+        wrist_yaw_joint_right: 0.1
+        
+    damping:
+        torso_joint: 150
+        shoulder_yaw_joint_left: 35
+        shoulder_yaw_joint_right: 35
+        shoulder_pitch_joint_left: 35
+        shoulder_pitch_joint_right: 35
+        shoulder_roll_joint_left: 4.3
+        shoulder_roll_joint_right: 4.3
+        elbow_pitch_joint_left: 4.2
+        elbow_pitch_joint_right: 4.2
+        elbow_roll_joint_left: 4.2
+        elbow_roll_joint_right: 4.2
+        wrist_pitch_joint_left: 7.0
+        wrist_pitch_joint_right: 7.0
+        wrist_yaw_joint_left: 7.0
+        wrist_yaw_joint_right: 7.0
+

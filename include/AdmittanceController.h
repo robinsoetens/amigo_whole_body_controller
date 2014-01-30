@@ -33,12 +33,12 @@ public:
     /**
      * Initialize
      */
-    void initialize(const std::vector<double>& q_min, const std::vector<double>& q_max);
+    void initialize(const double Ts, const KDL::JntArray& q_min, const KDL::JntArray& q_max, const std::vector<double>& mass, const std::vector<double>& damping);
 
     /**
      * Update
      */
-    void update(const Eigen::VectorXd tau, Eigen::VectorXd& qdot_reference, const KDL::JntArray& q_current, Eigen::VectorXd& q_reference);
+    void update(const Eigen::VectorXd& tau, Eigen::VectorXd& qdot_reference, const KDL::JntArray& q_current, Eigen::VectorXd& q_reference);
 
 private:
 
@@ -66,7 +66,7 @@ private:
     Eigen::VectorXd q_min_, q_max_;
 
     //! Sampling time
-    double Ts;
+    double Ts_;
 
 };
 

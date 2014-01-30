@@ -1,0 +1,152 @@
+collision_model:
+    group_core_body:
+        BaseBottom:
+          name: "BaseBottom"
+          shape:
+                shape_type: "CylinderZ"
+                dimensions: {x: 0.36, y: 0.36, z: 0.12 } # radius,radius,0.5*height
+          transform:
+                frame_id: "base_link"
+                origin: {x: 0.0, y: 0.0, z: 0.125 } # 0.07 + 0.055
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        BaseFront:
+          name: "BaseFront"
+          shape:
+                shape_type: "Box"
+                dimensions: {x: 0.1, y: 0.14, z: 0.095 } # 0.5*x,0.5*y,0.5*z
+          transform:
+                frame_id: "base_link"
+                origin: {x: 0.25, y: 0.0, z: 0.29 } # z = 0.14+0.5*0.19+0.055
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        BaseBack:
+          name: "BaseBack"
+          shape:
+                shape_type: "Box"
+                dimensions: {x: 0.08, y: 0.08, z: 0.04 } # 0.5*x,0.5*y,0.5*z
+          transform:
+                frame_id: "base_link"
+                origin: {x: -0.25, y: 0.0, z: 0.275 } # z = 0.14+0.5*0.19+0.055
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        BaseTop:
+          name: "BaseTop"
+          shape:
+                shape_type: "Cone"
+                dimensions: {x: 0.21, y: 0.21, z: 0.29 } # radius,radius,0.5*height
+          transform:
+                frame_id: "base_link"
+                origin: {x: 0.02, y: 0.0, z: 0.655 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        Sliders:
+          name: "Sliders"
+          shape:
+                shape_type: "Box"
+                dimensions: {x: 0.35, y: 0.115, z: 0.075 } # 0.5*x,0.5*y,0.5*z
+          transform:
+                frame_id: "torso_slider"
+                origin: {x: -0.2, y: 0.0, z: -0.04 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        Torso:
+          name: "Torso"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.18, y: 0.18, z: 0.18 } # radius,radius,radius
+          transform:
+                frame_id: "torso"
+                origin: {x: 0.02, y: 0.0, z: -0.005 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        Clavicles:
+          name: "Clavicles"
+          shape:
+                shape_type: "Box"
+                dimensions: {x: 0.052, y: 0.3, z: 0.08} # 0.5*x,0.5*y,0.5*z
+          transform:
+                frame_id: "torso"
+                origin: {x: 0.05, y: 0.0, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        Head:
+          name: "Head"
+          shape:
+                shape_type: "Box"
+                dimensions: {x: 0.08, y: 0.133, z: 0.07} # 0.5*x,0.5*y,0.5*z
+          transform:
+                frame_id: "head"
+                origin: {x: -0.0055, y: 0.0, z: 0.135 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        UpperArmLeft:
+          name: "UpperArmLeft"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.07, y: 0.175, z: 0.07 } # radius,0.5*height,radius
+          transform:
+                frame_id: "upper_arm_left"
+                origin: {x: -0.01, y: -0.175, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        UpperArmRight:
+          name: "UpperArmRight"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.07, y: 0.175, z: 0.07 } # radius,0.5*height,radius
+          transform:
+                frame_id: "upper_arm_right"
+                origin: {x: -0.01, y: -0.175, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+                
+    group_arm_left:
+        ForeArmLeft:
+          name: "ForeArmLeft"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.05, y: 0.16, z: 0.05 } # radius,0.5*height,radius
+          transform:
+                frame_id: "fore_arm_left"
+                origin: {x: 0.0, y: -0.16, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        GripperLeft:
+          name: "GripperLeft"
+          shape:
+                shape_type: "Box"
+                dimensions: {x: 0.1, y: 0.085, z: 0.025 } # 0.5*x,0.5*y,0.5*z
+          transform:
+                frame_id: "grippoint_left"
+                origin: {x: -0.02, y: 0.0, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+                
+    group_arm_right:
+        ForeArmRight:
+          name: "ForeArmRight"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.05, y: 0.16, z: 0.05 } # radius,0.5*height,radius
+          transform:
+                frame_id: "fore_arm_right"
+                origin: {x: 0.0, y: -0.16, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        GripperRight:
+          name: "GripperRight"
+          shape:
+                shape_type: "Box"
+                dimensions: {x: 0.1, y: 0.085, z: 0.025 } # 0.5*x,0.5*y,0.5*z
+          transform:
+                frame_id: "grippoint_right"
+                origin: {x: -0.02, y: 0.0, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+
+exlusions_collision_calculation:
+    group_arm_left:
+        exclusion1:
+            NameBodyA: "ForeArmLeft"
+            NameBodyB: "UpperArmLeft"
+        exclusion2:
+            NameBodyA: "ForeArmLeft"
+            NameBodyB: "Clavicles"
+    group_arm_right:
+        exclusion1:
+            NameBodyA: "ForeArmRight"
+            NameBodyB: "UpperArmRight"
+        exclusion2:
+            NameBodyA: "ForeArmRight"
+            NameBodyB: "Clavicles"
+
+
+
+

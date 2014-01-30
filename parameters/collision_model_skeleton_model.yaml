@@ -1,0 +1,233 @@
+collision_model:
+    group_core_body:
+        BaseBottom:
+          name: "BaseBottom"
+          shape:
+                shape_type: "CylinderZ"
+                dimensions: {x: 0.36, y: 0.36, z: 0.075 } # radius,radius,0.5*height
+          transform:
+                frame_id: "base_link"
+                origin: {x: 0.0, y: 0.0, z: 0.075 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        BaseBottom2:
+          name: "BaseBottom2"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.36, y: 0.36, z: 0.36 } # radius,radius,0.5*height
+          transform:
+                frame_id: "base_link"
+                origin: {x: 0.0, y: 0.0, z: 0.15 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        BaseTop:
+          name: "BaseTop"
+          shape:
+                shape_type: "CylinderZ"
+                dimensions: {x: 0.165, y: 0.165, z: 0.2 } # radius,radius,0.5*height
+          transform:
+                frame_id: "base_link"
+                origin: {x: 0.015, y: 0.0, z: 0.38 } # z = 0.1+0.5*0.9
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        BaseTop2:
+          name: "BaseTop2"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.165, y: 0.165, z: 0.165 } # radius,radius,0.5*height
+          transform:
+                frame_id: "base_link"
+                origin: {x: 0.015, y: 0.0, z: 0.58 } # z = 0.1+0.5*0.9
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        BaseFront:
+          name: "BaseFront"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.075, y: 0.1, z: 0.075 } # 0.5*x,0.5*y,0.5*z
+          transform:
+                frame_id: "base_link"
+                origin: {x: 0.265, y: 0.0, z: 0.32 } # z = 0.14+0.5*0.19+0.055
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        BaseFront1:
+          name: "BaseFront1"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.075, y: 0.075, z: 0.075 } # 0.5*x,0.5*y,0.5*z
+          transform:
+                frame_id: "base_link"
+                origin: {x: 0.265, y: 0.1, z: 0.32 } # z = 0.14+0.5*0.19+0.055
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        BaseFront2:
+          name: "BaseFront2"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.075, y: 0.075, z: 0.075 } # 0.5*x,0.5*y,0.5*z
+          transform:
+                frame_id: "base_link"
+                origin: {x: 0.265, y: -0.1, z: 0.32 } # z = 0.14+0.5*0.19+0.055
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        Sliders:
+          name: "Sliders"
+          shape:
+                shape_type: "CylinderZ"
+                dimensions: {x: 0.11, y: 0.11, z: 0.4 } # radius,radius,0.5*height
+          transform:
+                frame_id: "base_link"
+                origin: {x: 0.0, y: 0.0, z: 0.6 } # z = 0.1+0.5*0.9
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        Torso:
+          name: "Torso"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.18, y: 0.18, z: 0.18 } # radius,radius,radius
+          transform:
+                frame_id: "torso"
+                origin: {x: 0.02, y: 0.0, z: -0.005 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        Clavicles:
+          name: "Clavicles"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.08, y: 0.25, z: 0.08 } #  radius,0.5*height,radius
+          transform:
+                frame_id: "torso"
+                origin: {x: 0.05, y: 0.0, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        ClaviclesLeft:
+          name: "ClaviclesLeft"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.08, y: 0.08, z: 0.08 } #  radius,0.5*height,radius
+          transform:
+                frame_id: "torso"
+                origin: {x: 0.05, y: 0.25, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        ClaviclesRight:
+          name: "ClaviclesRight"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.08, y: 0.08, z: 0.08 } #  radius,0.5*height,radius
+          transform:
+                frame_id: "torso"
+                origin: {x: 0.05, y: -0.25, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        Head:
+          name: "Head"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.09, y: 0.085, z: 0.09 } # radius,0.5*height,radius
+          transform:
+                frame_id: "head"
+                origin: {x: -0.005, y: 0.0, z: 0.135 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        HeadLeft:
+          name: "HeadLeft"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.09, y: 0.09, z: 0.09 } # radius,0.5*height,radius
+          transform:
+                frame_id: "head"
+                origin: {x: -0.005, y: 0.085, z: 0.135 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        HeadRight:
+          name: "HeadRight"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.09, y: 0.09, z: 0.09 } # radius,0.5*height,radius
+          transform:
+                frame_id: "head"
+                origin: {x: -0.005, y: -0.085, z: 0.135 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        UpperArmLeft:
+          name: "UpperArmLeft"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.07, y: 0.16, z: 0.07 } # radius,0.5*height,radius
+          transform:
+                frame_id: "upper_arm_left"
+                origin: {x: -0.01, y: -0.16, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        UpperArmLeftBottom:
+          name: "UpperArmLeftBottom"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.07, y: 0.07, z: 0.07 } # radius,0.5*height,radius
+          transform:
+                frame_id: "upper_arm_left"
+                origin: {x: -0.01, y: -0.32, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        UpperArmRight:
+          name: "UpperArmRight"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.07, y: 0.16, z: 0.07 } # radius,0.5*height,radius
+          transform:
+                frame_id: "upper_arm_right"
+                origin: {x: -0.01, y: -0.16, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        UpperArmRightBottom:
+          name: "UpperArmRightBottom"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.07, y: 0.07, z: 0.07 } # radius,0.5*height,radius
+          transform:
+                frame_id: "upper_arm_right"
+                origin: {x: -0.01, y: -0.32, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+
+    group_arm_left:
+        ForeArmLeft:
+          name: "ForeArmLeft"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.05, y: 0.16, z: 0.05 } # radius,0.5*height,radius
+          transform:
+                frame_id: "fore_arm_left"
+                origin: {x: 0.0, y: -0.16, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        GripperLeft:
+          name: "GripperLeft"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.12, y: 0.12, z: 0.12 } # radius,radius,radius
+          transform:
+                frame_id: "grippoint_left"
+                origin: {x: -0.02, y: 0.0, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+
+    group_arm_right:
+        ForeArmRight:
+          name: "ForeArmRight"
+          shape:
+                shape_type: "CylinderY"
+                dimensions: {x: 0.05, y: 0.16, z: 0.05 } # radius,0.5*height,radius
+          transform:
+                frame_id: "fore_arm_right"
+                origin: {x: 0.0, y: -0.16, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+        GripperRight:
+          name: "GripperRight"
+          shape:
+                shape_type: "Sphere"
+                dimensions: {x: 0.12, y: 0.12, z: 0.12 } # radius,radius,radius
+          transform:
+                frame_id: "grippoint_right"
+                origin: {x: -0.02, y: 0.0, z: 0.0 }
+                orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+
+exlusions_collision_calculation:
+    group_arm_left:
+        exclusion1:
+            NameBodyA: "ForeArmLeft"
+            NameBodyB: "UpperArmLeft"
+        exclusion2:
+            NameBodyA: "ForeArmLeft"
+            NameBodyB: "Clavicles"
+    group_arm_right:
+        exclusion1:
+            NameBodyA: "ForeArmRight"
+            NameBodyB: "UpperArmRight"
+        exclusion2:
+            NameBodyA: "ForeArmRight"
+            NameBodyB: "Clavicles"
+
+
+
+

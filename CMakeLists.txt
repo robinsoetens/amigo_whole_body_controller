@@ -11,7 +11,13 @@ add_definitions(${EIGEN_DEFINITIONS})
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE RelWithDebInfo)
+set(ROS_BUILD_TYPE Release)
+
+find_package(octomap 1.5 REQUIRED)
+include_directories(BEFORE ${OCTOMAP_INCLUDE_DIRS})
+link_directories(${OCTOMAP_LIBRARY_DIRS})
+link_libraries(${OCTOMAP_LIBRARY_DIRS}/liboctomap.so ${OCTOMAP_LIBRARY_DIRS}/liboctomath.so)
+MESSAGE(STATUS "OctoMap paths:" ${OCTOMAP_INCLUDE_DIRS} " " ${OCTOMAP_LIBRARY_DIRS})
 
 rosbuild_find_ros_package(actionlib_msgs)
 include(${actionlib_msgs_PACKAGE_PATH}/cmake/actionbuild.cmake)
@@ -37,17 +43,32 @@ add_definitions(${EIGEN_DEFINITIONS})
 #common commands for building c++ executables and libraries
 # OBSOLETE???: src/TreeDescription.cpp
 rosbuild_add_library(wholebodycontroller 
-					src/WholeBodyController.cpp
-					src/CartesianImpedance.cpp
-					src/ComputeJacobian.cpp
-					src/AdmittanceController.cpp
-					src/ComputeNullspace.cpp
-                                        src/JointLimitAvoidance.cpp
-                                        src/PostureControl.cpp)
-#                                        src/JointTrajectoryAction.cpp)
+                                        src/WholeBodyController.cpp
+                                        src/AdmittanceController.cpp
+                                        src/ComputeNullspace.cpp
+                                        src/Component.cpp
+                                        src/Chain.cpp
+                                        src/ChainParser.cpp
+                                        src/RobotState.cpp
+                                        src/Tree.cpp
+                                        src/Tracing.cpp
+)
+rosbuild_add_library(motionobjectives
+                                     src/motionobjectives/MotionObjective.cpp
+                                     src/motionobjectives/CartesianImpedance.cpp
+                                     src/motionobjectives/CollisionAvoidance.cpp
+                                     src/motionobjectives/JointLimitAvoidance.cpp
+                                     src/motionobjectives/PostureControl.cpp
+)
+rosbuild_add_library(interfaces
+                               src/interfaces/JointTrajectoryAction.cpp
+                               src/interfaces/RobotInterface.cpp
+)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 rosbuild_add_executable(whole_body_controller src/whole_body_controller_node.cpp ${HEADER_FILES})
 #rosbuild_add_executable(grasp_precompute src/GraspPrecompute.cpp ${HEADER_FILES})
-target_link_libraries(whole_body_controller wholebodycontroller)
+target_link_libraries(whole_body_controller wholebodycontroller codeprofiler)
+target_link_libraries(wholebodycontroller motionobjectives)
+target_link_libraries(wholebodycontroller interfaces)

@@ -1,0 +1,20 @@
+component_description:
+    - torso:
+        root_name: "base"
+        leaf_names:
+            - "shoulder_mount_left"
+            - "shoulder_mount_right"
+        measurement_topic: "/torso_controller/measurements"
+        reference_topic: "/torso_controller/references"
+    - left_arm:
+        root_name: "shoulder_mount_left"
+        leaf_names:
+            - "grippoint_left"
+        measurement_topic: "/arm_left_controller/measurements"
+        reference_topic: "/arm_left_controller/references"
+    - right_arm:
+        root_name: "shoulder_mount_right"
+        leaf_names:
+            - "grippoint_right"
+        measurement_topic: "/arm_right_controller/measurements"
+        reference_topic: "/arm_right_controller/references"

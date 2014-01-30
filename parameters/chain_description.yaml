@@ -1,0 +1,4 @@
+chain_description:
+    - {root: "base", tip: "grippoint_left"}
+    - {root: "base", tip: "grippoint_right"}
+

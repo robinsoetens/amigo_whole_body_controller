@@ -8,18 +8,22 @@
 #define TREEDESCRIPTION_H_
 
 // ROS
-#include <ros/ros.h>
+//#include <ros/ros.h>
 
 // Vector
 #include <vector>
 
 struct component_description {
-        std::string root_name;
-        std::vector<std::string> tip_names;
-        int number_of_joints;
-        std::vector<double> q;
-        int start_index;
-        int end_index;
-    };
+    std::string group_name;
+    std::string root_name;
+    std::vector<std::string> tip_names;
+    int number_of_joints;
+    ///std::vector<double> q;
+    std::vector<std::string> joint_names;
+    int start_index;
+    int end_index;
+    std::map<std::string, int> joint_name_map_;
+
+};
 
 #endif

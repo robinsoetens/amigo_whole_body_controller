@@ -4,7 +4,7 @@
      amigo_whole_body_controller
 
   </description>
-  <author>JLunenburg</author>
+  <author>JLunenburg, PMetsemakers</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/amigo_whole_body_controller</url>
@@ -18,13 +18,27 @@
   <depend package="std_msgs"/>
   <depend package="amigo_msgs"/>
   <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="octomap_msgs"/>
+  <depend package="code_profiler"/>
   
   <depend package="tf"/>
-  
   <depend package="kdl"/>
   <depend package="kdl_parser"/>
   
   <depend package="amigo_arm_navigation"/>
+  <depend package="amigo_joint_interface_converter"/>
+  <depend package="tue_map_3d"/>
+  <depend package="amigo_ref_interpolator"/>
+  
+  <depend package="visualization_msgs"/>
+
+  <depend package="bullet"/>
+
+  <export>
+    <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -lwholebodycontroller"/>
+  </export>
+
 
 </package>
 

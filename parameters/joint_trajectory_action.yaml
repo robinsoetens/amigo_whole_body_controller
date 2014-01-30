@@ -1,0 +1,78 @@
+joint_names:
+  - torso_joint
+  - shoulder_yaw_joint_left
+  - shoulder_pitch_joint_left
+  - shoulder_roll_joint_left
+  - elbow_pitch_joint_left
+  - elbow_roll_joint_left
+  - wrist_pitch_joint_left
+  - wrist_yaw_joint_left
+  - shoulder_yaw_joint_right
+  - shoulder_pitch_joint_right
+  - shoulder_roll_joint_right
+  - elbow_pitch_joint_right
+  - elbow_roll_joint_right
+  - wrist_pitch_joint_right
+  - wrist_yaw_joint_right
+constraints:
+   goal_time: 20.0
+   torso_joint:
+        intermediate_goal: 0.02
+        trajectory: 0.4
+        final_goal: 0.01
+   shoulder_yaw_joint_left:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   shoulder_pitch_joint_left:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   shoulder_roll_joint_left:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   elbow_pitch_joint_left:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   elbow_roll_joint_left:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   wrist_pitch_joint_left:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   wrist_yaw_joint_left:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   shoulder_yaw_joint_right:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   shoulder_pitch_joint_right:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   shoulder_roll_joint_right:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   elbow_pitch_joint_right:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   elbow_roll_joint_right:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   wrist_pitch_joint_right:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
+   wrist_yaw_joint_right:
+        intermediate_goal: 0.02
+        trajectory: 10.0
+        final_goal: 0.02
