@@ -26,6 +26,7 @@
 //
 #include <fstream>
 #include <amigo_ref_interpolator/interpolator.h>
+#include <tue_gazebo_plugins/ReferenceGenerator.h>
 #include "amigo_whole_body_controller/Tracing.hpp"
 
 class CartesianImpedance : public MotionObjective {
@@ -56,11 +57,15 @@ public:
 
     bool setOrientationTolerance(const float roll, const float pitch, const float yaw);
 
+    void setVelocity(RobotState &robotstate);
+
     void cancelGoal();
 
     KDL::Twist getError();
 
     std::vector<refgen::RefGenerator> ref_generators;
+
+    std::vector<controller::RefGenerator> ref_generator_;
 
 protected:
 
@@ -135,6 +140,8 @@ protected:
       *
       */
     KDL::Frame Frame_tip_offset;
+
+    std::pair<KDL::Frame, ros::Time> Frame_root_tip_previous_;
 
     /**
       * Reference point for offset of tip, for pre-grasp

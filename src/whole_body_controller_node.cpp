@@ -104,6 +104,7 @@ void GoalCB() {
     if (!goal.remove_tip_frame.empty()) {
         std::vector<MotionObjective*> imps_to_remove = wbc->getCartesianImpedances(goal.remove_tip_frame,goal.remove_root_frame);
         for (unsigned int i = 0; i < imps_to_remove.size(); i++) {
+
             wbc->removeMotionObjective(imps_to_remove[i]);
         }
     }
@@ -111,9 +112,34 @@ void GoalCB() {
     else {
         std::vector<MotionObjective*> imps_to_remove = wbc->getCartesianImpedances(goal.position_constraint.link_name,goal.position_constraint.header.frame_id);
         for (unsigned int i = 0; i < imps_to_remove.size(); i++) {
+            if (goal.position_constraint.link_name == imps_to_remove[i]->tip_frame_)
+            {
+                CartesianImpedance* cart_imp = dynamic_cast<CartesianImpedance*>(imps_to_remove[i]);
+                if (cart_imp)
+                {
+                    ROS_INFO("Refreshing the current Cartesian Impedance for %s ",goal.position_constraint.link_name.c_str());
+                    geometry_msgs::PoseStamped goal_pose;
+                    goal_pose.pose.position = goal.position_constraint.position;
+                    goal_pose.pose.orientation = goal.orientation_constraint.orientation;
+                    goal_pose.header.frame_id = goal.position_constraint.header.frame_id;
+                    cart_imp->setGoal(goal_pose);
+                    cart_imp->setGoalOffset(goal.position_constraint.target_point_offset);
+                    cart_imp->setImpedance(goal.stiffness);
+                    cart_imp->setPositionTolerance(goal.position_constraint.constraint_region_shape);
+                    cart_imp->setOrientationTolerance(goal.orientation_constraint.absolute_roll_tolerance, goal.orientation_constraint.absolute_pitch_tolerance, goal.orientation_constraint.absolute_yaw_tolerance);
+                    cart_imp->setVelocity(wbc->robot_state_);
+                    return;
+                }
+                else
+                {
+                    ROS_INFO("Could not cast existing MotionObjective to a Cartesian Impedance for tip frame (%s / %s), thus removing and initializing",imps_to_remove[i]->tip_frame_.c_str(),goal.position_constraint.link_name.c_str());
+
+                }
+
+            }
+
             wbc->removeMotionObjective(imps_to_remove[i]);
         }
-
         cartesian_impedance = new CartesianImpedance(goal.position_constraint.link_name);
         geometry_msgs::PoseStamped goal_pose;
         goal_pose.pose.position = goal.position_constraint.position;
