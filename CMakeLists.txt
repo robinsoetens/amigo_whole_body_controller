@@ -11,7 +11,7 @@ add_definitions(${EIGEN_DEFINITIONS})
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-set(ROS_BUILD_TYPE Release)
+set(ROS_BUILD_TYPE Debug)
 
 find_package(octomap 1.5 REQUIRED)
 include_directories(BEFORE ${OCTOMAP_INCLUDE_DIRS})
@@ -39,6 +39,14 @@ rosbuild_genmsg()
 find_package(Eigen REQUIRED)
 include_directories(${EIGEN_INCLUDE_DIRS})
 add_definitions(${EIGEN_DEFINITIONS})
+
+#link to a local version of FCL
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules)
+find_package(fcl REQUIRED)
+message("fcl_INCLUDE_DIRS: "    ${fcl_INCLUDE_DIRS})
+message("fcl_LIBRARIES: "       ${fcl_LIBRARIES})
+include_directories(${fcl_INCLUDE_DIRS})
+link_libraries(${fcl_LIBRARIES})
 
 #common commands for building c++ executables and libraries
 # OBSOLETE???: src/TreeDescription.cpp
