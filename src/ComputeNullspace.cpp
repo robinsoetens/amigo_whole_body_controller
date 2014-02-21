@@ -50,9 +50,10 @@ void ComputeNullspace::update(const Eigen::MatrixXd& J, Eigen::MatrixXd& N) {
     else {
 
         if (J.rows() != (int)previous_num_active_dofs_) {
-            Sinv_.resize(J.rows(),J.rows());
-            Sinv_.setZero();
+            Sinv_.resize(J.rows(), J.rows());
+            previous_num_active_dofs_ = J.rows();
         }
+        Sinv_.setZero();
         // See Dietrich 2011
 
         Eigen::MatrixXd WJ = J*A_*J.transpose();

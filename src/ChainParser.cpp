@@ -10,8 +10,7 @@ ChainParser::~ChainParser() {
 
 }
 
-bool ChainParser::parse(std::vector<Chain*>& chains,
-                        Tree& tree,
+bool ChainParser::parse(Tree& tree,
                         std::map<std::string,unsigned int>& joint_name_to_index,
                         std::vector<std::string>& index_to_joint_name,
                         KDL::JntArray& q_min,
@@ -72,11 +71,12 @@ bool ChainParser::parse(std::vector<Chain*>& chains,
 
     for(int i = 0; i < chain_params.size(); ++i) {
         ROS_INFO("Going to parse chain ...");
-        Chain* chain = parseChain(chain_params[i], tree, robot_model, joint_name_to_index, index_to_joint_name, q_min_vec, q_max_vec);
+        //Chain* chain = parseChain(chain_params[i], tree, robot_model, joint_name_to_index, index_to_joint_name, q_min_vec, q_max_vec);
+        parseChain(chain_params[i], tree, robot_model, joint_name_to_index, index_to_joint_name, q_min_vec, q_max_vec);
         ROS_INFO("Parse chain ready");
-        if (chain) {
-            chains.push_back(chain);
-        }
+        //if (chain) {
+        //    chains.push_back(chain);
+        //}
     }
 
     q_min.resize(joint_name_to_index.size());
@@ -92,7 +92,7 @@ bool ChainParser::parse(std::vector<Chain*>& chains,
     return true;
 }
 
-Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, Tree tree, urdf::Model& robot_model,
+bool ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, Tree tree, urdf::Model& robot_model,
                                std::map<std::string, unsigned int>& joint_name_to_index,
                                std::vector<std::string>& index_to_joint_name,
                                vector<double>& q_min, vector<double>& q_max) {
@@ -103,20 +103,20 @@ Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, Tree tree
 
     if (chain_description.getType() != XmlRpc::XmlRpcValue::TypeStruct) {
         ROS_ERROR("Chain description should be a struct containing 'root' and 'tip'. (namespace: %s)", n.getNamespace().c_str());
-        return 0;
+        return false;
     }
 
     XmlRpc::XmlRpcValue& v_root_link = chain_description["root"];
     if (v_root_link.getType() != XmlRpc::XmlRpcValue::TypeString) {
         ROS_ERROR("Chain description for does not contain 'root'. (namespace: %s)", n.getNamespace().c_str());
-        return 0;
+        return false;
     }
     std::string root_link_name = (std::string)v_root_link;
 
     XmlRpc::XmlRpcValue& v_tip_link = chain_description["tip"];
     if (v_tip_link.getType() != XmlRpc::XmlRpcValue::TypeString) {
         ROS_ERROR("Chain description for does not contain 'tip'. (namespace: %s)", n.getNamespace().c_str());
-        return 0;
+        return false;
     }
     std::string tip_link_name = (std::string)v_tip_link;
 
@@ -125,7 +125,7 @@ Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, Tree tree
     //if (!tree.kdl_tree.getChain(root_link_name, tip_link_name, chain->kdl_chain_)) {
     if (!tree.kdl_tree_.getChain("base", tip_link_name, chain->kdl_chain_)) {
         ROS_FATAL("Could not initialize chain object");
-        return 0;
+        return false;
     }
 
     for(unsigned int i = 0; i < chain->kdl_chain_.getNrOfSegments(); ++i) {
@@ -165,20 +165,9 @@ Chain* ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, Tree tree
                 //cout << "    existing joint, has index: " << full_joint_index << endl;
             }
 
-            chain->addJoint(joint.getName(), segment.getName(), full_joint_index);
         }
 
     }
 
-    // Read joints and make index map of joints
-    /*
-    if (!readJoints(robot_model, root_link_name, tip_link_name, joint_name_to_index, index_to_joint_name, q_min, q_max, *chain)) {
-        ROS_FATAL("Could not read information about the joints");
-        return 0;
-    }
-    */
-
-    chain->chain_jnt_to_jac_solver_ = new KDL::ChainJntToJacSolver(chain->kdl_chain_);
-
-    return chain;
+    return true;
 }

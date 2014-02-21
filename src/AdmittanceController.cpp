@@ -80,7 +80,11 @@ void AdmittanceController::update(const Eigen::VectorXd& tau, Eigen::VectorXd& q
 
     // Update filters --> as a result desired velocities are known
     for (int i = 0; i<tau.size(); i++) {
-
+/// Check input values (and create segfault to debug)
+        if (!(fabs(tau(i)) < 10000.0 && fabs(qdot_reference_previous_(i)) < 10000.0) ) {
+            std::cout << "tauin: " << tau(i) << ", qdot: " << qdot_reference_previous_(i) << std::endl;
+            std::vector<int> crashvec; crashvec[1] =2;
+        } else {
         qdot_reference(i)  = b_(0,i) * tau(i);
         qdot_reference(i) += b_(1,i) * tau_previous_(i);
         qdot_reference(i) -= a_(1,i) * qdot_reference_previous_(i);
@@ -88,7 +92,7 @@ void AdmittanceController::update(const Eigen::VectorXd& tau, Eigen::VectorXd& q
 
         // Integrate desired velocities and limit outputs
         q_reference(i) = std::min(q_max_(i),std::max(q_min_(i),q_current(i)+Ts_*qdot_reference(i)));
-
+}
     }
     tau_previous_ = tau;
     qdot_reference_previous_ = qdot_reference;

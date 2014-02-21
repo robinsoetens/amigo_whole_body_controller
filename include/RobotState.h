@@ -39,6 +39,7 @@ public:
     std::map<std::string, KDL::Frame> fk_poses_;
 
     // Collision Model
+    // ToDo: why have both name_collision_body and frame_id? --> Convenient when adding objects to gripper
     struct CollisionBody
     {
         std::string name_collision_body;
@@ -85,7 +86,7 @@ public:
                                   orientation["z"],
                                   orientation["w"]);
         }
-    } collision_body;
+    };
 
     struct Exclusion
     {
@@ -111,7 +112,6 @@ public:
     } exclusion_checks;
 
     Tree tree_;
-    std::vector<Chain*> chains_;
     KDL::Frame amcl_pose_;
 
     /**
@@ -123,6 +123,9 @@ public:
       * Store all FK solutions in a map
       */
     void collectFKSolutions();
+
+    /** Updates poses of all collision bodies */
+    void updateCollisionBodyPoses();
 
     /**
       * Returns the current FK solution
@@ -137,13 +140,10 @@ public:
       */
     KDL::Frame getFK(const std::string& tip_frame);
 
-    /**
-      * Returns a geometry_msg of the tip frame
-      * @param tip_frame
-      */
-    geometry_msgs::PoseStamped getFKPoseStamped(const std::string& tip_frame);
-
     void setAmclPose(KDL::Frame& amcl_pose);
+
+    /** Returns number of joints */
+    unsigned int getNrJoints();
 
 };
 

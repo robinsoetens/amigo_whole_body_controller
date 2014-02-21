@@ -64,7 +64,7 @@ bool PostureControl::setJointTarget(const std::string& joint_name, const double&
         unsigned int index = index_iter->second;
         /// Check whether value is between bounds
         if (value < q_min_[index] || value > q_max_[index]) {
-            ROS_WARN("Joint value %f is not between bounds [%f\t%f]",value,q_min_[index],q_max_[index]);
+            ROS_WARN("Joint %i value %f is not between bounds [%f\t%f]", index, value, q_min_[index], q_max_[index]);
             return false;
         }
         else {

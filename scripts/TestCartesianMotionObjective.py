@@ -33,13 +33,15 @@ if __name__ == '__main__':
     rospy.loginfo("Connected to action server")
     
     marker_pub = rospy.Publisher('/visualization_marker', Marker)
+    
+    link_name = "grippoint_left"
 
     goal = ArmTaskGoal()
     #rospy.loginfo(goal)
     goal.goal_type = "grasp"
     position_constraint = PositionConstraint()
     position_constraint.header.frame_id = "base_link"
-    position_constraint.link_name = "grippoint_right"
+    position_constraint.link_name = link_name
     position_constraint.target_point_offset.x = 0.0
     position_constraint.target_point_offset.y = 0.0
     position_constraint.target_point_offset.z = 0.0
@@ -51,18 +53,19 @@ if __name__ == '__main__':
     
     orientation_constraint = OrientationConstraint()
     orientation_constraint.header.frame_id = "base_link"
-    orientation_constraint.link_name = "grippoint_right"
+    orientation_constraint.link_name = link_name
     orientation_constraint.orientation = euler_z_to_quaternion(float(sys.argv[4]),float(sys.argv[5]),float(sys.argv[6]))
     goal.orientation_constraint = orientation_constraint
     rospy.loginfo("Type link or header not yet taken into account")
     rospy.logwarn("Orientation constraint tolerances etc not yet defined")
 
-    goal.stiffness.force.x = 70.0
-    goal.stiffness.force.y = 60.0
-    goal.stiffness.force.z = 50.0
-    goal.stiffness.torque.x = 5.0
-    goal.stiffness.torque.y = 5.0
-    goal.stiffness.torque.z = 5.0
+    stiffnessfactor = 4.0
+    goal.stiffness.force.x =  70.0 * stiffnessfactor
+    goal.stiffness.force.y =  70.0 * stiffnessfactor
+    goal.stiffness.force.z =  50.0 * stiffnessfactor
+    goal.stiffness.torque.x = 5.0 * stiffnessfactor
+    goal.stiffness.torque.y = 5.0 * stiffnessfactor
+    goal.stiffness.torque.z = 5.0 * stiffnessfactor
     
     rospy.loginfo(goal)
     
@@ -91,8 +94,13 @@ if __name__ == '__main__':
         rospy.sleep(0.02)
         
     #actionClients.move_arm.send_goal_and_wait(goal, rospy.Duration(time_out))
-    result = move_arm.send_goal(goal)
-    rospy.loginfo("Result = {0}".format(result))
+    #result = move_arm.send_goal(goal)
+    #rospy.loginfo("Result = {0}".format(result))
+    
+    starttime = rospy.Time.now()
+    result = move_arm.send_goal_and_wait(goal, rospy.Duration(10.0))
+    duration = (rospy.Time.now() - starttime).to_sec()
+    rospy.loginfo("Result = {0} in {1} seconds".format(result, duration) )
     
     #ctr = 5
     #while (ctr > 0):

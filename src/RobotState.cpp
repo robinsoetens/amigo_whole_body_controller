@@ -33,6 +33,21 @@ void RobotState::collectFKSolutions()
 
 }
 
+void RobotState::updateCollisionBodyPoses() {
+
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_.groups.begin(); it != robot_.groups.end(); ++it)
+    {
+        std::vector<RobotState::CollisionBody> &group = *it;
+
+        for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
+        {
+            RobotState::CollisionBody &collisionBody = *it;
+            std::map<std::string, KDL::Frame>::iterator itr = fk_poses_.find(collisionBody.frame_id);
+            collisionBody.fk_pose = itr->second;
+        }
+    }
+}
+
 void RobotState::KDLFrameToStampedPose(const KDL::Frame& FK_pose, geometry_msgs::PoseStamped &pose)
 {
     // ToDo: get rid of hardcoding
@@ -74,21 +89,12 @@ KDL::Frame RobotState::getFK(const std::string& tip_frame){
     return end_effector_pose;
 }
 
-geometry_msgs::PoseStamped RobotState::getFKPoseStamped(const std::string& tip_frame)
-{
-    /// Get the current FK pose as a geometry msgs
-    std::map<std::string, KDL::Frame>::iterator itrFK = fk_poses_.find(tip_frame);
-    KDL::Frame end_effector_pose = (*itrFK).second;
-
-    geometry_msgs::PoseStamped pose_out;
-    KDLFrameToStampedPose(end_effector_pose, pose_out);
-    pose_out.header.frame_id = "/map"; //Robot state performs these computations in map
-    pose_out.header.stamp = ros::Time::now();
-    return pose_out;
-
-}
-
 void RobotState::setAmclPose(KDL::Frame& amcl_pose)
 {
   amcl_pose_ = amcl_pose;
+}
+
+unsigned int RobotState::getNrJoints()
+{
+    return tree_.getNrJoints();
 }

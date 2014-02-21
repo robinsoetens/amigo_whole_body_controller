@@ -105,7 +105,7 @@ collision_model:
           name: "GripperLeft"
           shape:
                 shape_type: "Box"
-                dimensions: {x: 0.1, y: 0.085, z: 0.025 } # 0.5*x,0.5*y,0.5*z
+                dimensions: {x: 0.06, y: 0.05, z: 0.025 } # 0.5*x,0.5*y,0.5*z
           transform:
                 frame_id: "grippoint_left"
                 origin: {x: -0.02, y: 0.0, z: 0.0 }
@@ -125,7 +125,7 @@ collision_model:
           name: "GripperRight"
           shape:
                 shape_type: "Box"
-                dimensions: {x: 0.1, y: 0.085, z: 0.025 } # 0.5*x,0.5*y,0.5*z
+                dimensions: {x: 0.06, y: 0.05, z: 0.025 } # 0.5*x,0.5*y,0.5*z
           transform:
                 frame_id: "grippoint_right"
                 origin: {x: -0.02, y: 0.0, z: 0.0 }

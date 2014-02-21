@@ -31,18 +31,16 @@ bool WholeBodyController::initialize(const double Ts)
 
     KDL::JntArray q_min, q_max;
 
-    ChainParser::parse(robot_state_.chains_,robot_state_.tree_, joint_name_to_index_, index_to_joint_name_, q_min, q_max);
+    if ( !ChainParser::parse(robot_state_.tree_, joint_name_to_index_, index_to_joint_name_, q_min, q_max) ) {
+        return false;
+    }
+
     num_joints_ = joint_name_to_index_.size();
     robot_state_.tree_.getJointNames(joint_name_to_index_,robot_state_.tree_.joint_name_to_index_);
     robot_state_.tree_.getTreeJointIndex(robot_state_.tree_.kdl_tree_, robot_state_.tree_.tree_joint_index_);
 
-    //cout << "Number of joints: " << num_joints_ << endl;
-
     q_current_.resize(num_joints_);
-    for(unsigned int i = 0; i < q_current_.rows(); ++i)
-    {
-        q_current_(i) = 0.0;
-    }
+    q_current_.data.setZero();
 
     // Read parameters
     std::vector<double> JLA_gain(num_joints_);      // Gain for the joint limit avoidance
@@ -79,7 +77,6 @@ bool WholeBodyController::initialize(const double Ts)
     A.setIdentity(num_joints_,num_joints_);
 
     ComputeNullspace_.initialize(num_joints_, A);
-    N_.resize(num_joints_,num_joints_);
 
     // Initialize Joint Limit Avoidance
     //for (uint i = 0; i < num_joints_; i++) ROS_INFO("JLA gain of joint %i is %f",i,JLA_gain[i]);
@@ -90,17 +87,26 @@ bool WholeBodyController::initialize(const double Ts)
     PostureControl_.initialize(q_min, q_max, posture_q0, posture_gain, joint_name_to_index_);
     ROS_INFO("Posture Control initialized");
 
-    // Resize additional variables
-    F_task_.resize(0);
+    /// Resizing variables (are set to zero in updatehook)
     qdot_reference_.resize(num_joints_);
     q_reference_.resize(num_joints_);
-    Jacobian_.resize(12,num_joints_);                // Jacobian is resized to zero rows, number of rows depends on number of tasks
     tau_.resize(num_joints_);
-    tau_nullspace_.resize(num_joints_);
-    F_task_.resize(12);
+    Jacobians_.resize(4);
+    Ns_.resize(4);
+    taus_.resize(4);
+    for (unsigned int i = 0; i < 4; i++) {
+        Jacobians_[i].resize(100, num_joints_);
+        Ns_[i].resize(num_joints_, num_joints_);
+        taus_[i].resize(num_joints_);
+    }
 
     /// Initialize tracer
     std::vector<std::string> column_names = index_to_joint_name_;
+    for (unsigned int i = 0; i < index_to_joint_name_.size(); i++) column_names.push_back("tau_cart"+index_to_joint_name_[i]);
+    for (unsigned int i = 0; i < index_to_joint_name_.size(); i++) column_names.push_back("tau_null"+index_to_joint_name_[i]);
+    for (unsigned int i = 0; i < index_to_joint_name_.size(); i++) column_names.push_back("tau_total"+index_to_joint_name_[i]);
+    column_names.push_back("cartesian_impedance_cost");
+    column_names.push_back("collision_avoidance_cost");
     column_names.push_back("joint_limit_cost");
     column_names.push_back("posture_cost");
     int buffersize;
@@ -175,56 +181,24 @@ bool WholeBodyController::setDesiredJointPosition(const std::string& joint_name,
 bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& qdot_reference)
 {
 
-    //ROS_INFO("WholeBodyController::update()");
-
-    //cout << "Tree : " << robot_state_.tree_.kdl_tree_.getNrOfJoints() << endl;
-
-    // Set some variables to zero
+    /// Set some variables to zero
     tau_.setZero();
-    tau_nullspace_.setZero();
-    F_task_.setZero();
+    for (unsigned int i = 0; i < 4; i++) {
+        Jacobians_[i].setZero();
+        Ns_[i].setZero();
+        taus_[i].setZero();
+    }
 
-    // Update the torque output
-    // Currently only one torque 'source', when multiple ones a smarter solution has to be found
-    // Plan of attack: set tau to zero --> add in every update loop.
-    // Note that nullspace solution should be included in various subproblems
-    // Not sure if this is the right approach: summing the taus up and then doing nullspace projection may result in smoother transitions and is probably quicker
-
-    //std::cout << "q_current_ = " << std::endl;
-    //std::cout << q_current_(joint_name_to_index_[wrist_yaw_joint_left]).data << std::endl;
-
+    /// Update the kinematic tree and FK
     robot_state_.tree_.rearrangeJntArrayToTree(q_current_);
-    robot_state_.tree_.removeCartesianWrenches();
-
     robot_state_.collectFKSolutions();
-
-    /*
-    std::cout << "==================================" << std::endl;
-    for (std::map<std::string, KDL::Frame>::iterator itrFK = robot_state_.fk_poses_.begin(); itrFK != robot_state_.fk_poses_.end(); ++itrFK)
-    {
-        std::pair<std::string, KDL::Frame> FK = *itrFK;
-        std::cout << "frame = " << FK.first << std::endl;
-        std::cout << "X = " <<  FK.second.p.x() << std::endl;
-        std::cout << "Y = " <<  FK.second.p.y() << std::endl;
-        std::cout << "Z = " <<  FK.second.p.z() << std::endl;
-    }
-    */
-    
-
-    /// Apply the corresponding FK solution to the collision bodies
-    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator it = robot_state_.robot_.groups.begin(); it != robot_state_.robot_.groups.end(); ++it)
-    {
-        std::vector<RobotState::CollisionBody> &group = *it;
-
-        for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
-        {
-            RobotState::CollisionBody &collisionBody = *it;
-            std::map<std::string, KDL::Frame>::iterator itr = robot_state_.fk_poses_.find(collisionBody.frame_id);
-            collisionBody.fk_pose = itr->second;
-        }
-    }
+    robot_state_.updateCollisionBodyPoses();
 
     /// Update motion objectives
+    unsigned int row_index = 0;
+    std::vector<unsigned int> row_indexes(4,0);
+    Eigen::MatrixXd jacobian_tree(100, num_joints_);//ToDo: make nice (or member)
+    jacobian_tree.setZero();
     for(std::vector<MotionObjective*>::iterator it_motionobjective = motionobjectives_.begin(); it_motionobjective != motionobjectives_.end(); ++it_motionobjective)
     {
         MotionObjective* motionobjective = *it_motionobjective;
@@ -232,56 +206,69 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
 
         motionobjective->apply(robot_state_);
 
+        unsigned int priority = motionobjective->getPriority();
+        taus_[priority-1] += motionobjective->getTorques();
+        Eigen::MatrixXd partial_jacobian = motionobjective->getJacobian();
+        int number_rows = partial_jacobian.rows();
+        if ( (row_indexes[priority-1]+number_rows) < Jacobians_[priority-1].rows()) {
+            Jacobians_[priority-1].block(row_index, 0, number_rows, num_joints_) = partial_jacobian;
+            row_indexes[priority-1] += number_rows;
+        } else {
+            ROS_WARN("Number of rows of the Jacobian is getting too large, omitting Jacobian!!!");
+        }
     }
 
-    Eigen::VectorXd all_wrenches;
-    Eigen::MatrixXd jacobian_full(0, num_joints_);
-    jacobian_full.setZero();
-    Eigen::MatrixXd jacobian_tree(0, num_joints_);
-    jacobian_tree.setZero();
+    /// Update other motion objectives
+    // Joint limit avoidance currently has priority 4, hence:
+    JointLimitAvoidance_.update(q_current_, taus_[3]);
 
-    //Eigen::MatrixXd jacobian(0, num_joints_);
-    // ToDo: why can't we combine these functions?
-    robot_state_.tree_.fillCartesianWrench(all_wrenches);
-    robot_state_.tree_.fillJacobian(jacobian_tree);
+    // Posture control: similar
+    PostureControl_.update(q_current_, taus_[3]);
 
-    //cout << "jacobian = " << endl << jacobian_tree << endl;
-    //cout << "all_wrenches = " << endl << all_wrenches << endl;
-    tau_ = jacobian_tree.transpose() * all_wrenches;
-    //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Task torques (%i) = %f",i,tau_(i));
+    /// Project torques of lower priority into nullspace of higher order Jacobians
+    //Eigen::VectorXd tautemp = taus_[0];
+    //Eigen::VectorXd tautemp2;
+    for (int i = 2; i >= 0; i--) {
+        ComputeNullspace_.update(Jacobians_[i].block(0,0,row_indexes[i],num_joints_), Ns_[i]);
+        taus_[i] += Ns_[i] * taus_[i+1];
+        //if (i == 0) tautemp2 = taus_[0];
+    }
+    tau_ = taus_[0]; // ToDo: do we need this???
+    //std::cout << "Row indexes: " << row_indexes[0] << ", " << row_indexes[1] << ", " << row_indexes[2] << ", " << row_indexes[3] << std::endl;
+    //for (unsigned int i = 0; i < num_joints_; i++) std::cout << "Joint " << i << ", before: " << tautemp[i] << ", after: " << tautemp2[i] << std::endl;
 
-    ComputeNullspace_.update(jacobian_tree, N_);
-
-    //ROS_INFO("Nullspace updated");
-    //cout << "nullspace = " << endl << N_ << endl;
-
-    JointLimitAvoidance_.update(q_current_,tau_nullspace_);
-    ///ROS_INFO("Joint limit avoidance updated");
-
-    PostureControl_.update(q_current_,tau_nullspace_);
-    ///ROS_INFO("Posture control updated");
-
-    tau_ += N_ * tau_nullspace_;
-    //for (uint i = 0; i < tau_.rows(); i++) ROS_INFO("Total torques (%i) = %f",i,tau_(i));
-    //cout << "tau_ = " << endl << tau_ << endl;
-
+    /// Update the admittance controller
     AdmitCont_.update(tau_, qdot_reference_, q_current_, q_reference_);
-
-    //for (uint i = 0; i < qdot_reference_.rows(); i++) ROS_INFO("qd joint %i = %f",i,qdot_reference_(i));
-    //for (uint i = 0; i < q_current_.rows(); i++) ROS_INFO("Position joint %i = %f",i,q_current_(i));
-    //for (uint i = 0; i < q_reference_.rows(); i++) ROS_INFO("Joint %i = %f",i,q_reference_(i));
+    //for (unsigned int i = 0; i < index_to_joint_name_.size(); i++) ROS_INFO("%s [cur, des, tau, qdot]  = %f, %f, %f, %f", index_to_joint_name_[i].c_str(), q_current_(i), q_reference_(i), tau_(i), qdot_reference_(i));
 
     q_reference = q_reference_;
     qdot_reference = qdot_reference_;
 
     /// Only trace useful data (there is an Cartesian Impedance which has not yet converged)...
+    bool do_trace = false;
+    double ci_cost = 0.0;
+    double ca_cost = 0.0;
     for (unsigned int i = 0; i < motionobjectives_.size(); i++) {
-        if (motionobjectives_[i]->type_ == "CartesianImpedance" && motionobjectives_[i]->getStatus() == 2) {
-            tracer_.newLine();
-            tracer_.collectTracing(1, q_current_.data);
-            tracer_.collectTracing(num_joints_+1, JointLimitAvoidance_.getCost());
-            tracer_.collectTracing(num_joints_+2, PostureControl_.getCost());
+        if (motionobjectives_[i]->type_ == "CartesianImpedance") {
+            ci_cost += motionobjectives_[i]->getCost();
+            if (motionobjectives_[i]->getStatus() == 2) {
+                do_trace = true;
+            }
         }
+        else if (motionobjectives_[i]->type_ == "CollisionAvoidance") {
+            ca_cost += motionobjectives_[i]->getCost();
+        }
+    }
+    if (do_trace) {
+        tracer_.newLine();
+        tracer_.collectTracing(1, q_current_.data);
+        /////tracer_.collectTracing(num_joints_+1, tau_cart);
+        /////tracer_.collectTracing(2*num_joints_+1, tau_null);
+        tracer_.collectTracing(3*num_joints_+1, tau_);
+        tracer_.collectTracing(4*num_joints_+1, ci_cost);
+        tracer_.collectTracing(4*num_joints_+2, ca_cost);
+        tracer_.collectTracing(4*num_joints_+3, JointLimitAvoidance_.getCost());
+        tracer_.collectTracing(4*num_joints_+4, PostureControl_.getCost());
     }
 
     return true;

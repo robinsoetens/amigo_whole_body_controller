@@ -45,14 +45,14 @@ add_definitions(${EIGEN_DEFINITIONS})
 rosbuild_add_library(wholebodycontroller 
                                         src/WholeBodyController.cpp
                                         src/AdmittanceController.cpp
-                                        src/ComputeNullspace.cpp
-                                        src/Component.cpp
+                                        src/ComputeNullspace.cpp                                        
                                         src/Chain.cpp
                                         src/ChainParser.cpp
                                         src/RobotState.cpp
                                         src/Tree.cpp
                                         src/Tracing.cpp
 )
+
 rosbuild_add_library(motionobjectives
                                      src/motionobjectives/MotionObjective.cpp
                                      src/motionobjectives/CartesianImpedance.cpp

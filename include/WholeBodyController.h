@@ -12,7 +12,6 @@
 #include "amigo_whole_body_controller/motionobjectives/JointLimitAvoidance.h"
 #include "amigo_whole_body_controller/motionobjectives/PostureControl.h"
 #include "amigo_whole_body_controller/motionobjectives/CollisionAvoidance.h"
-#include "ComputeJacobian.h"
 #include "AdmittanceController.h"
 #include "ComputeNullspace.h"
 #include "amigo_whole_body_controller/Tracing.hpp"
@@ -141,25 +140,20 @@ protected:
     PostureControl PostureControl_;
 
     /** Matrix containing the combined Jacobian (Cartesian impedances + collision avoidance) */
-    Eigen::MatrixXd Jacobian_;
+    std::vector<Eigen::MatrixXd> Jacobians_;
+
+    /** Nullspace projection matrices */
+    std::vector<Eigen::MatrixXd> Ns_;
 
     /** Vector containing the desired joint torques */
     Eigen::VectorXd tau_;
-
-    /** Vector containing the joint torques that are projected in the null space */
-    Eigen::VectorXd tau_nullspace_;
-
-    /** Vector containing the elements of all wrenches */
-    Eigen::VectorXd F_task_;
+    std::vector<Eigen::VectorXd> taus_;
 
     /** Vector containing the desired joint velocities */
     Eigen::VectorXd qdot_reference_;
 
     /** Vector containing the desired joint positions */
     Eigen::VectorXd q_reference_;
-
-    //! Nullspace projection matrix
-    Eigen::MatrixXd N_;
 
     /** Initialize function */
     bool initialize(const double Ts);

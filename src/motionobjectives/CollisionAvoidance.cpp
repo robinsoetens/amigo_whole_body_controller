@@ -13,7 +13,10 @@ CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters,
     : ca_param_(parameters), Ts_ (Ts), octomap_(NULL)
 {
     /// Status is always 2 (always active)
-    status_  = 2;
+    type_     = "CollisionAvoidance";
+    status_   = 2;
+    priority_ = 1;
+    cost_     = 0.0;
 }
 
 CollisionAvoidance::~CollisionAvoidance()
@@ -42,16 +45,24 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     octomap_ = new octomap::OcTreeStamped(ca_param_.environment_collision.octomap_resolution);
 
     // Initialize a frame that indicates no fix is required from a FK pose to the collision shape
-    no_fix_.p.x(0);
-    no_fix_.p.y(0);
-    no_fix_.p.z(0);
-    no_fix_.M = KDL::Rotation::Quaternion(0,0,0,1);
+    no_fix_.Identity();
 
     initializeCollisionModel(robotstate);
 
     // Initialize solver for distance calculation
     depthSolver = new btMinkowskiPenetrationDepthSolver;
     simplexSolver = new btVoronoiSimplexSolver;
+
+    /// Initialize vector and matrix objects
+    unsigned int number_joints = robot_state_->getNrJoints();
+    jacobian_.resize(0,number_joints);
+    jacobian_.setZero();
+    jacobian_pre_alloc_.resize(100,number_joints);//ToDo: can't we do this any nicer?
+    jacobian_pre_alloc_.setZero();
+    wrenches_pre_alloc_.resize(100);//ToDo: can't we do this any nicer?
+    wrenches_pre_alloc_.setZero();
+    torques_.resize(number_joints);
+    torques_.setZero();
 
     ROS_INFO_STREAM("Initialized Obstacle Avoidance");
 
@@ -60,16 +71,20 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
 void CollisionAvoidance::apply(RobotState &robotstate)
 {
+    /// Reset stuff
+    jacobian_pre_alloc_.setZero();
+    wrenches_pre_alloc_.setZero();
+    torques_.setZero();
+    cost_ = 0.0;
+
     robot_state_ = &robotstate;
     calculateTransform();
 
     // Calculate the wrenches as a result of (self-)collision avoidance
     std::vector<Distance> min_distances_total;
     std::vector<RepulsiveForce> repulsive_forces_total;
-    std::vector<Wrench> wrenches_total;
 
     repulsive_forces_total.clear();
-    wrenches_total.clear();
 
     // Calculate the repulsive forces as a result of the self-collision avoidance.
     selfCollision(min_distances_total,repulsive_forces_total);
@@ -85,12 +100,49 @@ void CollisionAvoidance::apply(RobotState &robotstate)
         }
     }
 
-
-    calculateWrenches(repulsive_forces_total, wrenches_total);
+    /// Calculate the repulsive forces and the corresponding 'wrenches' and Jacobians from the minimum distances
+    calculateRepulsiveForce(min_distances_total,repulsive_forces_total,ca_param_.self_collision);
+    calculateWrenches(repulsive_forces_total);
 
     /// Output
     visualize(min_distances_total);
-    outputWrenches(wrenches_total);
+}
+
+void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
+
+    /// Dimensions: // ToDo: make variable;
+    double x_dim = 0.05;
+    double y_dim = 0.05;
+    double z_dim = 0.10;
+
+    /// Initialize collision body
+    RobotState::CollisionBody object_collision_body;
+    object_collision_body.name_collision_body = "object";           //ToDo: possibly add WM ID?
+    object_collision_body.collision_shape.shape_type = "CylinderZ"; //ToDo: make this variable
+    object_collision_body.collision_shape.dimensions.x = x_dim;     //ToDo: make this variable
+    object_collision_body.collision_shape.dimensions.y = y_dim;     //ToDo: make this variable
+    object_collision_body.collision_shape.dimensions.z = z_dim;     //ToDo: make this variable
+    object_collision_body.frame_id = frame_id;
+    object_collision_body.bt_shape = new btCylinderShapeZ(btVector3(x_dim, y_dim, z_dim));
+    object_collision_body.fix_pose.Identity();                      //ToDo: is now initialized as p = [0,0,0], M = [0,0,0,1]
+
+    /// Add collision body to correct frame/group/etc.
+    // Robotstate pointer is member variable
+    // ToDo
+
+    /// Add to exclusions
+    // ToDo
+
+}
+
+void CollisionAvoidance::removeObjectCollisionModel() {
+
+    /// Remove object collision model from frame/group/etc.
+    // ToDo
+
+    /// Remove from exclusions
+    // ToDo
+
 }
 
 
@@ -98,12 +150,12 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 {
     // Loop through all collision groups
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroup = robot_state_->robot_.groups.begin(); itrGroup != robot_state_->robot_.groups.end(); ++itrGroup)
-    {
-        std::vector<Distance> distanceCollection;
+    {        
         std::vector<RobotState::CollisionBody> &Group = *itrGroup;
         for (std::vector<RobotState::CollisionBody>::iterator itrBody = Group.begin(); itrBody != Group.end(); ++itrBody)
         {
             // Loop through al the bodies of the group
+            std::vector<Distance> distanceCollection;
             RobotState::CollisionBody &currentBody = *itrBody;
 
             // Distance check with other groups if the name of the groups is different than the current group
@@ -143,8 +195,6 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
             pickMinimumDistance(distanceCollection,min_distances);
         }
     }
-    // Calculate the repulsive forces
-    calculateRepulsiveForce(min_distances,repulsive_forces,ca_param_.self_collision);
 }
 
 
@@ -268,22 +318,34 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
         }
     }
     // Calculate the repulsive forces
-    calculateRepulsiveForce(min_distances,repulsive_forces,ca_param_.environment_collision);
+    //calculateRepulsiveForce(min_distances,repulsive_forces,ca_param_.environment_collision);
 }
 
 
-void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsive_forces, std::vector<Wrench> &wrenches_out)
+void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsive_forces)
 {
+    //std::cout << "CA calculate wrenches" << std::endl;
+    unsigned int row_index = 0;
     for (std::vector<RepulsiveForce>::iterator itrRF = repulsive_forces.begin(); itrRF != repulsive_forces.end(); ++itrRF)
     {
         RepulsiveForce &RF = *itrRF;
-        Wrench W;
+        /*
+        // Testcase: replace the for-loop above and possibly comment the 'Calculate delta p in map coordinates' section (depends on RF.pointOnA)
+    for (unsigned int cn = 0; cn<1; cn++) {
+        RepulsiveForce RF;
+        RF.frame_id  = "grippoint_right";
+        RF.amplitude = 1.0;
+        RF.direction = btVector3(0.0, 0.0, 1.0);
+        RF.pointOnA  = btVector3(0.43, -0.22, 0.9615);
+        //double dpx = 0.0; double dpy =  0.0; double dpz = 0.0;
+     // End Testcase
+        */
         KDL::Frame p0;
         Eigen::VectorXd wrench_calc(6);
         wrench_calc.setZero();
-        double dpx, dpy, dpz, fx, fy, fz;
 
-        // Find the frame of the kinematic model on which the wrench acts.
+
+        /// Find the frame of the kinematic model on which the wrench acts.
         for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
         {
             std::vector<RobotState::CollisionBody> &group = *itrGroups;
@@ -297,28 +359,52 @@ void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsiv
             }
         }
 
-        // Calculate delta p
-        dpx = RF.pointOnA.getX() - p0.p.x();
-        dpy = RF.pointOnA.getY() - p0.p.y();
-        dpz = RF.pointOnA.getZ() - p0.p.z();
+        /// Calculate delta p in map coordinates
+        double dpx = RF.pointOnA.getX() - p0.p.x();
+        double dpy = RF.pointOnA.getY() - p0.p.y();
+        double dpz = RF.pointOnA.getZ() - p0.p.z();
 
-        // Calculate the force components
-        fx = RF.amplitude*RF.direction.getX();
-        fy = RF.amplitude*RF.direction.getY();
-        fz = RF.amplitude*RF.direction.getZ();
+        /// Compute 6xn Jacobian (this is w.r.t.root frame of the kinematic tree, so in this case: base_link)
+        Eigen::MatrixXd temp_jacobian(6,robot_state_->getNrJoints());// ToDo: get rid of this
+        KDL::Jacobian partial_jacobian(robot_state_->getNrJoints());
+        robot_state_->tree_.calcPartialJacobian(RF.frame_id, temp_jacobian);
+        partial_jacobian.data = temp_jacobian;
 
-        wrench_calc[0] = fx;
-        wrench_calc[1] = fy;
-        wrench_calc[2] = fz;
-        wrench_calc[3] = fz*dpy - fy*dpz;
-        wrench_calc[4] = fx*dpz - fz*dpx;
-        wrench_calc[5] = fy*dpx - fx*dpy;
+        /// Change reference point: the force does not always act at the end of a certain link
+        partial_jacobian.changeRefPoint(KDL::Vector(dpx, dpy, dpz));
 
-        W.frame_id = RF.frame_id;
-        W.wrench = wrench_calc;
+        /// Change base: the Jacobian is computed w.r.t. base_link instead of map, while the force is expressed in map
+        std::map<std::string, KDL::Frame>::iterator itrRF = robot_state_->fk_poses_.find("base_link"); //ToDo: don't hardcode???
+        KDL::Frame BaseFrame_in_map = itrRF->second;
+        partial_jacobian.changeBase(BaseFrame_in_map.M);
 
-        wrenches_out.push_back(W);
+        /// Premultiply first three rows with force direction to get one row        
+        //std::cout << "Force on " << RF.frame_id << " in direction " << RF.direction.getX() << ", " << RF.direction.getY() << ", " << RF.direction.getZ() << std::endl;
+        //ROS_INFO("Multiplying [%i, %i] x [%i, %i] into [%i,%i]", force_direction.rows(), force_direction.cols(),
+        //         partial_jacobian.data.block(0,0,3,robot_state_->getNrJoints()).rows(), partial_jacobian.data.block(0,0,3,robot_state_->getNrJoints()).cols(),
+        //         jacobian_pre_alloc_.block(row_index, 0, 1, robot_state_->getNrJoints()).rows(), jacobian_pre_alloc_.block(row_index, 0, 1, robot_state_->getNrJoints()).cols());
+        Eigen::Vector3d force_direction(RF.direction.getX(), RF.direction.getY(), RF.direction.getZ());
+        jacobian_pre_alloc_.block(row_index, 0, 1, robot_state_->getNrJoints()) = force_direction.transpose() * partial_jacobian.data.block(0, 0, 3, robot_state_->getNrJoints());
+
+        /// Add force magnitude to list
+        wrenches_pre_alloc_(row_index) = RF.amplitude;
+
+        /// Add amplitude to cost
+        cost_ +=RF.amplitude;
+
+        row_index++;
+
     }
+
+    /// Extract total Jacobian and vector with wrenches
+    jacobian_ = jacobian_pre_alloc_.block(0, 0, row_index, robot_state_->getNrJoints());
+    Eigen::VectorXd wrenches = wrenches_pre_alloc_.block(0, 0, row_index, 1);
+    //std::cout << "Wrenches: \n" << wrenches_new_ << std::endl;
+
+    /// Multiply to get torques
+    torques_ = jacobian_.transpose() * wrenches;
+    //std::cout << "CA Torques: \n" << torques_ << std::endl;    
+
 }
 
 
@@ -661,26 +747,6 @@ void CollisionAvoidance::calculateRepulsiveForce(std::vector<Distance> &minimumD
         }
     }
 }
-
-
-void CollisionAvoidance::outputWrenches(std::vector<Wrench> &wrenches)
-{
-    for (std::vector<Wrench>::iterator itrW = wrenches.begin(); itrW != wrenches.end(); ++itrW)
-    {
-         Wrench W = *itrW;
-
-        /// Copy wrench to correct datatype
-        std::map<std::string, double> wrench;
-        wrench["x"] = W.wrench(0);
-        wrench["y"] = W.wrench(1);
-        wrench["z"] = W.wrench(2);
-        wrench["rx"] = W.wrench(3);
-        wrench["ry"] = W.wrench(4);
-        wrench["rz"] = W.wrench(5);
-        robot_state_->tree_.addCartesianWrench(W.frame_id, wrench);
-    }
-}
-
 
 void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const
 {

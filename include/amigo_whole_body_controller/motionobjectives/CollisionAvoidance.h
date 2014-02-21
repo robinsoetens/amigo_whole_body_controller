@@ -36,6 +36,8 @@
 
 /////
 
+// ToDo: why not make total wrenches and total distances member variables? Now they're passed on from function to function
+
 class CollisionAvoidance : public MotionObjective
 {
 
@@ -91,6 +93,14 @@ public:
     
     void removeOctomapBBX(const geometry_msgs::Point& goal, const std::string& root);
 
+    /** Adds object collisionmodel to robot collisionmodel
+     * @param frame_id: frame where the object is added to */
+    void addObjectCollisionModel(const std::string& frame_id);
+
+    /** Remove object collision model
+     */
+    void removeObjectCollisionModel();
+
 
 protected:
 
@@ -125,6 +135,11 @@ protected:
         std::string frame_id;
         Eigen::VectorXd wrench;
     } ;
+
+    /** Matrix containing the combined Jacobian matrix of this objective */
+    Eigen::MatrixXd jacobian_pre_alloc_;
+    /** Vector containing all relevant wrench entries */
+    Eigen::VectorXd wrenches_pre_alloc_;
 
     KDL::Frame no_fix_;
 
@@ -183,13 +198,14 @@ protected:
      * @brief Calculate the amplitude of the repulsive forces
      * @param Vector with the minimal closest distances, Vector with the repulsive forces
      */
+    // ToDo: use membervariablefor collisionAvoidanceParameters
     void calculateRepulsiveForce(std::vector<Distance> &minimumDistances, std::vector<RepulsiveForce> &repulsiveForces, collisionAvoidanceParameters::Parameters &param);
 
     /**
      * @brief Calculate the wrenches as a function of the repulsive forces
      * @param Input: Vector with the repulsive forces, Output: Vector with the wrenches
      */
-    void calculateWrenches(std::vector<RepulsiveForce> &repulsive_forces, std::vector<Wrench> &wrenches_out);
+    void calculateWrenches(std::vector<RepulsiveForce> &repulsive_forces);
 
     /**
      * @brief Output the wrench to the KDL tree

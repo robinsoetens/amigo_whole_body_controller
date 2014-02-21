@@ -15,7 +15,6 @@ typedef actionlib::SimpleActionServer<amigo_whole_body_controller::ArmTaskAction
 action_server* add_motion_objective_server_;
 CollisionAvoidance* collision_avoidance;
 CartesianImpedance* cartesian_impedance;
-//RobotState* robot_state;
 
 WholeBodyController* wbc;
 
@@ -91,7 +90,7 @@ void GoalCB() {
     // ToDo: check if position and orientation constraints have similar link names and root_frame_ids
     // ToDo: keep track of all goals (this most probably means we can't use SIMPLEactionserver stuff)
     // We can keep using the simple action server stuff but in that case cannot keep track of multiple goals at once
-    ROS_INFO("Received new motion objective");
+    ROS_DEBUG("Received new motion objective");
 	if (goal.goal_type.compare("grasp")==0){
 		octomap_cb = false;
 		ROS_INFO("Received grasp goal, removing object pose from STATIC octomap, this should be generalized!");
@@ -104,11 +103,12 @@ void GoalCB() {
     if (!goal.remove_tip_frame.empty()) {
         std::vector<MotionObjective*> imps_to_remove = wbc->getCartesianImpedances(goal.remove_tip_frame,goal.remove_root_frame);
         for (unsigned int i = 0; i < imps_to_remove.size(); i++) {
-
             wbc->removeMotionObjective(imps_to_remove[i]);
         }
     }
     /// Else: add motion objectives
+
+    // ToDo make smarter, double check for tipframe and is looping necessary!?
     else {
         std::vector<MotionObjective*> imps_to_remove = wbc->getCartesianImpedances(goal.position_constraint.link_name,goal.position_constraint.header.frame_id);
         for (unsigned int i = 0; i < imps_to_remove.size(); i++) {
@@ -140,7 +140,8 @@ void GoalCB() {
 
             wbc->removeMotionObjective(imps_to_remove[i]);
         }
-        cartesian_impedance = new CartesianImpedance(goal.position_constraint.link_name);
+
+        cartesian_impedance = new CartesianImpedance(goal.position_constraint.link_name, 1.0/loop_rate_);
         geometry_msgs::PoseStamped goal_pose;
         goal_pose.pose.position = goal.position_constraint.position;
         goal_pose.pose.orientation = goal.orientation_constraint.orientation;
@@ -268,6 +269,7 @@ int main(int argc, char **argv) {
         {
             ROS_WARN_ONCE("Publishing reference positions");
             robot_interface.publishJointReferences(wbc->getJointReferences(), wbc->getJointNames());
+            //ROS_ERROR_ONCE("NO REFERENCES PUBLISHED");
         }
         else
         {
