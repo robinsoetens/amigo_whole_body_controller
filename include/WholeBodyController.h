@@ -159,7 +159,7 @@ protected:
     bool initialize(const double Ts);
 
     /** Subtracts information from the parameter files */
-    void loadParameterFiles(RobotState &robot_state);
+    void loadParameterFiles();
 
     /** Tracing object */
     Tracing tracer_;
