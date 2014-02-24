@@ -34,6 +34,10 @@
 #include <BulletCollision/NarrowPhaseCollision/btMinkowskiPenetrationDepthSolver.h>
 #include <Bullet-C-Api.h>
 
+// FCL closest point
+#include <fcl/collision.h>
+#include <fcl/shape/geometric_shapes.h>
+
 /////
 
 // ToDo: why not make total wrenches and total distances member variables? Now they're passed on from function to function
@@ -180,7 +184,8 @@ protected:
      * @brief Calculate the Bullet shape pose from the corresponding FK pose using a correction from this frame pose
      * @param Input: Pose of the KDL frame and the fix for the collision bodies, Output: Bullet transform
      */
-    void setTransform(KDL::Frame &fkPose, KDL::Frame& fixPose, btTransform &transform_out);
+    void setTransform(const KDL::Frame &fkPose, const KDL::Frame& fixPose, btTransform &transform_out);
+    void setTransform(const KDL::Frame &fkPose, const KDL::Frame& fixPose, fcl::Transform3f &transform_out);
 
     /**
      * @brief Calculate the closest distance between two collision bodies

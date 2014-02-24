@@ -7,6 +7,9 @@
 
 #include "profiling/Profiler.h"
 
+// debug information for transformations
+//#define VERBOSE_TRANSFORMS
+
 using namespace std;
 
 CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts)
@@ -114,6 +117,7 @@ void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
     double x_dim = 0.05;
     double y_dim = 0.05;
     double z_dim = 0.10;
+    double r     = 0.05/2;
 
     /// Initialize collision body
     RobotState::CollisionBody object_collision_body;
@@ -124,6 +128,7 @@ void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
     object_collision_body.collision_shape.dimensions.z = z_dim;     //ToDo: make this variable
     object_collision_body.frame_id = frame_id;
     object_collision_body.bt_shape = new btCylinderShapeZ(btVector3(x_dim, y_dim, z_dim));
+    object_collision_body.fcl_shape = new fcl::Cylinder(r, z_dim);
     object_collision_body.fix_pose.Identity();                      //ToDo: is now initialized as p = [0,0,0], M = [0,0,0,1]
 
     /// Add collision body to correct frame/group/etc.
@@ -305,13 +310,16 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
 
                 // Construct a Bullet Convex Shape of every Voxel within range
                 envBody.bt_shape = new btBoxShape(btVector3(0.5*vox.size_voxel,0.5*vox.size_voxel,0.5*vox.size_voxel));
+                envBody.fcl_shape = new fcl::Box(0.5*vox.size_voxel, 0.5*vox.size_voxel, 0.5*vox.size_voxel);
                 setTransform(vox.center_point, no_fix_, envBody.bt_transform);
+                setTransform(vox.center_point, no_fix_, envBody.fcl_transform);
 
                 distance.frame_id = collisionBody.frame_id;
                 distanceCalculation(*collisionBody.bt_shape,*envBody.bt_shape,collisionBody.bt_transform,envBody.bt_transform,distance.bt_distance);
 
                 distanceCollection.push_back(distance);
                 delete envBody.bt_shape;
+                delete envBody.fcl_shape;
             }
             // Find minimum distance
             pickMinimumDistance(distanceCollection,min_distances);
@@ -452,22 +460,27 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
             if (type=="Box")
             {
                 collisionBody.bt_shape = new btBoxShape(btVector3(x,y,z));
+                collisionBody.fcl_shape = new fcl::Box(x, y, z);
             }
             else if (type == "Sphere")
             {
                 collisionBody.bt_shape = new btSphereShape(x);
+                collisionBody.fcl_shape = new fcl::Sphere(x);
             }
             else if (type == "Cone")
             {
                 collisionBody.bt_shape = new btConeShapeZ(x-0.05,2*z);
+                collisionBody.fcl_shape = new fcl::Cone(x-0.05, 2*z);
             }
             else if (type == "CylinderY")
             {
                 collisionBody.bt_shape = new btCylinderShape(btVector3(x,y,z));
+                collisionBody.fcl_shape = new fcl::Cylinder(x, z); // TODO: check what happens with y
             }
             else if (type == "CylinderZ")
             {
                 collisionBody.bt_shape = new btCylinderShapeZ(btVector3(x,y,z));
+                collisionBody.fcl_shape = new fcl::Cylinder(x, z); // TODO: check what happens with y
             }
         }
     }
@@ -484,14 +497,48 @@ void CollisionAvoidance::calculateTransform()
         for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
         {
             RobotState::CollisionBody &collisionBody = *it;
-
+#ifdef VERBOSE_TRANSFORMS
+            ROS_INFO("transformation of %s", collisionBody.frame_id.c_str());
+#endif
             setTransform(collisionBody.fk_pose, collisionBody.fix_pose, collisionBody.bt_transform);
+            setTransform(collisionBody.fk_pose, collisionBody.fix_pose, collisionBody.fcl_transform);
+
+#ifdef VERBOSE_TRANSFORMS
+            btVector3 bt_t = collisionBody.bt_transform.getOrigin();
+            fcl::Vec3f fcl_t = collisionBody.fcl_transform.getTranslation();
+            ROS_INFO("\tbt_translation (%lf,%lf,%lf)", bt_t.getX(), bt_t.getY(), bt_t.getZ());
+            ROS_INFO("\tbt_translation (%lf,%lf,%lf)", fcl_t[0], fcl_t[1], fcl_t[2]);
+#endif
         }
     }
 }
 
 
-void CollisionAvoidance::setTransform(KDL::Frame &fkPose, KDL::Frame &fixPose, btTransform &transform_out)
+void CollisionAvoidance::setTransform(const KDL::Frame &fkPose, const KDL::Frame &fixPose, fcl::Transform3f &transform_out)
+{
+    fcl::Transform3f fkTransform;
+    fcl::Transform3f fixTransform;
+    double x,y,z,w;
+
+    fkTransform.setTranslation(fcl::Vec3f(fkPose.p.x(),
+                                          fkPose.p.y(),
+                                          fkPose.p.z()));
+
+    fkPose.M.GetQuaternion(x,y,z,w);
+    fkTransform.setQuatRotation(fcl::Quaternion3f(w,x,y,z));
+
+
+    fixTransform.setTranslation(fcl::Vec3f(fixPose.p.x(),
+                                           fixPose.p.y(),
+                                           fixPose.p.z()));
+
+    fixPose.M.GetQuaternion(x,y,z,w);
+    fixTransform.setQuatRotation(fcl::Quaternion3f(w,x,y,z));
+
+    transform_out = fkTransform*fixTransform;
+}
+
+void CollisionAvoidance::setTransform(const KDL::Frame &fkPose, const KDL::Frame &fixPose,btTransform &transform_out)
 {
     btTransform fkTransform;
     btTransform fixTransform;

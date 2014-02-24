@@ -24,6 +24,9 @@
 #include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
 #include <BulletCollision/NarrowPhaseCollision/btPointCollector.h>
 
+// FCL
+#include <fcl/collision.h>
+
 class RobotState
 {
 
@@ -58,6 +61,8 @@ public:
         KDL::Frame fix_pose;
         btTransform bt_transform;
         btConvexShape* bt_shape;
+        fcl::Transform3f fcl_transform;
+        fcl::CollisionGeometry* fcl_shape;
 
         void fromXmlRpc(XmlRpc::XmlRpcValue& value)
         {
