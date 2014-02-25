@@ -35,8 +35,9 @@
 #include <Bullet-C-Api.h>
 
 // FCL closest point
-#include <fcl/collision.h>
+#include <fcl/distance.h>
 #include <fcl/shape/geometric_shapes.h>
+#include <fcl/shape/geometric_shape_to_BVH_model.h>
 
 /////
 
@@ -127,6 +128,13 @@ protected:
         std::string frame_id;
         btPointCollector bt_distance;
     } ;
+    struct Distance2 {
+        std::string frame_id;
+        struct PointPair {
+            fcl::Vec3f p1;
+            fcl::Vec3f p2;
+        } points;
+    };
 
     struct RepulsiveForce {
         std::string frame_id;
@@ -191,7 +199,9 @@ protected:
      * @brief Calculate the closest distance between two collision bodies
      * @param Input: The two collision bodies and their poses, output: The closest points with the corresponding distance en normal vector between them
      */
+    static void shapeToMesh(const fcl::CollisionGeometry &shape, fcl::BVHModel<fcl::OBBRSS>* &model);
     void distanceCalculation(btConvexShape &shapeA, btConvexShape &shapeB, btTransform& transformA, btTransform& transformB, btPointCollector& distance_out);
+    void distanceCalculation(const fcl::CollisionGeometry& shapeA, fcl::CollisionGeometry& shapeB, const fcl::Transform3f& transformA, const fcl::Transform3f& transformB, fcl::DistanceResult& result);
 
     /**
      * @brief Select the minimal closest distance

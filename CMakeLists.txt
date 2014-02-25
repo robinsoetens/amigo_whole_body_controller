@@ -41,7 +41,7 @@ include_directories(${EIGEN_INCLUDE_DIRS})
 add_definitions(${EIGEN_DEFINITIONS})
 
 #link to a local version of FCL
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules)
+#set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules)
 find_package(fcl REQUIRED)
 message("fcl_INCLUDE_DIRS: "    ${fcl_INCLUDE_DIRS})
 message("fcl_LIBRARIES: "       ${fcl_LIBRARIES})

@@ -190,7 +190,11 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                         {
                             Distance distance;
                             distance.frame_id = currentBody.frame_id;
-                            distanceCalculation(*currentBody.bt_shape,*collisionBody.bt_shape,currentBody.bt_transform,collisionBody.bt_transform,distance.bt_distance);
+                            distanceCalculation(*currentBody.bt_shape, *collisionBody.bt_shape, currentBody.bt_transform, collisionBody.bt_transform, distance.bt_distance);
+
+                            fcl::DistanceResult result;
+                            distanceCalculation(*currentBody.fcl_shape,*collisionBody.fcl_shape,currentBody.fcl_transform,collisionBody.fcl_transform,result);
+
                             distanceCollection.push_back(distance);
                         }
                     }
@@ -576,6 +580,49 @@ void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA, btConvexShap
     convexConvex.getClosestPoints(input, distance_out, 0);
 }
 
+void CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape, fcl::BVHModel<fcl::OBBRSS>* &model)
+{
+    model = new fcl::BVHModel<fcl::OBBRSS>();
+
+    switch(shape.getNodeType())
+    {
+    case fcl::GEOM_BOX: {
+        const fcl::Box& geom = dynamic_cast<const fcl::Box&>(shape);
+        fcl::generateBVHModel(*model, geom, fcl::Transform3f());
+        break;
+    }
+    case fcl::GEOM_CYLINDER: {
+        const fcl::Cylinder& geom = dynamic_cast<const fcl::Cylinder&>(shape);
+        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), 16, 16);
+        break;
+    }
+    default:
+    {
+        ROS_WARN_ONCE("error converting unknown fcl shape");
+        break;
+    }
+    }
+}
+
+void CollisionAvoidance::distanceCalculation(const fcl::CollisionGeometry& shapeA, fcl::CollisionGeometry& shapeB, const fcl::Transform3f& transformA, const fcl::Transform3f& transformB, fcl::DistanceResult& result)
+{
+    fcl::DistanceRequest request(true);
+
+    fcl::BVHModel<fcl::OBBRSS>* modelA;
+    shapeToMesh(shapeA, modelA);
+    fcl::BVHModel<fcl::OBBRSS>* modelB;
+    shapeToMesh(shapeB, modelB);
+
+    //fcl::CollisionObject* objA = new fcl::CollisionObject(boost::shared_ptr<fcl::CollisionGeometry>(modelA), transformA);
+
+    double min_dist = fcl::distance(modelA, transformA,
+                                    modelB, transformB,
+                                    request, result);
+
+    delete modelA;
+    delete modelB;
+    ROS_INFO("Closest distance: %f", min_dist);
+}
 
 void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id) const
 {
