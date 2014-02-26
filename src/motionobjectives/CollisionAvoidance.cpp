@@ -42,6 +42,7 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     // Initialize output topics
     pub_model_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_model_markers/", 10);
     pub_forces_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers/", 10);
+    pub_forces_marker_fcl_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers_fcl/", 10);
     pub_bbx_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
 
     // Initialize OctoMap
@@ -85,12 +86,13 @@ void CollisionAvoidance::apply(RobotState &robotstate)
 
     // Calculate the wrenches as a result of (self-)collision avoidance
     std::vector<Distance> min_distances_total;
+    std::vector<Distance2> min_distances_total2;
     std::vector<RepulsiveForce> repulsive_forces_total;
 
     repulsive_forces_total.clear();
 
     // Calculate the repulsive forces as a result of the self-collision avoidance.
-    selfCollision(min_distances_total,repulsive_forces_total);
+    selfCollision(min_distances_total, min_distances_total2);
 
     // Calculate the repulsive forces as a result of the environment collision avoidance.
     if (octomap_){
@@ -109,6 +111,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
 
     /// Output
     visualize(min_distances_total);
+    visualizeRepulsiveForces(min_distances_total2);
 }
 
 void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
@@ -150,8 +153,7 @@ void CollisionAvoidance::removeObjectCollisionModel() {
 
 }
 
-
-void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std::vector<RepulsiveForce> &repulsive_forces)
+void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std::vector<Distance2> &min_distances2)
 {
     // Loop through all collision groups
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroup = robot_state_->robot_.groups.begin(); itrGroup != robot_state_->robot_.groups.end(); ++itrGroup)
@@ -161,6 +163,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
         {
             // Loop through al the bodies of the group
             std::vector<Distance> distanceCollection;
+            std::vector<Distance2> distanceCollection2;
             RobotState::CollisionBody &currentBody = *itrBody;
 
             // Distance check with other groups if the name of the groups is different than the current group
@@ -197,18 +200,21 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 
                             Timer timer2;
                             timer2.start();
-                            fcl::DistanceResult result;
-                            distanceCalculation(*currentBody.fcl_shape,*collisionBody.fcl_shape,currentBody.fcl_transform,collisionBody.fcl_transform,result);
+                            Distance2 distance2;
+                            distance2.frame_id = currentBody.frame_id;
+                            distanceCalculation(*currentBody.fcl_shape,*collisionBody.fcl_shape,currentBody.fcl_transform,collisionBody.fcl_transform,distance2.result);
                             timer2.stop();
 
                             //ROS_INFO("distance time: bt %f ms, fcl %f ms", timer1.getElapsedTimeInMilliSec(), timer2.getElapsedTimeInMilliSec());
                             distanceCollection.push_back(distance);
+                            distanceCollection2.push_back(distance2);
                         }
                     }
                 }
             }
             // Find minimum distance
             pickMinimumDistance(distanceCollection,min_distances);
+            min_distances2.insert(min_distances2.end(), distanceCollection2.begin(), distanceCollection2.end()); // TODO: fork pickMinimumDistance
         }
     }
 }
@@ -451,6 +457,17 @@ void CollisionAvoidance::visualize(std::vector<Distance> &min_distances) const
     for (unsigned int i = 0; i < min_.size(); i++)
     {
         visualizeBBX(min_[i], max_[i], id++);
+    }
+}
+
+void CollisionAvoidance::visualizeRepulsiveForces(std::vector<Distance2> &min_distances) const
+{
+    int id = 0;
+    // Loop through the closest distance vectors and visualize them.
+    for (std::vector<Distance2>::const_iterator itrdmin = min_distances.begin(); itrdmin != min_distances.end(); ++itrdmin)
+    {
+        Distance2 dmin = *itrdmin;
+        visualizeRepulsiveForce(dmin,id++);
     }
 }
 
@@ -854,6 +871,56 @@ void CollisionAvoidance::calculateRepulsiveForce(std::vector<Distance> &minimumD
             repulsiveForces.push_back(F);
         }
     }
+}
+
+void CollisionAvoidance::visualizeRepulsiveForce(Distance2 &d_min,int id) const
+{
+    visualization_msgs::MarkerArray marker_array;
+    visualization_msgs::Marker RFviz;
+    geometry_msgs::Point pA;
+    geometry_msgs::Point pB;
+
+    RFviz.type = visualization_msgs::Marker::ARROW;
+    RFviz.header.frame_id = "map"; //"/base_link";
+    RFviz.header.stamp = ros::Time::now();
+    RFviz.id = id;
+
+    RFviz.scale.x = 0.02;
+    RFviz.scale.y = 0.04;
+    RFviz.scale.z = 0.04;
+
+    pA.x = d_min.result.nearest_points[0][0];
+    pA.y = d_min.result.nearest_points[0][1];
+    pA.z = d_min.result.nearest_points[0][2];
+
+    pB.x = d_min.result.nearest_points[1][0];
+    pB.y = d_min.result.nearest_points[1][1];
+    pB.z = d_min.result.nearest_points[1][2];
+
+    RFviz.points.push_back(pA);
+    RFviz.points.push_back(pB);
+
+
+    if (d_min.result.min_distance <= ca_param_.self_collision.d_threshold )
+    {
+        RFviz.color.a = 1;
+        RFviz.color.r = 1;
+        RFviz.color.g = 0;
+        RFviz.color.b = 0;
+    }
+    else if (d_min.result.min_distance > ca_param_.self_collision.d_threshold )
+    {
+        RFviz.color.a = 1;
+        RFviz.color.r = 0;
+        RFviz.color.g = 1;
+        RFviz.color.b = 0;
+    }
+
+    RFviz.lifetime = ros::Duration(1.0);
+
+    marker_array.markers.push_back(RFviz);
+
+    pub_forces_marker_fcl_.publish(marker_array);
 }
 
 void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const

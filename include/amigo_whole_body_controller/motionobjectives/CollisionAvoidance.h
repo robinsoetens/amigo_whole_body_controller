@@ -118,6 +118,7 @@ protected:
 
     ros::Publisher pub_model_marker_;
     ros::Publisher pub_forces_marker_;
+    ros::Publisher pub_forces_marker_fcl_;
     ros::Publisher pub_bbx_marker_;
 
     struct Voxel {
@@ -130,10 +131,7 @@ protected:
     } ;
     struct Distance2 {
         std::string frame_id;
-        struct PointPair {
-            fcl::Vec3f p1;
-            fcl::Vec3f p2;
-        } points;
+        fcl::DistanceResult result;
     };
 
     struct RepulsiveForce {
@@ -169,7 +167,7 @@ protected:
      * @brief Calculate the repulsive forces as a result of self collision avoidance
      * @param Output: Vector with the minimum distances between robot collision bodies, vector with the repulsive forces
      */
-    void selfCollision(std::vector<Distance> &min_distances, std::vector<RepulsiveForce> &repulsive_forces);
+    void selfCollision(std::vector<Distance> &min_distances, std::vector<Distance2> &min_distances2);
 
     /**
      * @brief Calculate the repulsive forces as a result of environment collision avoidance
@@ -234,6 +232,7 @@ protected:
      * @param Vector with minimal distances
      */
     void visualize(std::vector<Distance> &min_distances) const;
+    void visualizeRepulsiveForces(std::vector<Distance2> &min_distances) const;
 
     /**
      * @brief Construct the visualization markers to visualize the collision model in RVIZ
@@ -246,6 +245,7 @@ protected:
      * @param Collision vector
      */
     void visualizeRepulsiveForce(Distance &d_min, int id) const;
+    void visualizeRepulsiveForce(Distance2 &d_min,int id) const;
 
     /**
      * @brief Construct the visualization markers to visualize the bounding box in RVIZ
