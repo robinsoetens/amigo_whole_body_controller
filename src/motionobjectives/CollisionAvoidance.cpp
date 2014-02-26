@@ -584,7 +584,8 @@ void CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape, fcl::B
 {
     model = new fcl::BVHModel<fcl::OBBRSS>();
 
-    switch(shape.getNodeType())
+    fcl::NODE_TYPE shapeType = shape.getNodeType();
+    switch(shapeType)
     {
     case fcl::GEOM_BOX: {
         const fcl::Box& geom = dynamic_cast<const fcl::Box&>(shape);
@@ -596,9 +597,19 @@ void CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape, fcl::B
         fcl::generateBVHModel(*model, geom, fcl::Transform3f(), 16, 16);
         break;
     }
+    case fcl::GEOM_CONE: {
+        const fcl::Cone& geom = dynamic_cast<const fcl::Cone&>(shape);
+        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), 16, 16);
+        break;
+    }
+    case fcl::GEOM_SPHERE: {
+        const fcl::Sphere& geom = dynamic_cast<const fcl::Sphere&>(shape);
+        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), 16, 16);
+        break;
+    }
     default:
     {
-        ROS_WARN_ONCE("error converting unknown fcl shape");
+        ROS_WARN_ONCE("error converting unknown fcl shape: %i", shapeType);
         break;
     }
     }
@@ -621,7 +632,7 @@ void CollisionAvoidance::distanceCalculation(const fcl::CollisionGeometry& shape
 
     delete modelA;
     delete modelB;
-    ROS_INFO("Closest distance: %f", min_dist);
+    //ROS_INFO("Closest distance: %f", min_dist);
 }
 
 void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id) const
