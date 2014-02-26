@@ -128,7 +128,7 @@ void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
     object_collision_body.collision_shape.dimensions.z = z_dim;     //ToDo: make this variable
     object_collision_body.frame_id = frame_id;
     object_collision_body.bt_shape = new btCylinderShapeZ(btVector3(x_dim, y_dim, z_dim));
-    object_collision_body.fcl_shape = new fcl::Cylinder(r, z_dim);
+    object_collision_body.fcl_shape = shapeToMesh(fcl::Cylinder(r, z_dim));
     object_collision_body.fix_pose.Identity();                      //ToDo: is now initialized as p = [0,0,0], M = [0,0,0,1]
 
     /// Add collision body to correct frame/group/etc.
@@ -188,13 +188,20 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 
                         if (skip_check == false)
                         {
+                            Timer timer1;
+                            timer1.start();
                             Distance distance;
                             distance.frame_id = currentBody.frame_id;
                             distanceCalculation(*currentBody.bt_shape, *collisionBody.bt_shape, currentBody.bt_transform, collisionBody.bt_transform, distance.bt_distance);
+                            timer1.stop();
 
+                            Timer timer2;
+                            timer2.start();
                             fcl::DistanceResult result;
                             distanceCalculation(*currentBody.fcl_shape,*collisionBody.fcl_shape,currentBody.fcl_transform,collisionBody.fcl_transform,result);
+                            timer2.stop();
 
+                            //ROS_INFO("distance time: bt %f ms, fcl %f ms", timer1.getElapsedTimeInMilliSec(), timer2.getElapsedTimeInMilliSec());
                             distanceCollection.push_back(distance);
                         }
                     }
@@ -314,7 +321,7 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
 
                 // Construct a Bullet Convex Shape of every Voxel within range
                 envBody.bt_shape = new btBoxShape(btVector3(0.5*vox.size_voxel,0.5*vox.size_voxel,0.5*vox.size_voxel));
-                envBody.fcl_shape = new fcl::Box(0.5*vox.size_voxel, 0.5*vox.size_voxel, 0.5*vox.size_voxel);
+                envBody.fcl_shape = shapeToMesh(fcl::Box(0.5*vox.size_voxel, 0.5*vox.size_voxel, 0.5*vox.size_voxel));
                 setTransform(vox.center_point, no_fix_, envBody.bt_transform);
                 setTransform(vox.center_point, no_fix_, envBody.fcl_transform);
 
@@ -464,27 +471,27 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
             if (type=="Box")
             {
                 collisionBody.bt_shape = new btBoxShape(btVector3(x,y,z));
-                collisionBody.fcl_shape = new fcl::Box(x, y, z);
+                collisionBody.fcl_shape = shapeToMesh(fcl::Box(x, y, z));
             }
             else if (type == "Sphere")
             {
                 collisionBody.bt_shape = new btSphereShape(x);
-                collisionBody.fcl_shape = new fcl::Sphere(x);
+                collisionBody.fcl_shape = shapeToMesh(fcl::Sphere(x));
             }
             else if (type == "Cone")
             {
                 collisionBody.bt_shape = new btConeShapeZ(x-0.05,2*z);
-                collisionBody.fcl_shape = new fcl::Cone(x-0.05, 2*z);
+                collisionBody.fcl_shape = shapeToMesh(fcl::Cone(x-0.05, 2*z));
             }
             else if (type == "CylinderY")
             {
                 collisionBody.bt_shape = new btCylinderShape(btVector3(x,y,z));
-                collisionBody.fcl_shape = new fcl::Cylinder(x, z); // TODO: check what happens with y
+                collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, z)); // TODO: check what happens with y
             }
             else if (type == "CylinderZ")
             {
                 collisionBody.bt_shape = new btCylinderShapeZ(btVector3(x,y,z));
-                collisionBody.fcl_shape = new fcl::Cylinder(x, z); // TODO: check what happens with y
+                collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, z)); // TODO: check what happens with y
             }
         }
     }
@@ -580,6 +587,13 @@ void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA, btConvexShap
     convexConvex.getClosestPoints(input, distance_out, 0);
 }
 
+fcl::BVHModel<fcl::OBBRSS>* CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape)
+{
+    fcl::BVHModel<fcl::OBBRSS>* model;
+    shapeToMesh(shape, model);
+    return model;
+}
+
 void CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape, fcl::BVHModel<fcl::OBBRSS>* &model)
 {
     model = new fcl::BVHModel<fcl::OBBRSS>();
@@ -619,20 +633,9 @@ void CollisionAvoidance::distanceCalculation(const fcl::CollisionGeometry& shape
 {
     fcl::DistanceRequest request(true);
 
-    fcl::BVHModel<fcl::OBBRSS>* modelA;
-    shapeToMesh(shapeA, modelA);
-    fcl::BVHModel<fcl::OBBRSS>* modelB;
-    shapeToMesh(shapeB, modelB);
-
-    //fcl::CollisionObject* objA = new fcl::CollisionObject(boost::shared_ptr<fcl::CollisionGeometry>(modelA), transformA);
-
-    double min_dist = fcl::distance(modelA, transformA,
-                                    modelB, transformB,
+    double min_dist = fcl::distance(&shapeA, transformA,
+                                    &shapeB, transformB,
                                     request, result);
-
-    delete modelA;
-    delete modelB;
-    //ROS_INFO("Closest distance: %f", min_dist);
 }
 
 void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id) const

@@ -199,6 +199,7 @@ protected:
      * @brief Calculate the closest distance between two collision bodies
      * @param Input: The two collision bodies and their poses, output: The closest points with the corresponding distance en normal vector between them
      */
+    static fcl::BVHModel<fcl::OBBRSS>* shapeToMesh(const fcl::CollisionGeometry &shape);
     static void shapeToMesh(const fcl::CollisionGeometry &shape, fcl::BVHModel<fcl::OBBRSS>* &model);
     void distanceCalculation(btConvexShape &shapeA, btConvexShape &shapeB, btTransform& transformA, btTransform& transformB, btPointCollector& distance_out);
     void distanceCalculation(const fcl::CollisionGeometry& shapeA, fcl::CollisionGeometry& shapeB, const fcl::Transform3f& transformA, const fcl::Transform3f& transformB, fcl::DistanceResult& result);
