@@ -39,6 +39,9 @@
 #include <fcl/shape/geometric_shapes.h>
 #include <fcl/shape/geometric_shape_to_BVH_model.h>
 
+// Timer
+#include "profiling/Profiler.h"
+
 /////
 
 // ToDo: why not make total wrenches and total distances member variables? Now they're passed on from function to function
@@ -134,6 +137,15 @@ protected:
         fcl::DistanceResult result;
     };
 
+    // debugging timers
+    Timer timer_boost;
+    Timer timer_fcl;
+    Timer timer_total;
+    double time_boost;
+    double time_fcl;
+    double time_total;
+    int report_counter;
+
     struct RepulsiveForce {
         std::string frame_id;
         btVector3 pointOnA;
@@ -207,6 +219,7 @@ protected:
      * @param Vector with all closest distances from a collision body, Vector with the minimal closest distances
      */
     void pickMinimumDistance(std::vector<Distance> &calculatedDistances, std::vector<Distance> &minimumDistances);
+    void pickMinimumDistance(std::vector<Distance2> &calculatedDistances, std::vector<Distance2> &minimumDistances);
 
     /**
      * @brief Calculate the amplitude of the repulsive forces

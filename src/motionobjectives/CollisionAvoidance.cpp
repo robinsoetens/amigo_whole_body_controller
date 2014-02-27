@@ -5,15 +5,13 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
 
-#include "profiling/Profiler.h"
-
 // debug information for transformations
 //#define VERBOSE_TRANSFORMS
 
 using namespace std;
 
 CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts)
-    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL)
+    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL), report_counter(0), time_total(0), time_boost(0), time_fcl(0)
 {
     /// Status is always 2 (always active)
     type_     = "CollisionAvoidance";
@@ -75,6 +73,8 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
 void CollisionAvoidance::apply(RobotState &robotstate)
 {
+    timer_total.start();
+
     /// Reset stuff
     jacobian_pre_alloc_.setZero();
     wrenches_pre_alloc_.setZero();
@@ -112,6 +112,17 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     /// Output
     visualize(min_distances_total);
     visualizeRepulsiveForces(min_distances_total2);
+
+    timer_total.stop();
+    time_total += timer_total.getElapsedTimeInMilliSec();
+
+    if (report_counter > 300)
+    {
+        ROS_INFO("collision time:\n\ttotal: %f\n\tboost: %f\n\tfcl: %f", time_total, time_boost, time_fcl);
+
+        report_counter = 0;
+    }
+    report_counter++;
 }
 
 void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
@@ -205,6 +216,9 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                             distanceCalculation(*currentBody.fcl_shape,*collisionBody.fcl_shape,currentBody.fcl_transform,collisionBody.fcl_transform,distance2.result);
                             timer2.stop();
 
+                            time_boost += timer1.getElapsedTimeInMilliSec();
+                            time_fcl   += timer2.getElapsedTimeInMilliSec();
+
                             //ROS_INFO("distance time: bt %f ms, fcl %f ms", timer1.getElapsedTimeInMilliSec(), timer2.getElapsedTimeInMilliSec());
                             distanceCollection.push_back(distance);
                             distanceCollection2.push_back(distance2);
@@ -214,7 +228,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
             }
             // Find minimum distance
             pickMinimumDistance(distanceCollection,min_distances);
-            min_distances2.insert(min_distances2.end(), distanceCollection2.begin(), distanceCollection2.end()); // TODO: fork pickMinimumDistance
+            pickMinimumDistance(distanceCollection2, min_distances2);
         }
     }
 }
@@ -650,9 +664,9 @@ void CollisionAvoidance::distanceCalculation(const fcl::CollisionGeometry& shape
 {
     fcl::DistanceRequest request(true);
 
-    double min_dist = fcl::distance(&shapeA, transformA,
-                                    &shapeB, transformB,
-                                    request, result);
+    fcl::distance(&shapeA, transformA,
+                  &shapeB, transformB,
+                  request, result);
 }
 
 void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id) const
@@ -851,6 +865,27 @@ void CollisionAvoidance::pickMinimumDistance(std::vector<Distance> &calculatedDi
         minimumDistances.push_back(dmin);
     }
 
+}
+
+void CollisionAvoidance::pickMinimumDistance(std::vector<Distance2> &calculatedDistances, std::vector<Distance2> &minimumDistances)
+{
+    // For a single collision body pick the minimum of all calculated closest distances by the GJK algorithm.
+    Distance2 dmin;
+    dmin.result.min_distance = 10000.0;
+    for (std::vector<Distance2>::iterator itrDistance = calculatedDistances.begin(); itrDistance != calculatedDistances.end(); ++itrDistance)
+    {
+        Distance2 &distance = *itrDistance;
+        if (distance.result.min_distance < dmin.result.min_distance)
+        {
+            dmin = distance;
+        }
+    }
+
+    // Store all minimum distances;
+    if ( dmin.result.min_distance < 100)
+    {
+        minimumDistances.push_back(dmin);
+    }
 }
 
 
