@@ -27,7 +27,6 @@
   <depend package="kdl_parser"/>
   
   <depend package="amigo_arm_navigation"/>
-  <depend package="amigo_joint_interface_converter"/>
   <depend package="tue_map_3d"/>
   <depend package="amigo_ref_interpolator"/>
   <depend package="tue_gazebo_plugins"/>
