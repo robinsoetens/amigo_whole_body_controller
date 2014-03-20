@@ -137,15 +137,6 @@ protected:
         fcl::DistanceResult result;
     };
 
-    // debugging timers
-    Timer timer_boost;
-    Timer timer_fcl;
-    Timer timer_total;
-    double time_boost;
-    double time_fcl;
-    double time_total;
-    int report_counter;
-
     struct RepulsiveForce {
         std::string frame_id;
         btVector3 pointOnA;
@@ -174,6 +165,18 @@ protected:
     std::vector<octomath::Vector3> min_;
     std::vector<octomath::Vector3> max_;
 
+    // debugging timers
+    Timer timer_total;
+    Timer timer_boost;
+    Timer timer_fcl;
+    Timer timer_octomap;
+
+    double time_total;
+    double time_boost;
+    double time_fcl;
+    double time_octomap;
+
+    int report_counter;
 
     /**
      * @brief Calculate the repulsive forces as a result of self collision avoidance

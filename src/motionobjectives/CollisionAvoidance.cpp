@@ -8,10 +8,19 @@
 // debug information for transformations
 //#define VERBOSE_TRANSFORMS
 
+// amount of fcl mesh nodes generated
+#define GEOM_CYLINDER_tot   8
+#define GEOM_CYLINDER_h_num 8
+#define GEOM_CONE_tot       8
+#define GEOM_CONE_h_num     8
+#define GEOM_SPHERE_seg     8
+#define GEOM_SPHERE_ring    8
+
 using namespace std;
 
 CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts)
-    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL), report_counter(0), time_total(0), time_boost(0), time_fcl(0)
+    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL),
+      time_total(0), time_boost(0), time_fcl(0), time_octomap(0), report_counter(0)
 {
     /// Status is always 2 (always active)
     type_     = "CollisionAvoidance";
@@ -94,6 +103,8 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     // Calculate the repulsive forces as a result of the self-collision avoidance.
     selfCollision(min_distances_total, min_distances_total2);
 
+    timer_octomap.start();
+
     // Calculate the repulsive forces as a result of the environment collision avoidance.
     if (octomap_){
         if (octomap_->size() > 0)
@@ -104,6 +115,9 @@ void CollisionAvoidance::apply(RobotState &robotstate)
             ROS_WARN_ONCE("Collision Avoidance: No octomap created!");
         }
     }
+
+    timer_octomap.stop();
+    time_octomap += timer_octomap.getElapsedTimeInMilliSec();
 
     /// Calculate the repulsive forces and the corresponding 'wrenches' and Jacobians from the minimum distances
     calculateRepulsiveForce(min_distances_total,repulsive_forces_total,ca_param_.self_collision);
@@ -116,9 +130,9 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     timer_total.stop();
     time_total += timer_total.getElapsedTimeInMilliSec();
 
-    if (report_counter > 300)
+    if (report_counter > 100)
     {
-        ROS_INFO("collision time:\n\ttotal: %f\n\tboost: %f\n\tfcl: %f", time_total, time_boost, time_fcl);
+        ROS_INFO("collision time:\n\ttotal: %f\n\tboost: %f\n\tfcl: %f\n\toctomap: %f", time_total, time_boost, time_fcl, time_octomap);
 
         report_counter = 0;
     }
@@ -341,16 +355,13 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
 
                 // Construct a Bullet Convex Shape of every Voxel within range
                 envBody.bt_shape = new btBoxShape(btVector3(0.5*vox.size_voxel,0.5*vox.size_voxel,0.5*vox.size_voxel));
-                envBody.fcl_shape = shapeToMesh(fcl::Box(0.5*vox.size_voxel, 0.5*vox.size_voxel, 0.5*vox.size_voxel));
                 setTransform(vox.center_point, no_fix_, envBody.bt_transform);
-                setTransform(vox.center_point, no_fix_, envBody.fcl_transform);
 
                 distance.frame_id = collisionBody.frame_id;
                 distanceCalculation(*collisionBody.bt_shape,*envBody.bt_shape,collisionBody.bt_transform,envBody.bt_transform,distance.bt_distance);
 
                 distanceCollection.push_back(distance);
                 delete envBody.bt_shape;
-                delete envBody.fcl_shape;
             }
             // Find minimum distance
             pickMinimumDistance(distanceCollection,min_distances);
@@ -639,17 +650,17 @@ void CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape, fcl::B
     }
     case fcl::GEOM_CYLINDER: {
         const fcl::Cylinder& geom = dynamic_cast<const fcl::Cylinder&>(shape);
-        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), 16, 16);
+        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), GEOM_CYLINDER_tot, GEOM_CYLINDER_h_num);
         break;
     }
     case fcl::GEOM_CONE: {
         const fcl::Cone& geom = dynamic_cast<const fcl::Cone&>(shape);
-        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), 16, 16);
+        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), GEOM_CONE_tot, GEOM_CONE_h_num);
         break;
     }
     case fcl::GEOM_SPHERE: {
         const fcl::Sphere& geom = dynamic_cast<const fcl::Sphere&>(shape);
-        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), 16, 16);
+        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), GEOM_SPHERE_seg, GEOM_SPHERE_ring);
         break;
     }
     default:
