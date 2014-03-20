@@ -20,9 +20,17 @@
 #include <kdl/treefksolverpos_recursive.hpp>
 #include <kdl/frames.hpp>
 
+// Choose what collision library will be used
+//#define USE_FCL
+#define USE_BULLET
+
 // Bullet
 #include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
 #include <BulletCollision/NarrowPhaseCollision/btPointCollector.h>
+
+#ifdef USE_FCL
+#include <fcl/collision.h>
+#endif
 
 class RobotState
 {
@@ -56,8 +64,15 @@ public:
         std::string frame_id;
         KDL::Frame fk_pose;
         KDL::Frame fix_pose;
+
+#ifdef USE_BULLET
         btTransform bt_transform;
         btConvexShape* bt_shape;
+#endif
+#ifdef USE_FCL
+        fcl::Transform3f fcl_transform;
+        fcl::CollisionGeometry* fcl_shape;
+#endif
 
         void fromXmlRpc(XmlRpc::XmlRpcValue& value)
         {

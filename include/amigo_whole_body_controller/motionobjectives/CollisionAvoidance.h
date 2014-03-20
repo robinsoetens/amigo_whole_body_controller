@@ -22,7 +22,7 @@
 // Map
 #include <tue_map_3d/Map3D.h>
 
-
+#ifdef USE_BULLET
 // Bullet GJK Closest Point calculation
 #include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
@@ -33,6 +33,17 @@
 #include <BulletCollision/NarrowPhaseCollision/btVoronoiSimplexSolver.h>
 #include <BulletCollision/NarrowPhaseCollision/btMinkowskiPenetrationDepthSolver.h>
 #include <Bullet-C-Api.h>
+#endif
+
+#ifdef USE_FCL
+// FCL closest point
+#include <fcl/distance.h>
+#include <fcl/shape/geometric_shapes.h>
+#include <fcl/shape/geometric_shape_to_BVH_model.h>
+#endif
+
+// Timer
+#include "profiling/Profiler.h"
 
 /////
 
@@ -113,6 +124,7 @@ protected:
 
     ros::Publisher pub_model_marker_;
     ros::Publisher pub_forces_marker_;
+    ros::Publisher pub_forces_marker_fcl_;
     ros::Publisher pub_bbx_marker_;
 
     struct Voxel {
@@ -123,6 +135,12 @@ protected:
         std::string frame_id;
         btPointCollector bt_distance;
     } ;
+    struct Distance2 {
+        std::string frame_id;
+#ifdef USE_FCL
+        fcl::DistanceResult result;
+#endif
+    };
 
     struct RepulsiveForce {
         std::string frame_id;
@@ -152,12 +170,24 @@ protected:
     std::vector<octomath::Vector3> min_;
     std::vector<octomath::Vector3> max_;
 
+    // debugging timers
+    Timer timer_total;
+    Timer timer_boost;
+    Timer timer_fcl;
+    Timer timer_octomap;
+
+    double time_total;
+    double time_boost;
+    double time_fcl;
+    double time_octomap;
+
+    int report_counter;
 
     /**
      * @brief Calculate the repulsive forces as a result of self collision avoidance
      * @param Output: Vector with the minimum distances between robot collision bodies, vector with the repulsive forces
      */
-    void selfCollision(std::vector<Distance> &min_distances, std::vector<RepulsiveForce> &repulsive_forces);
+    void selfCollision(std::vector<Distance> &min_distances, std::vector<Distance2> &min_distances2);
 
     /**
      * @brief Calculate the repulsive forces as a result of environment collision avoidance
@@ -180,20 +210,36 @@ protected:
      * @brief Calculate the Bullet shape pose from the corresponding FK pose using a correction from this frame pose
      * @param Input: Pose of the KDL frame and the fix for the collision bodies, Output: Bullet transform
      */
-    void setTransform(KDL::Frame &fkPose, KDL::Frame& fixPose, btTransform &transform_out);
+#ifdef USE_BULLET
+    void setTransform(const KDL::Frame &fkPose, const KDL::Frame& fixPose, btTransform &transform_out);
+#endif
+#ifdef USE_FCL
+    void setTransform(const KDL::Frame &fkPose, const KDL::Frame& fixPose, fcl::Transform3f &transform_out);
+#endif
 
     /**
      * @brief Calculate the closest distance between two collision bodies
      * @param Input: The two collision bodies and their poses, output: The closest points with the corresponding distance en normal vector between them
      */
+#ifdef USE_BULLET
     void distanceCalculation(btConvexShape &shapeA, btConvexShape &shapeB, btTransform& transformA, btTransform& transformB, btPointCollector& distance_out);
+#endif
+#ifdef USE_FCL
+    static fcl::BVHModel<fcl::OBBRSS>* shapeToMesh(const fcl::CollisionGeometry &shape);
+    static void shapeToMesh(const fcl::CollisionGeometry &shape, fcl::BVHModel<fcl::OBBRSS>* &model);    
+    void distanceCalculation(const fcl::CollisionGeometry& shapeA, fcl::CollisionGeometry& shapeB, const fcl::Transform3f& transformA, const fcl::Transform3f& transformB, fcl::DistanceResult& result);
+#endif
 
     /**
      * @brief Select the minimal closest distance
      * @param Vector with all closest distances from a collision body, Vector with the minimal closest distances
      */
+#ifdef USE_BULLET
     void pickMinimumDistance(std::vector<Distance> &calculatedDistances, std::vector<Distance> &minimumDistances);
-
+#endif
+#ifdef USE_FCL
+    void pickMinimumDistance(std::vector<Distance2> &calculatedDistances, std::vector<Distance2> &minimumDistances);
+#endif
     /**
      * @brief Calculate the amplitude of the repulsive forces
      * @param Vector with the minimal closest distances, Vector with the repulsive forces
@@ -218,6 +264,7 @@ protected:
      * @param Vector with minimal distances
      */
     void visualize(std::vector<Distance> &min_distances) const;
+    void visualizeRepulsiveForces(std::vector<Distance2> &min_distances) const;
 
     /**
      * @brief Construct the visualization markers to visualize the collision model in RVIZ
@@ -230,6 +277,7 @@ protected:
      * @param Collision vector
      */
     void visualizeRepulsiveForce(Distance &d_min, int id) const;
+    void visualizeRepulsiveForce(Distance2 &d_min,int id) const;
 
     /**
      * @brief Construct the visualization markers to visualize the bounding box in RVIZ

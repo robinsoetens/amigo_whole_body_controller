@@ -5,12 +5,22 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
 
-#include "profiling/Profiler.h"
+// debug information for transformations
+//#define VERBOSE_TRANSFORMS
+
+// amount of fcl mesh nodes generated
+#define GEOM_CYLINDER_tot   8
+#define GEOM_CYLINDER_h_num 8
+#define GEOM_CONE_tot       8
+#define GEOM_CONE_h_num     8
+#define GEOM_SPHERE_seg     8
+#define GEOM_SPHERE_ring    8
 
 using namespace std;
 
 CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts)
-    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL)
+    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL),
+      time_total(0), time_boost(0), time_fcl(0), time_octomap(0), report_counter(0)
 {
     /// Status is always 2 (always active)
     type_     = "CollisionAvoidance";
@@ -39,6 +49,7 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     // Initialize output topics
     pub_model_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_model_markers/", 10);
     pub_forces_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers/", 10);
+    pub_forces_marker_fcl_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers_fcl/", 10);
     pub_bbx_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
 
     // Initialize OctoMap
@@ -71,6 +82,8 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
 void CollisionAvoidance::apply(RobotState &robotstate)
 {
+    timer_total.start();
+
     /// Reset stuff
     jacobian_pre_alloc_.setZero();
     wrenches_pre_alloc_.setZero();
@@ -82,12 +95,15 @@ void CollisionAvoidance::apply(RobotState &robotstate)
 
     // Calculate the wrenches as a result of (self-)collision avoidance
     std::vector<Distance> min_distances_total;
+    std::vector<Distance2> min_distances_total2;
     std::vector<RepulsiveForce> repulsive_forces_total;
 
     repulsive_forces_total.clear();
 
     // Calculate the repulsive forces as a result of the self-collision avoidance.
-    selfCollision(min_distances_total,repulsive_forces_total);
+    selfCollision(min_distances_total, min_distances_total2);
+
+    timer_octomap.start();
 
     // Calculate the repulsive forces as a result of the environment collision avoidance.
     if (octomap_){
@@ -100,12 +116,27 @@ void CollisionAvoidance::apply(RobotState &robotstate)
         }
     }
 
+    timer_octomap.stop();
+    time_octomap += timer_octomap.getElapsedTimeInMilliSec();
+
     /// Calculate the repulsive forces and the corresponding 'wrenches' and Jacobians from the minimum distances
     calculateRepulsiveForce(min_distances_total,repulsive_forces_total,ca_param_.self_collision);
     calculateWrenches(repulsive_forces_total);
 
     /// Output
     visualize(min_distances_total);
+    visualizeRepulsiveForces(min_distances_total2);
+
+    timer_total.stop();
+    time_total += timer_total.getElapsedTimeInMilliSec();
+
+    if (report_counter > 100)
+    {
+        ROS_INFO("collision time:\n\ttotal: %f\n\tboost: %f\n\tfcl: %f\n\toctomap: %f", time_total, time_boost, time_fcl, time_octomap);
+
+        report_counter = 0;
+    }
+    report_counter++;
 }
 
 void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
@@ -114,6 +145,7 @@ void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
     double x_dim = 0.05;
     double y_dim = 0.05;
     double z_dim = 0.10;
+    double r     = 0.05/2;
 
     /// Initialize collision body
     RobotState::CollisionBody object_collision_body;
@@ -123,7 +155,14 @@ void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
     object_collision_body.collision_shape.dimensions.y = y_dim;     //ToDo: make this variable
     object_collision_body.collision_shape.dimensions.z = z_dim;     //ToDo: make this variable
     object_collision_body.frame_id = frame_id;
+
+#ifdef USE_BULLET
     object_collision_body.bt_shape = new btCylinderShapeZ(btVector3(x_dim, y_dim, z_dim));
+#endif
+#ifdef USE_FCL
+    object_collision_body.fcl_shape = shapeToMesh(fcl::Cylinder(r, z_dim));
+#endif
+
     object_collision_body.fix_pose.Identity();                      //ToDo: is now initialized as p = [0,0,0], M = [0,0,0,1]
 
     /// Add collision body to correct frame/group/etc.
@@ -145,8 +184,7 @@ void CollisionAvoidance::removeObjectCollisionModel() {
 
 }
 
-
-void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std::vector<RepulsiveForce> &repulsive_forces)
+void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std::vector<Distance2> &min_distances2)
 {
     // Loop through all collision groups
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroup = robot_state_->robot_.groups.begin(); itrGroup != robot_state_->robot_.groups.end(); ++itrGroup)
@@ -156,6 +194,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
         {
             // Loop through al the bodies of the group
             std::vector<Distance> distanceCollection;
+            std::vector<Distance2> distanceCollection2;
             RobotState::CollisionBody &currentBody = *itrBody;
 
             // Distance check with other groups if the name of the groups is different than the current group
@@ -183,16 +222,41 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 
                         if (skip_check == false)
                         {
+#ifdef USE_BULLET
+                            Timer timer1;
+                            timer1.start();
+
                             Distance distance;
                             distance.frame_id = currentBody.frame_id;
-                            distanceCalculation(*currentBody.bt_shape,*collisionBody.bt_shape,currentBody.bt_transform,collisionBody.bt_transform,distance.bt_distance);
+                            distanceCalculation(*currentBody.bt_shape, *collisionBody.bt_shape, currentBody.bt_transform, collisionBody.bt_transform, distance.bt_distance);
                             distanceCollection.push_back(distance);
+
+                            timer1.stop();
+                            time_boost += timer1.getElapsedTimeInMilliSec();
+#endif
+#ifdef USE_FCL
+                            Timer timer2;
+                            timer2.start();
+
+                            Distance2 distance2;
+                            distance2.frame_id = currentBody.frame_id;
+                            distanceCalculation(*currentBody.fcl_shape,*collisionBody.fcl_shape,currentBody.fcl_transform,collisionBody.fcl_transform,distance2.result);
+                            distanceCollection2.push_back(distance2);
+
+                            timer2.stop();
+                            time_fcl   += timer2.getElapsedTimeInMilliSec();
+#endif
                         }
                     }
                 }
             }
             // Find minimum distance
-            pickMinimumDistance(distanceCollection,min_distances);
+#ifdef USE_BULLET
+            pickMinimumDistance(distanceCollection,  min_distances);
+#endif
+#ifdef USE_FCL
+            pickMinimumDistance(distanceCollection2, min_distances2);
+#endif
         }
     }
 }
@@ -435,6 +499,17 @@ void CollisionAvoidance::visualize(std::vector<Distance> &min_distances) const
     }
 }
 
+void CollisionAvoidance::visualizeRepulsiveForces(std::vector<Distance2> &min_distances) const
+{
+    int id = 0;
+    // Loop through the closest distance vectors and visualize them.
+    for (std::vector<Distance2>::const_iterator itrdmin = min_distances.begin(); itrdmin != min_distances.end(); ++itrdmin)
+    {
+        Distance2 dmin = *itrdmin;
+        visualizeRepulsiveForce(dmin,id++);
+    }
+}
+
 
 void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
 {
@@ -451,23 +526,48 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
 
             if (type=="Box")
             {
+#ifdef USE_BULLET
                 collisionBody.bt_shape = new btBoxShape(btVector3(x,y,z));
+#endif
+#ifdef USE_FCL
+                collisionBody.fcl_shape = shapeToMesh(fcl::Box(x, y, z));
+#endif
             }
             else if (type == "Sphere")
             {
+#ifdef USE_BULLET
                 collisionBody.bt_shape = new btSphereShape(x);
+#endif
+#ifdef USE_FCL
+                collisionBody.fcl_shape = shapeToMesh(fcl::Sphere(x));
+#endif
             }
             else if (type == "Cone")
             {
+#ifdef USE_BULLET
                 collisionBody.bt_shape = new btConeShapeZ(x-0.05,2*z);
+#endif
+#ifdef USE_FCL
+                collisionBody.fcl_shape = shapeToMesh(fcl::Cone(x-0.05, 2*z));
+#endif
             }
             else if (type == "CylinderY")
             {
+#ifdef USE_BULLET
                 collisionBody.bt_shape = new btCylinderShape(btVector3(x,y,z));
+#endif
+#ifdef USE_FCL
+                collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, z)); // TODO: check what happens with y
+#endif
             }
             else if (type == "CylinderZ")
             {
+#ifdef USE_BULLET
                 collisionBody.bt_shape = new btCylinderShapeZ(btVector3(x,y,z));
+#endif
+#ifdef USE_FCL
+                collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, z)); // TODO: check what happens with y
+#endif
             }
         }
     }
@@ -484,14 +584,30 @@ void CollisionAvoidance::calculateTransform()
         for (std::vector<RobotState::CollisionBody>::iterator it = group.begin(); it != group.end(); ++it)
         {
             RobotState::CollisionBody &collisionBody = *it;
+#ifdef VERBOSE_TRANSFORMS
+            ROS_INFO("transformation of %s", collisionBody.frame_id.c_str());
+#endif
 
+#ifdef USE_BULLET
             setTransform(collisionBody.fk_pose, collisionBody.fix_pose, collisionBody.bt_transform);
+#endif
+#ifdef USE_FCL
+            setTransform(collisionBody.fk_pose, collisionBody.fix_pose, collisionBody.fcl_transform);
+#endif
+
+#ifdef VERBOSE_TRANSFORMS
+            btVector3 bt_t = collisionBody.bt_transform.getOrigin();
+            fcl::Vec3f fcl_t = collisionBody.fcl_transform.getTranslation();
+            ROS_INFO("\tbt_translation (%lf,%lf,%lf)", bt_t.getX(), bt_t.getY(), bt_t.getZ());
+            ROS_INFO("\tbt_translation (%lf,%lf,%lf)", fcl_t[0], fcl_t[1], fcl_t[2]);
+#endif
         }
     }
 }
 
 
-void CollisionAvoidance::setTransform(KDL::Frame &fkPose, KDL::Frame &fixPose, btTransform &transform_out)
+#ifdef USE_BULLET
+void CollisionAvoidance::setTransform(const KDL::Frame &fkPose, const KDL::Frame &fixPose,btTransform &transform_out)
 {
     btTransform fkTransform;
     btTransform fixTransform;
@@ -514,8 +630,35 @@ void CollisionAvoidance::setTransform(KDL::Frame &fkPose, KDL::Frame &fixPose, b
 
     transform_out.mult(fkTransform,fixTransform);
 }
+#endif
+#ifdef USE_FCL
+void CollisionAvoidance::setTransform(const KDL::Frame &fkPose, const KDL::Frame &fixPose, fcl::Transform3f &transform_out)
+{
+    fcl::Transform3f fkTransform;
+    fcl::Transform3f fixTransform;
+    double x,y,z,w;
+
+    fkTransform.setTranslation(fcl::Vec3f(fkPose.p.x(),
+                                          fkPose.p.y(),
+                                          fkPose.p.z()));
+
+    fkPose.M.GetQuaternion(x,y,z,w);
+    fkTransform.setQuatRotation(fcl::Quaternion3f(w,x,y,z));
 
 
+    fixTransform.setTranslation(fcl::Vec3f(fixPose.p.x(),
+                                           fixPose.p.y(),
+                                           fixPose.p.z()));
+
+    fixPose.M.GetQuaternion(x,y,z,w);
+    fixTransform.setQuatRotation(fcl::Quaternion3f(w,x,y,z));
+
+    transform_out = fkTransform*fixTransform;
+}
+#endif
+
+
+#ifdef USE_BULLET
 void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA, btConvexShape& shapeB, btTransform& transformA, btTransform& transformB, btPointCollector &distance_out)
 {
     btGjkPairDetector convexConvex(&shapeA, &shapeB, simplexSolver, depthSolver);
@@ -528,7 +671,60 @@ void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA, btConvexShap
     // Calculate closest distance
     convexConvex.getClosestPoints(input, distance_out, 0);
 }
+#endif
 
+#ifdef USE_FCL
+fcl::BVHModel<fcl::OBBRSS>* CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape)
+{
+    fcl::BVHModel<fcl::OBBRSS>* model;
+    shapeToMesh(shape, model);
+    return model;
+}
+
+void CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape, fcl::BVHModel<fcl::OBBRSS>* &model)
+{
+    model = new fcl::BVHModel<fcl::OBBRSS>();
+
+    fcl::NODE_TYPE shapeType = shape.getNodeType();
+    switch(shapeType)
+    {
+    case fcl::GEOM_BOX: {
+        const fcl::Box& geom = dynamic_cast<const fcl::Box&>(shape);
+        fcl::generateBVHModel(*model, geom, fcl::Transform3f());
+        break;
+    }
+    case fcl::GEOM_CYLINDER: {
+        const fcl::Cylinder& geom = dynamic_cast<const fcl::Cylinder&>(shape);
+        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), GEOM_CYLINDER_tot, GEOM_CYLINDER_h_num);
+        break;
+    }
+    case fcl::GEOM_CONE: {
+        const fcl::Cone& geom = dynamic_cast<const fcl::Cone&>(shape);
+        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), GEOM_CONE_tot, GEOM_CONE_h_num);
+        break;
+    }
+    case fcl::GEOM_SPHERE: {
+        const fcl::Sphere& geom = dynamic_cast<const fcl::Sphere&>(shape);
+        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), GEOM_SPHERE_seg, GEOM_SPHERE_ring);
+        break;
+    }
+    default:
+    {
+        ROS_WARN_ONCE("error converting unknown fcl shape: %i", shapeType);
+        break;
+    }
+    }
+}
+
+void CollisionAvoidance::distanceCalculation(const fcl::CollisionGeometry& shapeA, fcl::CollisionGeometry& shapeB, const fcl::Transform3f& transformA, const fcl::Transform3f& transformB, fcl::DistanceResult& result)
+{
+    fcl::DistanceRequest request(true);
+
+    fcl::distance(&shapeA, transformA,
+                  &shapeB, transformB,
+                  request, result);
+}
+#endif
 
 void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id) const
 {
@@ -705,7 +901,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
     }
 }
 
-
+#ifdef USE_BULLET
 void CollisionAvoidance::pickMinimumDistance(std::vector<Distance> &calculatedDistances, std::vector<Distance> &minimumDistances)
 {
     // For a single collision body pick the minimum of all calculated closest distances by the GJK algorithm.
@@ -727,7 +923,30 @@ void CollisionAvoidance::pickMinimumDistance(std::vector<Distance> &calculatedDi
     }
 
 }
+#endif
 
+#ifdef USE_FCL
+void CollisionAvoidance::pickMinimumDistance(std::vector<Distance2> &calculatedDistances, std::vector<Distance2> &minimumDistances)
+{
+    // For a single collision body pick the minimum of all calculated closest distances by the GJK algorithm.
+    Distance2 dmin;
+    dmin.result.min_distance = 10000.0;
+    for (std::vector<Distance2>::iterator itrDistance = calculatedDistances.begin(); itrDistance != calculatedDistances.end(); ++itrDistance)
+    {
+        Distance2 &distance = *itrDistance;
+        if (distance.result.min_distance < dmin.result.min_distance)
+        {
+            dmin = distance;
+        }
+    }
+
+    // Store all minimum distances;
+    if ( dmin.result.min_distance < 100)
+    {
+        minimumDistances.push_back(dmin);
+    }
+}
+#endif
 
 void CollisionAvoidance::calculateRepulsiveForce(std::vector<Distance> &minimumDistances, std::vector<RepulsiveForce> &repulsiveForces, collisionAvoidanceParameters::Parameters &param)
 {
@@ -746,6 +965,58 @@ void CollisionAvoidance::calculateRepulsiveForce(std::vector<Distance> &minimumD
             repulsiveForces.push_back(F);
         }
     }
+}
+
+void CollisionAvoidance::visualizeRepulsiveForce(Distance2 &d_min,int id) const
+{
+#ifdef USE_FCL
+    visualization_msgs::MarkerArray marker_array;
+    visualization_msgs::Marker RFviz;
+    geometry_msgs::Point pA;
+    geometry_msgs::Point pB;
+
+    RFviz.type = visualization_msgs::Marker::ARROW;
+    RFviz.header.frame_id = "map"; //"/base_link";
+    RFviz.header.stamp = ros::Time::now();
+    RFviz.id = id;
+
+    RFviz.scale.x = 0.02;
+    RFviz.scale.y = 0.04;
+    RFviz.scale.z = 0.04;
+
+    pA.x = d_min.result.nearest_points[0][0];
+    pA.y = d_min.result.nearest_points[0][1];
+    pA.z = d_min.result.nearest_points[0][2];
+
+    pB.x = d_min.result.nearest_points[1][0];
+    pB.y = d_min.result.nearest_points[1][1];
+    pB.z = d_min.result.nearest_points[1][2];
+
+    RFviz.points.push_back(pA);
+    RFviz.points.push_back(pB);
+
+
+    if (d_min.result.min_distance <= ca_param_.self_collision.d_threshold )
+    {
+        RFviz.color.a = 1;
+        RFviz.color.r = 1;
+        RFviz.color.g = 0;
+        RFviz.color.b = 0;
+    }
+    else if (d_min.result.min_distance > ca_param_.self_collision.d_threshold )
+    {
+        RFviz.color.a = 1;
+        RFviz.color.r = 0;
+        RFviz.color.g = 1;
+        RFviz.color.b = 0;
+    }
+
+    RFviz.lifetime = ros::Duration(1.0);
+
+    marker_array.markers.push_back(RFviz);
+
+    pub_forces_marker_fcl_.publish(marker_array);
+#endif
 }
 
 void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const
