@@ -155,8 +155,14 @@ void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
     object_collision_body.collision_shape.dimensions.y = y_dim;     //ToDo: make this variable
     object_collision_body.collision_shape.dimensions.z = z_dim;     //ToDo: make this variable
     object_collision_body.frame_id = frame_id;
+
+#ifdef USE_BULLET
     object_collision_body.bt_shape = new btCylinderShapeZ(btVector3(x_dim, y_dim, z_dim));
+#endif
+#ifdef USE_FCL
     object_collision_body.fcl_shape = shapeToMesh(fcl::Cylinder(r, z_dim));
+#endif
+
     object_collision_body.fix_pose.Identity();                      //ToDo: is now initialized as p = [0,0,0], M = [0,0,0,1]
 
     /// Add collision body to correct frame/group/etc.
@@ -216,33 +222,41 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 
                         if (skip_check == false)
                         {
+#ifdef USE_BULLET
                             Timer timer1;
                             timer1.start();
+
                             Distance distance;
                             distance.frame_id = currentBody.frame_id;
                             distanceCalculation(*currentBody.bt_shape, *collisionBody.bt_shape, currentBody.bt_transform, collisionBody.bt_transform, distance.bt_distance);
-                            timer1.stop();
+                            distanceCollection.push_back(distance);
 
+                            timer1.stop();
+                            time_boost += timer1.getElapsedTimeInMilliSec();
+#endif
+#ifdef USE_FCL
                             Timer timer2;
                             timer2.start();
+
                             Distance2 distance2;
                             distance2.frame_id = currentBody.frame_id;
                             distanceCalculation(*currentBody.fcl_shape,*collisionBody.fcl_shape,currentBody.fcl_transform,collisionBody.fcl_transform,distance2.result);
-                            timer2.stop();
-
-                            time_boost += timer1.getElapsedTimeInMilliSec();
-                            time_fcl   += timer2.getElapsedTimeInMilliSec();
-
-                            //ROS_INFO("distance time: bt %f ms, fcl %f ms", timer1.getElapsedTimeInMilliSec(), timer2.getElapsedTimeInMilliSec());
-                            distanceCollection.push_back(distance);
                             distanceCollection2.push_back(distance2);
+
+                            timer2.stop();
+                            time_fcl   += timer2.getElapsedTimeInMilliSec();
+#endif
                         }
                     }
                 }
             }
             // Find minimum distance
-            pickMinimumDistance(distanceCollection,min_distances);
+#ifdef USE_BULLET
+            pickMinimumDistance(distanceCollection,  min_distances);
+#endif
+#ifdef USE_FCL
             pickMinimumDistance(distanceCollection2, min_distances2);
+#endif
         }
     }
 }
@@ -512,28 +526,48 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
 
             if (type=="Box")
             {
+#ifdef USE_BULLET
                 collisionBody.bt_shape = new btBoxShape(btVector3(x,y,z));
+#endif
+#ifdef USE_FCL
                 collisionBody.fcl_shape = shapeToMesh(fcl::Box(x, y, z));
+#endif
             }
             else if (type == "Sphere")
             {
+#ifdef USE_BULLET
                 collisionBody.bt_shape = new btSphereShape(x);
+#endif
+#ifdef USE_FCL
                 collisionBody.fcl_shape = shapeToMesh(fcl::Sphere(x));
+#endif
             }
             else if (type == "Cone")
             {
+#ifdef USE_BULLET
                 collisionBody.bt_shape = new btConeShapeZ(x-0.05,2*z);
+#endif
+#ifdef USE_FCL
                 collisionBody.fcl_shape = shapeToMesh(fcl::Cone(x-0.05, 2*z));
+#endif
             }
             else if (type == "CylinderY")
             {
+#ifdef USE_BULLET
                 collisionBody.bt_shape = new btCylinderShape(btVector3(x,y,z));
+#endif
+#ifdef USE_FCL
                 collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, z)); // TODO: check what happens with y
+#endif
             }
             else if (type == "CylinderZ")
             {
+#ifdef USE_BULLET
                 collisionBody.bt_shape = new btCylinderShapeZ(btVector3(x,y,z));
+#endif
+#ifdef USE_FCL
                 collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, z)); // TODO: check what happens with y
+#endif
             }
         }
     }
@@ -553,8 +587,13 @@ void CollisionAvoidance::calculateTransform()
 #ifdef VERBOSE_TRANSFORMS
             ROS_INFO("transformation of %s", collisionBody.frame_id.c_str());
 #endif
+
+#ifdef USE_BULLET
             setTransform(collisionBody.fk_pose, collisionBody.fix_pose, collisionBody.bt_transform);
+#endif
+#ifdef USE_FCL
             setTransform(collisionBody.fk_pose, collisionBody.fix_pose, collisionBody.fcl_transform);
+#endif
 
 #ifdef VERBOSE_TRANSFORMS
             btVector3 bt_t = collisionBody.bt_transform.getOrigin();
@@ -567,30 +606,7 @@ void CollisionAvoidance::calculateTransform()
 }
 
 
-void CollisionAvoidance::setTransform(const KDL::Frame &fkPose, const KDL::Frame &fixPose, fcl::Transform3f &transform_out)
-{
-    fcl::Transform3f fkTransform;
-    fcl::Transform3f fixTransform;
-    double x,y,z,w;
-
-    fkTransform.setTranslation(fcl::Vec3f(fkPose.p.x(),
-                                          fkPose.p.y(),
-                                          fkPose.p.z()));
-
-    fkPose.M.GetQuaternion(x,y,z,w);
-    fkTransform.setQuatRotation(fcl::Quaternion3f(w,x,y,z));
-
-
-    fixTransform.setTranslation(fcl::Vec3f(fixPose.p.x(),
-                                           fixPose.p.y(),
-                                           fixPose.p.z()));
-
-    fixPose.M.GetQuaternion(x,y,z,w);
-    fixTransform.setQuatRotation(fcl::Quaternion3f(w,x,y,z));
-
-    transform_out = fkTransform*fixTransform;
-}
-
+#ifdef USE_BULLET
 void CollisionAvoidance::setTransform(const KDL::Frame &fkPose, const KDL::Frame &fixPose,btTransform &transform_out)
 {
     btTransform fkTransform;
@@ -614,8 +630,35 @@ void CollisionAvoidance::setTransform(const KDL::Frame &fkPose, const KDL::Frame
 
     transform_out.mult(fkTransform,fixTransform);
 }
+#endif
+#ifdef USE_FCL
+void CollisionAvoidance::setTransform(const KDL::Frame &fkPose, const KDL::Frame &fixPose, fcl::Transform3f &transform_out)
+{
+    fcl::Transform3f fkTransform;
+    fcl::Transform3f fixTransform;
+    double x,y,z,w;
+
+    fkTransform.setTranslation(fcl::Vec3f(fkPose.p.x(),
+                                          fkPose.p.y(),
+                                          fkPose.p.z()));
+
+    fkPose.M.GetQuaternion(x,y,z,w);
+    fkTransform.setQuatRotation(fcl::Quaternion3f(w,x,y,z));
 
 
+    fixTransform.setTranslation(fcl::Vec3f(fixPose.p.x(),
+                                           fixPose.p.y(),
+                                           fixPose.p.z()));
+
+    fixPose.M.GetQuaternion(x,y,z,w);
+    fixTransform.setQuatRotation(fcl::Quaternion3f(w,x,y,z));
+
+    transform_out = fkTransform*fixTransform;
+}
+#endif
+
+
+#ifdef USE_BULLET
 void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA, btConvexShape& shapeB, btTransform& transformA, btTransform& transformB, btPointCollector &distance_out)
 {
     btGjkPairDetector convexConvex(&shapeA, &shapeB, simplexSolver, depthSolver);
@@ -628,7 +671,9 @@ void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA, btConvexShap
     // Calculate closest distance
     convexConvex.getClosestPoints(input, distance_out, 0);
 }
+#endif
 
+#ifdef USE_FCL
 fcl::BVHModel<fcl::OBBRSS>* CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape)
 {
     fcl::BVHModel<fcl::OBBRSS>* model;
@@ -679,6 +724,7 @@ void CollisionAvoidance::distanceCalculation(const fcl::CollisionGeometry& shape
                   &shapeB, transformB,
                   request, result);
 }
+#endif
 
 void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id) const
 {
@@ -855,7 +901,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
     }
 }
 
-
+#ifdef USE_BULLET
 void CollisionAvoidance::pickMinimumDistance(std::vector<Distance> &calculatedDistances, std::vector<Distance> &minimumDistances)
 {
     // For a single collision body pick the minimum of all calculated closest distances by the GJK algorithm.
@@ -877,7 +923,9 @@ void CollisionAvoidance::pickMinimumDistance(std::vector<Distance> &calculatedDi
     }
 
 }
+#endif
 
+#ifdef USE_FCL
 void CollisionAvoidance::pickMinimumDistance(std::vector<Distance2> &calculatedDistances, std::vector<Distance2> &minimumDistances)
 {
     // For a single collision body pick the minimum of all calculated closest distances by the GJK algorithm.
@@ -898,7 +946,7 @@ void CollisionAvoidance::pickMinimumDistance(std::vector<Distance2> &calculatedD
         minimumDistances.push_back(dmin);
     }
 }
-
+#endif
 
 void CollisionAvoidance::calculateRepulsiveForce(std::vector<Distance> &minimumDistances, std::vector<RepulsiveForce> &repulsiveForces, collisionAvoidanceParameters::Parameters &param)
 {
@@ -921,6 +969,7 @@ void CollisionAvoidance::calculateRepulsiveForce(std::vector<Distance> &minimumD
 
 void CollisionAvoidance::visualizeRepulsiveForce(Distance2 &d_min,int id) const
 {
+#ifdef USE_FCL
     visualization_msgs::MarkerArray marker_array;
     visualization_msgs::Marker RFviz;
     geometry_msgs::Point pA;
@@ -967,6 +1016,7 @@ void CollisionAvoidance::visualizeRepulsiveForce(Distance2 &d_min,int id) const
     marker_array.markers.push_back(RFviz);
 
     pub_forces_marker_fcl_.publish(marker_array);
+#endif
 }
 
 void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const

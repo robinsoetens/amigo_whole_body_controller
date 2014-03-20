@@ -22,7 +22,7 @@
 // Map
 #include <tue_map_3d/Map3D.h>
 
-
+#ifdef USE_BULLET
 // Bullet GJK Closest Point calculation
 #include <BulletCollision/NarrowPhaseCollision/btGjkPairDetector.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
@@ -33,11 +33,14 @@
 #include <BulletCollision/NarrowPhaseCollision/btVoronoiSimplexSolver.h>
 #include <BulletCollision/NarrowPhaseCollision/btMinkowskiPenetrationDepthSolver.h>
 #include <Bullet-C-Api.h>
+#endif
 
+#ifdef USE_FCL
 // FCL closest point
 #include <fcl/distance.h>
 #include <fcl/shape/geometric_shapes.h>
 #include <fcl/shape/geometric_shape_to_BVH_model.h>
+#endif
 
 // Timer
 #include "profiling/Profiler.h"
@@ -134,7 +137,9 @@ protected:
     } ;
     struct Distance2 {
         std::string frame_id;
+#ifdef USE_FCL
         fcl::DistanceResult result;
+#endif
     };
 
     struct RepulsiveForce {
@@ -205,25 +210,36 @@ protected:
      * @brief Calculate the Bullet shape pose from the corresponding FK pose using a correction from this frame pose
      * @param Input: Pose of the KDL frame and the fix for the collision bodies, Output: Bullet transform
      */
+#ifdef USE_BULLET
     void setTransform(const KDL::Frame &fkPose, const KDL::Frame& fixPose, btTransform &transform_out);
+#endif
+#ifdef USE_FCL
     void setTransform(const KDL::Frame &fkPose, const KDL::Frame& fixPose, fcl::Transform3f &transform_out);
+#endif
 
     /**
      * @brief Calculate the closest distance between two collision bodies
      * @param Input: The two collision bodies and their poses, output: The closest points with the corresponding distance en normal vector between them
      */
-    static fcl::BVHModel<fcl::OBBRSS>* shapeToMesh(const fcl::CollisionGeometry &shape);
-    static void shapeToMesh(const fcl::CollisionGeometry &shape, fcl::BVHModel<fcl::OBBRSS>* &model);
+#ifdef USE_BULLET
     void distanceCalculation(btConvexShape &shapeA, btConvexShape &shapeB, btTransform& transformA, btTransform& transformB, btPointCollector& distance_out);
+#endif
+#ifdef USE_FCL
+    static fcl::BVHModel<fcl::OBBRSS>* shapeToMesh(const fcl::CollisionGeometry &shape);
+    static void shapeToMesh(const fcl::CollisionGeometry &shape, fcl::BVHModel<fcl::OBBRSS>* &model);    
     void distanceCalculation(const fcl::CollisionGeometry& shapeA, fcl::CollisionGeometry& shapeB, const fcl::Transform3f& transformA, const fcl::Transform3f& transformB, fcl::DistanceResult& result);
+#endif
 
     /**
      * @brief Select the minimal closest distance
      * @param Vector with all closest distances from a collision body, Vector with the minimal closest distances
      */
+#ifdef USE_BULLET
     void pickMinimumDistance(std::vector<Distance> &calculatedDistances, std::vector<Distance> &minimumDistances);
+#endif
+#ifdef USE_FCL
     void pickMinimumDistance(std::vector<Distance2> &calculatedDistances, std::vector<Distance2> &minimumDistances);
-
+#endif
     /**
      * @brief Calculate the amplitude of the repulsive forces
      * @param Vector with the minimal closest distances, Vector with the repulsive forces
