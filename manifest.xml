@@ -33,6 +33,8 @@
   
   <depend package="visualization_msgs"/>
 
+  <depend package="octomap"/>
+
   <depend package="bullet"/>
 
   <export>
