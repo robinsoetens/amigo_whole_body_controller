@@ -35,6 +35,9 @@
 #include <Bullet-C-Api.h>
 #endif
 
+// VWM stuff
+#include <vwmclient.h>
+
 #ifdef USE_FCL
 // FCL closest point
 #include <fcl/distance.h>
@@ -162,6 +165,8 @@ protected:
     KDL::Frame no_fix_;
 
     octomap::OcTreeStamped* octomap_;
+
+    vwm::Client client_;
 
     btConvexPenetrationDepthSolver*	depthSolver;
     btSimplexSolverInterface* simplexSolver;

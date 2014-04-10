@@ -19,7 +19,7 @@
 using namespace std;
 
 CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts)
-    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL),
+    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL), client_(),
       time_total(0), time_boost(0), time_fcl(0), time_octomap(0), report_counter(0)
 {
     /// Status is always 2 (always active)

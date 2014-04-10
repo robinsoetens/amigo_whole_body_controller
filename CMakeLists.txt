@@ -59,6 +59,7 @@ rosbuild_add_library(wholebodycontroller
                                         src/RobotState.cpp
                                         src/Tree.cpp
                                         src/Tracing.cpp
+                                        src/vwmclient.cpp
 )
 
 rosbuild_add_library(motionobjectives

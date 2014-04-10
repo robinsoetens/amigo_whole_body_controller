@@ -1,10 +1,10 @@
-#include "../include/vwm_test/vwmclient.h"
+#include "../include/vwmclient.h"
 
 #include "fcl/traversal/traversal_node_bvhs.h"
 #include "fcl/traversal/traversal_node_setup.h"
 #include "fcl/collision_node.h"
 
-#include "../include/vwm_test/wire_tools.h"
+#include "../include/wire_tools.h"
 
 namespace wire_tools {
 
@@ -107,21 +107,12 @@ void vwmClient::step()
 
         fcl::CollisionObject obj = wire_tools::transform2fcl(shape, pose);
 
-        DistanceData cdata = distance(main_obj, obj);
+        //DistanceData cdata = distance(main_obj, obj);
 
-        Vec3f v1 = cdata.result.nearest_points[0];
-        Vec3f v2 = cdata.result.nearest_points[1];
-        drawLine(v1, v2, e.getID());
+        //fcl::Vec3f v1 = cdata.result.nearest_points[0];
+        //fcl::Vec3f v2 = cdata.result.nearest_points[1];
+        //drawLine(v1, v2, e.getID());
     }
-}
-
-DistanceData vwmClient::distance(fcl::CollisionObject obj1, fcl::CollisionObject obj2)
-{
-    DistanceData cdata;
-    cdata.request.enable_nearest_points = true;
-    FCL_REAL dist1 = std::numeric_limits<FCL_REAL>::max();
-    defaultDistanceFunction(&obj1, &obj2, &cdata, dist1);
-    return cdata;
 }
 
 void vwmClient::drawLine(fcl::Vec3f v1, fcl::Vec3f v2, std::string ns)
@@ -154,20 +145,5 @@ void vwmClient::drawLine(fcl::Vec3f v1, fcl::Vec3f v2, std::string ns)
 
     marker_pub.publish(line_strip);
 }
-
-#ifndef USE_FCL
-void vwmClient::distanceCalculation(btConvexShape& shapeA, btConvexShape& shapeB, btTransform& transformA, btTransform& transformB, btPointCollector &distance_out)
-{
-    btGjkPairDetector convexConvex(&shapeA, &shapeB, simplexSolver, depthSolver);
-
-    // Set input transforms
-    btGjkPairDetector::ClosestPointInput input;
-    input.m_transformA = transformA;
-    input.m_transformB = transformB;
-
-    // Calculate closest distance
-    convexConvex.getClosestPoints(input, distance_out, 0);
-}
-#endif
 
 } // namespace
