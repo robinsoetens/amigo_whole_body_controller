@@ -12,7 +12,7 @@
 #include "fcl/traversal/traversal_node_setup.h"
 #include "fcl/collision_node.h"
 
-namespace wire_tools {
+namespace vwm_tools {
 
 inline fcl::CollisionObject transform2fcl(const geo::ShapeConstPtr &shape, const geo::Pose3D &pose)
 {

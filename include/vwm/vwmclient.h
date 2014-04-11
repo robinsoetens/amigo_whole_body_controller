@@ -1,8 +1,6 @@
 #ifndef VWMCLIENT_H
 #define VWMCLIENT_H
 
-#define USE_FCL
-
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 
@@ -19,7 +17,7 @@
 
 #include <fcl/collision_data.h>
 
-namespace wire_tools {
+namespace vwm_tools {
 
 class vwmClient
 {

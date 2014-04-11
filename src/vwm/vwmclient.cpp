@@ -1,12 +1,12 @@
-#include "../include/vwmclient.h"
+#include "vwm/vwmclient.h"
 
 #include "fcl/traversal/traversal_node_bvhs.h"
 #include "fcl/traversal/traversal_node_setup.h"
 #include "fcl/collision_node.h"
 
-#include "../include/wire_tools.h"
+#include "vwm/vwm_tools.h"
 
-namespace wire_tools {
+namespace vwm_tools {
 
 struct TStruct
 {
@@ -22,16 +22,12 @@ struct TStruct
   }
 };
 
-vwmClient::vwmClient() {
+vwmClient::vwmClient()
+{
 }
 
 vwmClient::~vwmClient()
 {
-
-#ifndef USE_FCL
-    delete depthSolver;
-    delete simplexSolver;
-#endif
 }
 
 void vwmClient::initRandomObj()
@@ -80,7 +76,7 @@ void vwmClient::step()
         return;
     }
 
-    fcl::CollisionObject main_obj = wire_tools::transform2fcl(main_shape, main_pose);
+    fcl::CollisionObject main_obj = vwm_tools::transform2fcl(main_shape, main_pose);
 
     for(std::map<vwm::UUID, vwm::EntityHandle>::const_iterator it = entities.begin(); it != entities.end(); ++it) {
         vwm::EntityHandle e = it->second;
@@ -105,7 +101,7 @@ void vwmClient::step()
 
         std::cout << "    shape: " << shape->getMesh().getTriangles().size() << " triangles" << std::endl;
 
-        fcl::CollisionObject obj = wire_tools::transform2fcl(shape, pose);
+        fcl::CollisionObject obj = vwm_tools::transform2fcl(shape, pose);
 
         //DistanceData cdata = distance(main_obj, obj);
 
