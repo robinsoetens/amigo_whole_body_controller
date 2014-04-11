@@ -36,7 +36,7 @@
 #endif
 
 // VWM stuff
-#include <vwmclient.h>
+#include <vwm/vwmclient.h>
 
 #ifdef USE_FCL
 // FCL closest point
