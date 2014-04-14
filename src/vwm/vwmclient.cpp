@@ -28,33 +28,6 @@ void vwmClient::update()
 
     const std::map<vwm::UUID, vwm::EntityHandle>& entities = world->getEntities();
 
-    vwm::EntityHandle mainEntity = world->getEntity("test-entity");
-
-    if (!mainEntity.exists())
-    {
-        ROS_INFO("No main entity found");
-        return;
-    }
-
-    vwm::TransformPtr main_t;
-    if (!mainEntity.getTransformFrom("/world", main_t)) {
-        std::cout << "    No transform found" << std::endl;
-        return;
-    }
-
-    geo::Pose3D main_pose;
-    if (main_t->getBestPose(main_pose)) {
-        std::cout << "    " << main_pose << std::endl;
-    }
-
-    geo::ShapeConstPtr main_shape = mainEntity.getShape();
-    if (!main_shape) {
-        std::cout << "    no shape" << std::endl;
-        return;
-    }
-
-    fcl::CollisionObject main_obj = vwm_tools::transform2fcl(main_shape, main_pose);
-
     for(std::map<vwm::UUID, vwm::EntityHandle>::const_iterator it = entities.begin(); it != entities.end(); ++it) {
         vwm::EntityHandle e = it->second;
         std::cout << "  " << e.getID() << std::endl;
