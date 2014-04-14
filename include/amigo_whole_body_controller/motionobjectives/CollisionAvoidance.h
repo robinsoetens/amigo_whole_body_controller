@@ -166,7 +166,7 @@ protected:
 
     octomap::OcTreeStamped* octomap_;
 
-    vwm::Client client_;
+    vwm_tools::vwmClient client_;
 
     btConvexPenetrationDepthSolver*	depthSolver;
     btSimplexSolverInterface* simplexSolver;

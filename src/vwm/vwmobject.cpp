@@ -2,7 +2,8 @@
 
 namespace vwm_tools {
 
-vwmObject::vwmObject()
+vwmObject::vwmObject(vwm::EntityHandle e) :
+shape_revision_(-2)
 {
 }
 

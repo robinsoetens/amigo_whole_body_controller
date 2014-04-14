@@ -33,8 +33,7 @@ public:
 
     // member functions
     void initRandomObj();
-    void step();
-    void drawLine(fcl::Vec3f v1, fcl::Vec3f v2, std::string ns);
+    void update();
 };
 
 } // namespace

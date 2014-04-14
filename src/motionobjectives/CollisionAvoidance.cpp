@@ -135,6 +135,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
         ROS_INFO("collision time:\n\ttotal: %f\n\tboost: %f\n\tfcl: %f\n\toctomap: %f", time_total, time_boost, time_fcl, time_octomap);
 
         report_counter = 0;
+        this->client_.update();
     }
     report_counter++;
 }
