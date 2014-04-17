@@ -391,6 +391,43 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
     //calculateRepulsiveForce(min_distances,repulsive_forces,ca_param_.environment_collision);
 }
 
+
+/// @brief Distance data stores the distance request and the result given by distance algorithm.
+struct DistanceData
+{
+  DistanceData()
+  {
+    done = false;
+  }
+
+  /// @brief Distance request
+  fcl::DistanceRequest request;
+
+  /// @brief Distance result
+  fcl::DistanceResult result;
+
+  /// @brief Whether the distance iteration can stop
+  bool done;
+
+};
+
+bool environmentCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObject* o2, void* cdata_, fcl::FCL_REAL& dist)
+{
+  DistanceData* cdata = static_cast<DistanceData*>(cdata_);
+  const fcl::DistanceRequest& request = cdata->request;
+  fcl::DistanceResult& result = cdata->result;
+
+  if(cdata->done) { dist = result.min_distance; return true; }
+
+  fcl::distance(o1, o2, request, result);
+
+  dist = result.min_distance;
+
+  if(dist <= 0) return true; // in collision or in touch
+
+  return cdata->done;
+}
+
 void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_distances) {
 
     std::vector<fcl::CollisionObject*> objects = client_.getWorldObjects();
@@ -398,15 +435,28 @@ void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_dis
         return;
     }
 
-    fcl::DynamicAABBTreeCollisionManager* manager = new fcl::DynamicAABBTreeCollisionManager();
-    manager->registerObjects(objects);
-    manager->setup();
+    fcl::DynamicAABBTreeCollisionManager manager();
+    manager.registerObjects(objects);
+    manager.setup();
 
-    /*
-    CollisionData cdata2;
-    if(exhaustive) cdata2.request.num_max_contacts = 100000;
-    manager->collide(&obj1, &cdata2, defaultCollisionFunction);
-    */
+    // Calculate closest distances using Bullet
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
+    {
+        std::vector<RobotState::CollisionBody> &group = *itrGroups;
+        for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
+        {
+            RobotState::CollisionBody &collisionBody = *itrBodies;
+
+            boost::shared_ptr<fcl::CollisionGeometry> cg_ptr(collisionBody.fcl_shape);
+            fcl::CollisionObject obj(cg_ptr, collisionBody.fcl_transform);
+
+            DistanceData cdata;
+            cdata.request.enable_nearest_points = true;
+            manager.distance(&obj, &cdata, environmentCollisionDistanceFunction);
+
+            double min = cdata.result.min_distance;
+        }
+    }
 }
 
 void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsive_forces)

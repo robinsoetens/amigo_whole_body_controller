@@ -38,8 +38,9 @@ void vwmClient::update()
         if (obj) {
             objects.push_back(obj);
         }
-
     }
+
+    world_objects = objects;
 
     updateTimer.stop();
     ROS_INFO("VWM update took %f ms, (%li/%li) collision bodies found", updateTimer.getElapsedTimeInMilliSec(), objects.size(), entities.size());
