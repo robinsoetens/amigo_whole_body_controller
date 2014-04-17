@@ -198,7 +198,8 @@ protected:
      * @brief Calculate the repulsive forces as a result of environment collision avoidance
      * @param Output: Vector with the minimum distances to the environment, vector with the repulsive forces
      */
-    void environmentCollision(std::vector<Distance> &min_distances, std::vector<RepulsiveForce> &repulsive_forces);
+    void environmentCollision(   std::vector<Distance>  &min_distances, std::vector<RepulsiveForce> &repulsive_forces);
+    void environmentCollisionVWM(std::vector<Distance2> &min_distances);
 
     /**
      * @brief Construct the collision bodies

@@ -5,6 +5,8 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
 
+#include <fcl/broadphase/broadphase.h>
+
 // debug information for transformations
 //#define VERBOSE_TRANSFORMS
 
@@ -115,6 +117,9 @@ void CollisionAvoidance::apply(RobotState &robotstate)
             ROS_WARN_ONCE("Collision Avoidance: No octomap created!");
         }
     }
+
+    // Calculate the repulsive forces as a result of the volumetric world model
+    environmentCollisionVWM(min_distances_total2);
 
     timer_octomap.stop();
     time_octomap += timer_octomap.getElapsedTimeInMilliSec();
@@ -386,6 +391,23 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
     //calculateRepulsiveForce(min_distances,repulsive_forces,ca_param_.environment_collision);
 }
 
+void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_distances) {
+
+    std::vector<fcl::CollisionObject*> objects = client_.getWorldObjects();
+    if (!objects.size()) {
+        return;
+    }
+
+    fcl::DynamicAABBTreeCollisionManager* manager = new fcl::DynamicAABBTreeCollisionManager();
+    manager->registerObjects(objects);
+    manager->setup();
+
+    /*
+    CollisionData cdata2;
+    if(exhaustive) cdata2.request.num_max_contacts = 100000;
+    manager->collide(&obj1, &cdata2, defaultCollisionFunction);
+    */
+}
 
 void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsive_forces)
 {
