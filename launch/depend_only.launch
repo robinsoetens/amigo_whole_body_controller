@@ -15,5 +15,5 @@
 	
 	<!--<node pkg="amigo_whole_body_controller" type="whole_body_controller" name="whole_body_controller" respawn="false" output="screen"/> launch-prefix="${arg launch_prefix}"/> -->
 
-	<include file="$(find wire_volume)/launch/start.launch" />
+	<include file="$(find wire_volume)/launch/test_transport.launch" />
 </launch>

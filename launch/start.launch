@@ -27,7 +27,5 @@
 		<remap from="/amigo/neck/references" to="/TEST_TORQUES_NECK" /> 
 	</node>
 
-	<include file="$(find wire_volume)/launch/start.launch" />
+	<include file="$(find wire_volume)/launch/test_transport.launch" />
 </launch>
-
-
