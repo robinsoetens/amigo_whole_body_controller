@@ -6,12 +6,7 @@
 
 #include <wire_volume/transport/Client.h>
 
-#include <geolib/Shape.h>
-
-#include <wire_volume/UpdateRequest.h>
-#include <wire_volume/transport/Serializer.h>
-#include <wire_volume/Entity.h>
-#include <wire_volume/WorldModel.h>
+#include <geolib_fcl/shapecache.h>
 
 #include <geolib/Box.h>
 
@@ -30,6 +25,7 @@ public:
     vwm::Client client;
     ros::Publisher marker_pub;
 
+    vwm::ShapeCache cache;
 
     // member functions
     void initRandomObj();

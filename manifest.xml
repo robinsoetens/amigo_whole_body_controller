@@ -27,7 +27,8 @@
   <depend package="kdl_parser"/>
   
   <depend package="amigo_arm_navigation"/>
-  <depend package="wire_volume_transport"/>
+  <depend package="wire_volume"/>
+  <depend package="geolib_fcl"/>
   <depend package="tue_map_3d"/>
   <depend package="amigo_ref_interpolator"/>
   <depend package="tue_gazebo_plugins"/>

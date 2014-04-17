@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 
 <launch>
-
     <arg name="launch_prefix" default="" />
     
     <arg name="ROBOT_REAL" default="$(optenv ROBOT_REAL false)" />
@@ -27,6 +26,8 @@
 		<remap from="/amigo/torso/references" to="/TEST_TORQUES_TORSO" />-->
 		<remap from="/amigo/neck/references" to="/TEST_TORQUES_NECK" /> 
 	</node>
+
+	<include file="$(find wire_volume)/launch/start.launch" />
 </launch>
 
 

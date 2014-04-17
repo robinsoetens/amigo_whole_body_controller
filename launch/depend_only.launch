@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 
 <launch>
-
     <arg name="launch_prefix" default="" />
 
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/parameters.yaml" command="load" ns="whole_body_controller"/>
@@ -15,4 +14,6 @@
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/joint_trajectory_action.yaml" command="load" ns="whole_body_controller"/>
 	
 	<!--<node pkg="amigo_whole_body_controller" type="whole_body_controller" name="whole_body_controller" respawn="false" output="screen"/> launch-prefix="${arg launch_prefix}"/> -->
+
+	<include file="$(find wire_volume)/launch/start.launch" />
 </launch>
