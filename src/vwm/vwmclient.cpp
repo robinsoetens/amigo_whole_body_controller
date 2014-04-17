@@ -12,7 +12,7 @@
 namespace vwm_tools {
 
 vwmClient::vwmClient()
-    : cache()
+    : cache(), world_objects()
 {
 }
 
@@ -29,22 +29,25 @@ void vwmClient::update()
 
     const std::map<vwm::UUID, vwm::EntityHandle>& entities = world->getEntities();
 
+    std::vector<fcl::CollisionObject*> objects;
     for(std::map<vwm::UUID, vwm::EntityHandle>::const_iterator it = entities.begin(); it != entities.end(); ++it) {
         vwm::EntityHandle e = it->second;
-        std::cout << "  entity: " << e.getID() << std::endl;
 
         fcl::CollisionObject* obj = cache.getCollisionObject(e);
 
         if (obj) {
-            std::cout << "    made a collision object" << std::endl;
-        } else {
-            std::cout << "    error, no collision object made" << std::endl;
+            objects.push_back(obj);
         }
 
     }
 
     updateTimer.stop();
-    ROS_INFO("VWM update took %f ms", updateTimer.getElapsedTimeInMilliSec());
+    ROS_INFO("VWM update took %f ms, (%li/%li) collision bodies found", updateTimer.getElapsedTimeInMilliSec(), objects.size(), entities.size());
+}
+
+std::vector<fcl::CollisionObject*> vwmClient::getWorldObjects()
+{
+    return world_objects;
 }
 
 } // namespace

@@ -16,8 +16,13 @@ namespace vwm_tools {
 
 class vwmClient
 {
+private:
+    vwm::ShapeCache cache;
+
+    std::vector<fcl::CollisionObject*> world_objects;
+
 public:
-    // constructor
+
     vwmClient();
     ~vwmClient();
 
@@ -25,11 +30,10 @@ public:
     vwm::Client client;
     ros::Publisher marker_pub;
 
-    vwm::ShapeCache cache;
-
     // member functions
-    void initRandomObj();
     void update();
+
+    std::vector<fcl::CollisionObject*> getWorldObjects();
 };
 
 } // namespace
