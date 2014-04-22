@@ -5,7 +5,7 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
 
-#include <fcl/broadphase/broadphase.h>
+#include <fcl/broadphase/broadphase_dynamic_AABB_tree.h>
 
 // debug information for transformations
 //#define VERBOSE_TRANSFORMS
@@ -435,7 +435,7 @@ void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_dis
         return;
     }
 
-    fcl::DynamicAABBTreeCollisionManager manager();
+    fcl::DynamicAABBTreeCollisionManager manager;
     manager.registerObjects(objects);
     manager.setup();
 
