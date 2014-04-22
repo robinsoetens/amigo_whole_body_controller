@@ -27,6 +27,11 @@ void vwmClient::update()
 
     vwm::WorldModelConstPtr world = client.getWorld();
 
+    if (!world) {
+        ROS_WARN_ONCE("The world model is not running! Environment collision will not be available");
+        return;
+    }
+
     const std::map<vwm::UUID, vwm::EntityHandle>& entities = world->getEntities();
 
     std::vector<fcl::CollisionObject*> objects;
