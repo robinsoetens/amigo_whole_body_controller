@@ -171,6 +171,7 @@ void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
 #endif
 #ifdef USE_FCL
     object_collision_body.fcl_shape = shapeToMesh(fcl::Cylinder(r, z_dim));
+    object_collision_body.fcl_object = boost::shared_ptr<fcl::CollisionObject>(new fcl::CollisionObject(object_collision_body.fcl_shape));
 #endif
 
     object_collision_body.fix_pose.Identity();                      //ToDo: is now initialized as p = [0,0,0], M = [0,0,0,1]
@@ -250,7 +251,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 
                             Distance2 distance2;
                             distance2.frame_id = currentBody.frame_id;
-                            distanceCalculation(*currentBody.fcl_shape,*collisionBody.fcl_shape,currentBody.fcl_transform,collisionBody.fcl_transform,distance2.result);
+                            distanceCalculation(currentBody.fcl_object.get(), collisionBody.fcl_object.get(), distance2.result);
                             distanceCollection2.push_back(distance2);
 
                             timer2.stop();
@@ -451,16 +452,14 @@ void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_dis
         {
             RobotState::CollisionBody &collisionBody = *itrBodies;
 
-            boost::shared_ptr<fcl::CollisionGeometry> cg_ptr(collisionBody.fcl_shape);
-            fcl::CollisionObject obj(cg_ptr, collisionBody.fcl_transform);
-
             DistanceData cdata;
             cdata.request.enable_nearest_points = true;
-            manager.distance(&obj, &cdata, environmentCollisionDistanceFunction);
+            manager.distance(collisionBody.fcl_object.get(), &cdata, environmentCollisionDistanceFunction);
 
             double min = cdata.result.min_distance;
         }
     }
+    manager.clear();
 }
 #endif
 
@@ -647,6 +646,9 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
                 collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, z)); // TODO: check what happens with y
 #endif
             }
+#ifdef USE_FCL
+            collisionBody.fcl_object = boost::shared_ptr<fcl::CollisionObject>(new fcl::CollisionObject(collisionBody.fcl_shape));
+#endif
         }
     }
 }
@@ -671,6 +673,7 @@ void CollisionAvoidance::calculateTransform()
 #endif
 #ifdef USE_FCL
             setTransform(collisionBody.fk_pose, collisionBody.fix_pose, collisionBody.fcl_transform);
+            collisionBody.fcl_object.get()->setTransform(collisionBody.fcl_transform);
 #endif
 
 #ifdef VERBOSE_TRANSFORMS
@@ -752,16 +755,10 @@ void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA, btConvexShap
 #endif
 
 #ifdef USE_FCL
-fcl::BVHModel<fcl::OBBRSS>* CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape)
-{
-    fcl::BVHModel<fcl::OBBRSS>* model;
-    shapeToMesh(shape, model);
-    return model;
-}
 
-void CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape, fcl::BVHModel<fcl::OBBRSS>* &model)
+boost::shared_ptr<fcl::CollisionGeometry> CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape)
 {
-    model = new fcl::BVHModel<fcl::OBBRSS>();
+    fcl::BVHModel<fcl::OBBRSS>* model = new fcl::BVHModel<fcl::OBBRSS>();
 
     fcl::NODE_TYPE shapeType = shape.getNodeType();
     switch(shapeType)
@@ -792,15 +789,16 @@ void CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape, fcl::B
         break;
     }
     }
+
+    return boost::shared_ptr<fcl::CollisionGeometry>(model);
 }
 
-void CollisionAvoidance::distanceCalculation(const fcl::CollisionGeometry& shapeA, fcl::CollisionGeometry& shapeB, const fcl::Transform3f& transformA, const fcl::Transform3f& transformB, fcl::DistanceResult& result)
+void CollisionAvoidance::distanceCalculation(const fcl::CollisionObject* o1, const fcl::CollisionObject* o2, fcl::DistanceResult& result)
 {
     fcl::DistanceRequest request(true);
 
-    fcl::distance(&shapeA, transformA,
-                  &shapeB, transformB,
-                  request, result);
+    //FCL_REAL distance(const CollisionObject* o1, const CollisionObject* o2, const DistanceRequest& request, DistanceResult& result)
+    distance(o1, o2, request, result);
 }
 #endif
 

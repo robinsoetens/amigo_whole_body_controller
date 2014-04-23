@@ -237,9 +237,8 @@ protected:
     void distanceCalculation(btConvexShape &shapeA, btConvexShape &shapeB, btTransform& transformA, btTransform& transformB, btPointCollector& distance_out);
 #endif
 #ifdef USE_FCL
-    static fcl::BVHModel<fcl::OBBRSS>* shapeToMesh(const fcl::CollisionGeometry &shape);
-    static void shapeToMesh(const fcl::CollisionGeometry &shape, fcl::BVHModel<fcl::OBBRSS>* &model);    
-    void distanceCalculation(const fcl::CollisionGeometry& shapeA, fcl::CollisionGeometry& shapeB, const fcl::Transform3f& transformA, const fcl::Transform3f& transformB, fcl::DistanceResult& result);
+    static boost::shared_ptr<fcl::CollisionGeometry> shapeToMesh(const fcl::CollisionGeometry &shape);
+    void distanceCalculation(const fcl::CollisionObject* o1, const fcl::CollisionObject* o2, fcl::DistanceResult& result);
 #endif
 
     /**
