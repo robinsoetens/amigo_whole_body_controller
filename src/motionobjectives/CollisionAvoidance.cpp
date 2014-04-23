@@ -21,7 +21,7 @@
 using namespace std;
 
 CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts)
-    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL), client_(),
+    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL),
       time_total(0), time_boost(0), time_fcl(0), time_octomap(0), report_counter(0)
 {
     /// Status is always 2 (always active)
@@ -118,8 +118,10 @@ void CollisionAvoidance::apply(RobotState &robotstate)
         }
     }
 
+#ifdef USE_FCL
     // Calculate the repulsive forces as a result of the volumetric world model
     environmentCollisionVWM(min_distances_total2);
+#endif
 
     timer_octomap.stop();
     time_octomap += timer_octomap.getElapsedTimeInMilliSec();
@@ -140,7 +142,9 @@ void CollisionAvoidance::apply(RobotState &robotstate)
         ROS_INFO("collision time:\n\ttotal: %f\n\tboost: %f\n\tfcl: %f\n\toctomap: %f", time_total, time_boost, time_fcl, time_octomap);
 
         report_counter = 0;
+#ifdef USE_FCL
         this->client_.update();
+#endif
     }
     report_counter++;
 }
@@ -391,7 +395,7 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
     //calculateRepulsiveForce(min_distances,repulsive_forces,ca_param_.environment_collision);
 }
 
-
+#ifdef USE_FCL
 /// @brief Distance data stores the distance request and the result given by distance algorithm.
 struct DistanceData
 {
@@ -458,6 +462,7 @@ void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_dis
         }
     }
 }
+#endif
 
 void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsive_forces)
 {

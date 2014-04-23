@@ -42,11 +42,11 @@ add_definitions(${EIGEN_DEFINITIONS})
 
 #link to a local version of FCL
 #set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules)
-find_package(fcl REQUIRED)
+#find_package(fcl REQUIRED)
 message("fcl_INCLUDE_DIRS: "    ${fcl_INCLUDE_DIRS})
 message("fcl_LIBRARIES: "       ${fcl_LIBRARIES})
-include_directories(${fcl_INCLUDE_DIRS})
-link_libraries(${fcl_LIBRARIES})
+#include_directories(${fcl_INCLUDE_DIRS})
+#link_libraries(${fcl_LIBRARIES})
 
 #common commands for building c++ executables and libraries
 # OBSOLETE???: src/TreeDescription.cpp
@@ -59,8 +59,7 @@ rosbuild_add_library(wholebodycontroller
                                         src/RobotState.cpp
                                         src/Tree.cpp
                                         src/Tracing.cpp
-                                        src/vwm/vwmclient.cpp
-                                        src/vwm/vwmobject.cpp
+
 )
 
 rosbuild_add_library(motionobjectives
@@ -74,6 +73,21 @@ rosbuild_add_library(interfaces
                                src/interfaces/JointTrajectoryAction.cpp
                                src/interfaces/RobotInterface.cpp
 )
+
+message("geolib_fcl_INCLUDE_DIRS: "    ${geolib_fcl_INCLUDE_DIRS})
+message("geolib_fcl_LIBRARIES: "       ${geolib_fcl_LIBRARIES})
+if (geolib_fcl_INCLUDE_DIRS AND geolib_fcl_LIBRARIES)
+
+    rosbuild_add_library(vwm_tools
+        src/vwm/vwmclient.cpp
+        src/vwm/vwmobject.cpp
+    )
+    target_link_libraries(wholebodycontroller vwm_tools)
+    message(STATUS "WBC uses VWM")
+else()
+    message(STATUS "WBC does not use VWM")
+endif()
+
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)

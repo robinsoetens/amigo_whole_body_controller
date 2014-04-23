@@ -35,14 +35,16 @@
 #include <Bullet-C-Api.h>
 #endif
 
+#ifdef USE_FCL
+
 // VWM stuff
 #include <vwm/vwmclient.h>
 
-#ifdef USE_FCL
 // FCL closest point
 #include <fcl/distance.h>
 #include <fcl/shape/geometric_shapes.h>
 #include <fcl/shape/geometric_shape_to_BVH_model.h>
+
 #endif
 
 // Timer
@@ -166,7 +168,9 @@ protected:
 
     octomap::OcTreeStamped* octomap_;
 
+#ifdef USE_FCL
     vwm_tools::vwmClient client_;
+#endif
 
     btConvexPenetrationDepthSolver*	depthSolver;
     btSimplexSolverInterface* simplexSolver;
@@ -199,7 +203,9 @@ protected:
      * @param Output: Vector with the minimum distances to the environment, vector with the repulsive forces
      */
     void environmentCollision(   std::vector<Distance>  &min_distances, std::vector<RepulsiveForce> &repulsive_forces);
+#ifdef USE_FCL
     void environmentCollisionVWM(std::vector<Distance2> &min_distances);
+#endif
 
     /**
      * @brief Construct the collision bodies
