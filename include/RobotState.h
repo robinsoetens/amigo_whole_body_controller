@@ -21,7 +21,7 @@
 #include <kdl/frames.hpp>
 
 // Choose what collision library will be used
-//#define USE_FCL
+#define USE_FCL
 #define USE_BULLET
 
 // Bullet
