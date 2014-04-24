@@ -49,10 +49,12 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     std::string ns = ros::this_node::getName();
 
     // Initialize output topics
-    pub_model_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_model_markers/", 10);
-    pub_forces_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers/", 10);
+    pub_model_marker_      = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_model_markers/", 10);
+    pub_model_marker_fcl_  = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_model_markers_fcl/", 10);
+    pub_forces_marker_     = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers/", 10);
     pub_forces_marker_fcl_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers_fcl/", 10);
-    pub_bbx_marker_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
+    pub_bbx_marker_        = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
+    pub_bbx_marker_fcl_    = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers_fcl/", 10);
 
     // Initialize OctoMap
     octomap_ = new octomap::OcTreeStamped(ca_param_.environment_collision.octomap_resolution);
@@ -456,7 +458,10 @@ void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_dis
             cdata.request.enable_nearest_points = true;
             manager.distance(collisionBody.fcl_object.get(), &cdata, environmentCollisionDistanceFunction);
 
-            double min = cdata.result.min_distance;
+            Distance2 distance;
+            distance.frame_id = collisionBody.frame_id;
+            distance.result = cdata.result;
+            min_distances.push_back(distance);
         }
     }
     manager.clear();
