@@ -284,6 +284,7 @@ protected:
      * @param Collision body information
      */
     void visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id)  const;
+    void visualizeCollisionModelFCL(RobotState::CollisionBody collisionBody,int id)  const;
 
     /**
      * @brief Construct the visualization markers to visualize the repulsive forces in RVIZ

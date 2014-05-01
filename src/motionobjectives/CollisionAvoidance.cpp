@@ -565,6 +565,7 @@ void CollisionAvoidance::visualize(std::vector<Distance> &min_distances) const
         {
             RobotState::CollisionBody &collisionBody = *itrsBodies;
             visualizeCollisionModel(collisionBody,id++);
+            visualizeCollisionModelFCL(collisionBody,id++);
         }
     }
 
@@ -981,6 +982,48 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
         pub_model_marker_.publish(marker_array);
     }
 }
+
+#ifdef USE_FCL
+void CollisionAvoidance::visualizeCollisionModelFCL(RobotState::CollisionBody collisionBody,int id) const
+{
+    const fcl::CollisionGeometry* cg = collisionBody.fcl_shape.get();
+    fcl::NODE_TYPE nodeType = cg->getNodeType();
+    fcl::OBJECT_TYPE objType = cg->getObjectType();
+
+    switch(objType)
+    {
+    case fcl::OT_BVH: {
+        switch (nodeType)
+        {
+        case fcl::BV_OBBRSS: {
+            const fcl::BVHModel<fcl::OBBRSS>* model = dynamic_cast<const fcl::BVHModel<fcl::OBBRSS>*>(cg);
+            //fcl::Vec3f* temp = new fcl::Vec3f[model->num_vertices];
+            //memcpy(temp, model->vertices, sizeof(fcl::Vec3f) * model->num_vertices);
+
+            std::vector<fcl::Vec3f>    vertices (model->vertices,    model->vertices    + model->num_vertices);
+            std::vector<fcl::Triangle> triangles(model->tri_indices, model->tri_indices + model->num_tris);
+
+            break;
+        }
+        default: {
+            ROS_WARN_ONCE("error converting unknown fcl node type: %i", nodeType);
+            break;
+        }
+        }
+        break;
+    }
+    default:
+    {
+        ROS_WARN_ONCE("error converting unknown fcl object type: %i", objType);
+        break;
+    }
+    }
+
+    visualization_msgs::Marker modelviz;
+    visualization_msgs::MarkerArray marker_array;
+
+}
+#endif
 
 #ifdef USE_BULLET
 void CollisionAvoidance::pickMinimumDistance(std::vector<Distance> &calculatedDistances, std::vector<Distance> &minimumDistances)
