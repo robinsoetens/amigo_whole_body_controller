@@ -6,6 +6,7 @@
 #include <visualization_msgs/MarkerArray.h>
 
 #include <fcl/broadphase/broadphase_dynamic_AABB_tree.h>
+#include <geolib_fcl/tools.h>
 
 // debug information for transformations
 //#define VERBOSE_TRANSFORMS
@@ -986,8 +987,10 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 #ifdef USE_FCL
 void CollisionAvoidance::visualizeCollisionModelFCL(RobotState::CollisionBody collisionBody,int id) const
 {
-    const fcl::CollisionGeometry *cg = collisionBody.fcl_shape.get();
+    //const fcl::CollisionGeometry *cg = collisionBody.fcl_shape.get();
+    const fcl::CollisionObject* obj  = collisionBody.fcl_object.get();
 
+    visualization_msgs::Marker m = vwm::objectFCLtoMarker(obj);
 
 
     // TODO pub
