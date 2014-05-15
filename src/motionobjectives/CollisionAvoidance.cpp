@@ -988,9 +988,10 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 void CollisionAvoidance::visualizeCollisionModelFCL(RobotState::CollisionBody collisionBody,int id) const
 {
     //const fcl::CollisionGeometry *cg = collisionBody.fcl_shape.get();
-    const fcl::CollisionObject* obj  = collisionBody.fcl_object.get();
+    const fcl::CollisionObject &obj = *collisionBody.fcl_object.get();
 
-    visualization_msgs::Marker m = vwm::objectFCLtoMarker(obj);
+    visualization_msgs::Marker m;
+    vwm::objectFCLtoMarker(obj, m);
 
 
     // TODO pub
