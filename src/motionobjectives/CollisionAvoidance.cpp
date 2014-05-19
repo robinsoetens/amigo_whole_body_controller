@@ -51,7 +51,7 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
     // Initialize output topics
     pub_model_marker_      = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_model_markers/", 10);
-    pub_model_marker_fcl_  = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/collision_model_markers_fcl/", 10);
+    pub_model_marker_fcl_  = n.advertise<visualization_msgs::Marker>("/whole_body_controller/collision_model_markers_fcl/", 10);
     pub_forces_marker_     = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers/", 10);
     pub_forces_marker_fcl_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers_fcl/", 10);
     pub_bbx_marker_        = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
@@ -813,7 +813,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 {
     const btTransform& transform = collisionBody.bt_transform;
     std::string type = collisionBody.collision_shape.shape_type;
-    string frame_id = "map";
+    string frame_id = "/map";
 
     double x = collisionBody.collision_shape.dimensions.x;
     double y = collisionBody.collision_shape.dimensions.y;
@@ -992,8 +992,9 @@ void CollisionAvoidance::visualizeCollisionModelFCL(RobotState::CollisionBody co
 
     visualization_msgs::Marker m;
     vwm::objectFCLtoMarker(obj, m);
+    m.id = id;
 
-
+    pub_model_marker_fcl_.publish(m);
     // TODO pub
 }
 #endif
@@ -1073,7 +1074,7 @@ void CollisionAvoidance::visualizeRepulsiveForce(Distance2 &d_min,int id) const
     geometry_msgs::Point pB;
 
     RFviz.type = visualization_msgs::Marker::ARROW;
-    RFviz.header.frame_id = "map"; //"/base_link";
+    RFviz.header.frame_id = "/map"; //"/base_link";
     RFviz.header.stamp = ros::Time::now();
     RFviz.id = id;
 
@@ -1124,7 +1125,7 @@ void CollisionAvoidance::visualizeRepulsiveForce(Distance &d_min,int id) const
     geometry_msgs::Point pB;
 
     RFviz.type = visualization_msgs::Marker::ARROW;
-    RFviz.header.frame_id = "map"; //"/base_link";
+    RFviz.header.frame_id = "/map"; //"/base_link";
     RFviz.header.stamp = ros::Time::now();
     RFviz.id = id;
 
@@ -1173,7 +1174,7 @@ void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 m
     visualization_msgs::Marker BBXviz;
 
     BBXviz.type = visualization_msgs::Marker::CUBE;
-    BBXviz.header.frame_id = "map"; //"/base_link";
+    BBXviz.header.frame_id = "/map"; //"/base_link";
     BBXviz.header.stamp = ros::Time::now();
     BBXviz.id = id;
 
