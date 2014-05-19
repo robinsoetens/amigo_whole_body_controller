@@ -993,9 +993,14 @@ void CollisionAvoidance::visualizeCollisionModelFCL(RobotState::CollisionBody co
     visualization_msgs::Marker m;
     vwm::objectFCLtoMarker(obj, m);
     m.id = id;
+    m.header.frame_id = "/map";
+
+    m.color.a = 0.5;
+    m.color.r = 0;
+    m.color.g = 0;
+    m.color.b = 1;
 
     pub_model_marker_fcl_.publish(m);
-    // TODO pub
 }
 #endif
 
