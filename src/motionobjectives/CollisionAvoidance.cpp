@@ -607,13 +607,18 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
             double y = collisionBody.collision_shape.dimensions.y;
             double z = collisionBody.collision_shape.dimensions.z;
 
+            std::cout << "initializeCollisionModel " << collisionBody.name_collision_body << " of type " << type << std::endl;
+            std::cout << "\tx: " << x << std::endl;
+            std::cout << "\ty: " << y << std::endl;
+            std::cout << "\tz: " << z << std::endl;
+
             if (type=="Box")
             {
 #ifdef USE_BULLET
                 collisionBody.bt_shape = new btBoxShape(btVector3(x,y,z));
 #endif
 #ifdef USE_FCL
-                collisionBody.fcl_shape = shapeToMesh(fcl::Box(x, y, z));
+                collisionBody.fcl_shape = shapeToMesh(fcl::Box(x*2, y*2, z*2));
 #endif
             }
             else if (type == "Sphere")
@@ -640,7 +645,11 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
                 collisionBody.bt_shape = new btCylinderShape(btVector3(x,y,z));
 #endif
 #ifdef USE_FCL
-                collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, z)); // TODO: check what happens with y
+                assert(x == z);
+                // fcl cylinders are oriented around the z axis, so we must rotate pi/2 around x
+                fcl::Quaternion3f q;
+                q.fromAxisAngle(fcl::Vec3f(1, 0, 0), M_PI_2);
+                collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, y*2), fcl::Transform3f(q));
 #endif
             }
             else if (type == "CylinderZ")
@@ -649,8 +658,13 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
                 collisionBody.bt_shape = new btCylinderShapeZ(btVector3(x,y,z));
 #endif
 #ifdef USE_FCL
-                collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, z)); // TODO: check what happens with y
+                assert(x == y);
+                collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, z*2)); // TODO: check what happens with z
 #endif
+            }
+            else
+            {
+                ROS_WARN("Collision shape '%s' not found", type.c_str());
             }
 #ifdef USE_FCL
             collisionBody.fcl_object = boost::shared_ptr<fcl::CollisionObject>(new fcl::CollisionObject(collisionBody.fcl_shape));
@@ -761,8 +775,9 @@ void CollisionAvoidance::distanceCalculation(btConvexShape& shapeA, btConvexShap
 #endif
 
 #ifdef USE_FCL
-
-boost::shared_ptr<fcl::CollisionGeometry> CollisionAvoidance::shapeToMesh(const fcl::CollisionGeometry &shape)
+boost::shared_ptr<fcl::CollisionGeometry> CollisionAvoidance::shapeToMesh(
+        const fcl::CollisionGeometry &shape,
+        const fcl::Transform3f pose /* defaults to the null transform */)
 {
     fcl::BVHModel<fcl::OBBRSS>* model = new fcl::BVHModel<fcl::OBBRSS>();
 
@@ -771,22 +786,22 @@ boost::shared_ptr<fcl::CollisionGeometry> CollisionAvoidance::shapeToMesh(const 
     {
     case fcl::GEOM_BOX: {
         const fcl::Box& geom = dynamic_cast<const fcl::Box&>(shape);
-        fcl::generateBVHModel(*model, geom, fcl::Transform3f());
+        fcl::generateBVHModel(*model, geom, pose);
         break;
     }
     case fcl::GEOM_CYLINDER: {
         const fcl::Cylinder& geom = dynamic_cast<const fcl::Cylinder&>(shape);
-        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), GEOM_CYLINDER_tot, GEOM_CYLINDER_h_num);
+        fcl::generateBVHModel(*model, geom, pose, GEOM_CYLINDER_tot, GEOM_CYLINDER_h_num);
         break;
     }
     case fcl::GEOM_CONE: {
         const fcl::Cone& geom = dynamic_cast<const fcl::Cone&>(shape);
-        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), GEOM_CONE_tot, GEOM_CONE_h_num);
+        fcl::generateBVHModel(*model, geom, pose, GEOM_CONE_tot, GEOM_CONE_h_num);
         break;
     }
     case fcl::GEOM_SPHERE: {
         const fcl::Sphere& geom = dynamic_cast<const fcl::Sphere&>(shape);
-        fcl::generateBVHModel(*model, geom, fcl::Transform3f(), GEOM_SPHERE_seg, GEOM_SPHERE_ring);
+        fcl::generateBVHModel(*model, geom, pose, GEOM_SPHERE_seg, GEOM_SPHERE_ring);
         break;
     }
     default:
