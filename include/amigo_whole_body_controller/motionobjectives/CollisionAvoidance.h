@@ -155,6 +155,13 @@ protected:
         btScalar amplitude;
     } ;
 
+    struct RepulsiveForce2 {
+        std::string frame_id;
+        Eigen::VectorXd pointOnA;
+        Eigen::VectorXd direction;
+        float amplitude;
+    };
+
     struct Wrench {
         std::string frame_id;
         Eigen::VectorXd wrench;
