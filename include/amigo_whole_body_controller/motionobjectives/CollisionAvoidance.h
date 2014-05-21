@@ -132,7 +132,6 @@ protected:
     ros::Publisher pub_forces_marker_;
     ros::Publisher pub_forces_marker_fcl_;
     ros::Publisher pub_bbx_marker_;
-    ros::Publisher pub_bbx_marker_fcl_;
 
     struct Voxel {
         KDL::Frame center_point;

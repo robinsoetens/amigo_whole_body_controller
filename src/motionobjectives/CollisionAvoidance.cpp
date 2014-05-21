@@ -55,7 +55,6 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
     pub_forces_marker_     = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers/", 10);
     pub_forces_marker_fcl_ = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/repulsive_forces_markers_fcl/", 10);
     pub_bbx_marker_        = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers/", 10);
-    pub_bbx_marker_fcl_    = n.advertise<visualization_msgs::MarkerArray>("/whole_body_controller/bbx_markers_fcl/", 10);
 
     // Initialize OctoMap
     octomap_ = new octomap::OcTreeStamped(ca_param_.environment_collision.octomap_resolution);
