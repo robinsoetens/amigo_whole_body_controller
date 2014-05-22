@@ -264,13 +264,15 @@ protected:
      * @param Vector with the minimal closest distances, Vector with the repulsive forces
      */
     // ToDo: use membervariablefor collisionAvoidanceParameters
-    void calculateRepulsiveForce(std::vector<Distance> &minimumDistances, std::vector<RepulsiveForce> &repulsiveForces, collisionAvoidanceParameters::Parameters &param);
+    void calculateRepulsiveForce(      std::vector<Distance>  &minimumDistances, std::vector<RepulsiveForce>  &repulsiveForces, collisionAvoidanceParameters::Parameters &param);
+    void calculateRepulsiveForce(const std::vector<Distance2> &minimumDistances, std::vector<RepulsiveForce2> &repulsiveForces, collisionAvoidanceParameters::Parameters &param);
 
     /**
      * @brief Calculate the wrenches as a function of the repulsive forces
      * @param Input: Vector with the repulsive forces, Output: Vector with the wrenches
      */
-    void calculateWrenches(std::vector<RepulsiveForce> &repulsive_forces);
+    void calculateWrenches(      std::vector<RepulsiveForce>  &repulsive_forces);
+    void calculateWrenches(const std::vector<RepulsiveForce2> &repulsive_forces);
 
     /**
      * @brief Output the wrench to the KDL tree

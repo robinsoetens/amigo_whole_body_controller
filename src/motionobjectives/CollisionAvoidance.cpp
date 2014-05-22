@@ -100,7 +100,8 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     // Calculate the wrenches as a result of (self-)collision avoidance
     std::vector<Distance> min_distances_total;
     std::vector<Distance2> min_distances_total2;
-    std::vector<RepulsiveForce> repulsive_forces_total;
+    std::vector<RepulsiveForce> repulsive_forces_total;  // this will get removed eventually
+    std::vector<RepulsiveForce2> repulsive_forces_total2;
 
     repulsive_forces_total.clear();
 
@@ -129,7 +130,9 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     time_octomap += timer_octomap.getElapsedTimeInMilliSec();
 
     /// Calculate the repulsive forces and the corresponding 'wrenches' and Jacobians from the minimum distances
-    calculateRepulsiveForce(min_distances_total,repulsive_forces_total,ca_param_.self_collision);
+    calculateRepulsiveForce(min_distances_total,  repulsive_forces_total,  ca_param_.self_collision);
+    calculateRepulsiveForce(min_distances_total2, repulsive_forces_total2, ca_param_.self_collision);
+
     calculateWrenches(repulsive_forces_total);
 
     /// Output
@@ -468,6 +471,7 @@ void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_dis
 }
 #endif
 
+#ifdef USE_BULLET
 void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsive_forces)
 {
     //std::cout << "CA calculate wrenches" << std::endl;
@@ -552,7 +556,13 @@ void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsiv
     //std::cout << "CA Torques: \n" << torques_ << std::endl;    
 
 }
+#endif
+#ifdef USE_FCL
+void CollisionAvoidance::calculateWrenches(const std::vector<RepulsiveForce2> &repulsive_forces)
+{
 
+}
+#endif
 
 void CollisionAvoidance::visualize(std::vector<Distance> &min_distances) const
 {
@@ -1065,6 +1075,7 @@ void CollisionAvoidance::pickMinimumDistance(std::vector<Distance2> &calculatedD
 }
 #endif
 
+#ifdef USE_BULLET
 void CollisionAvoidance::calculateRepulsiveForce(std::vector<Distance> &minimumDistances, std::vector<RepulsiveForce> &repulsiveForces, collisionAvoidanceParameters::Parameters &param)
 {
     RepulsiveForce F;
@@ -1083,6 +1094,36 @@ void CollisionAvoidance::calculateRepulsiveForce(std::vector<Distance> &minimumD
         }
     }
 }
+#endif
+#ifdef USE_FCL
+void CollisionAvoidance::calculateRepulsiveForce(const std::vector<Distance2> &minimumDistances, std::vector<RepulsiveForce2> &repulsiveForces, collisionAvoidanceParameters::Parameters &param)
+{
+    RepulsiveForce2 F;
+
+    for (std::vector<Distance2>::const_iterator itrMinDist = minimumDistances.begin(); itrMinDist != minimumDistances.end(); ++itrMinDist)
+    {
+        const Distance2 &dmin = *itrMinDist;
+
+        if (dmin.result.min_distance <= param.d_threshold)
+        {
+            Eigen::Vector3d p0(dmin.result.nearest_points[0][0],
+                               dmin.result.nearest_points[0][1],
+                               dmin.result.nearest_points[0][2]);
+            Eigen::Vector3d p1(dmin.result.nearest_points[1][0],
+                               dmin.result.nearest_points[1][1],
+                               dmin.result.nearest_points[1][2]);
+
+            F.frame_id  = dmin.frame_id;
+            F.direction = p1 - p0;
+            F.pointOnA  = p0;
+            F.amplitude = param.f_max / pow(param.d_threshold,param.order) * pow((param.d_threshold - dmin.result.min_distance),param.order);
+
+            // Store all minimum distances;
+            repulsiveForces.push_back(F);
+        }
+    }
+}
+#endif
 
 void CollisionAvoidance::visualizeRepulsiveForce(Distance2 &d_min,int id) const
 {
