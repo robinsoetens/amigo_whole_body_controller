@@ -14,7 +14,7 @@ public:
 
     virtual ~Tree();
 
-    void calcPartialJacobian(std::string& link_name, Eigen::MatrixXd &jacobian);
+    void calcPartialJacobian(const std::string &link_name, Eigen::MatrixXd &jacobian);
 
     void getJointNames(std::map<std::string, unsigned int>& jnt_name_to_index_in, std::map<std::string, unsigned int> &jnt_name_to_index_out);
 

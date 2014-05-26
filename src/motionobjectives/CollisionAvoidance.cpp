@@ -11,6 +11,9 @@
 // debug information for transformations
 //#define VERBOSE_TRANSFORMS
 
+// tsv formatted repulsive forces
+//#define DEBUG_REPULSIVE_FORCE
+
 // amount of fcl mesh nodes generated
 #define GEOM_CYLINDER_tot   8
 #define GEOM_CYLINDER_h_num 8
@@ -100,7 +103,8 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     // Calculate the wrenches as a result of (self-)collision avoidance
     std::vector<Distance> min_distances_total;
     std::vector<Distance2> min_distances_total2;
-    std::vector<RepulsiveForce> repulsive_forces_total;  // this will get removed eventually
+    std::vector<RepulsiveForce> repulsive_forces_total;
+    std::vector<RepulsiveForce2> repulsive_forces_total_temp;  // this will get removed eventually
     std::vector<RepulsiveForce2> repulsive_forces_total2;
 
     repulsive_forces_total.clear();
@@ -131,7 +135,21 @@ void CollisionAvoidance::apply(RobotState &robotstate)
 
     /// Calculate the repulsive forces and the corresponding 'wrenches' and Jacobians from the minimum distances
     calculateRepulsiveForce(min_distances_total,  repulsive_forces_total,  ca_param_.self_collision);
+    calculateRepulsiveForce(min_distances_total,  repulsive_forces_total_temp,  ca_param_.self_collision);
     calculateRepulsiveForce(min_distances_total2, repulsive_forces_total2, ca_param_.self_collision);
+
+#ifdef DEBUG_REPULSIVE_FORCE
+    uint64_t t = ros::Time::now().toNSec() / 1000;
+    for(std::vector<RepulsiveForce>::iterator it = repulsive_forces_total.begin(); it < repulsive_forces_total.end(); it++) {
+        std::cout << "rp_bt "   << t << " " << *it << std::endl;
+    }
+    for(std::vector<RepulsiveForce2>::iterator it = repulsive_forces_total_temp.begin(); it < repulsive_forces_total_temp.end(); it++) {
+        std::cout << "rp_temp " << t << " " << *it << std::endl;
+    }
+    for(std::vector<RepulsiveForce2>::iterator it = repulsive_forces_total2.begin(); it < repulsive_forces_total2.end(); it++) {
+        std::cout << "rp_fcl "  << t << " " << *it << std::endl;
+    }
+#endif
 
     calculateWrenches(repulsive_forces_total);
 
@@ -554,13 +572,91 @@ void CollisionAvoidance::calculateWrenches(std::vector<RepulsiveForce> &repulsiv
     /// Multiply to get torques
     torques_ = jacobian_.transpose() * wrenches;
     //std::cout << "CA Torques: \n" << torques_ << std::endl;    
-
 }
 #endif
+
 #ifdef USE_FCL
 void CollisionAvoidance::calculateWrenches(const std::vector<RepulsiveForce2> &repulsive_forces)
 {
+    //std::cout << "CA calculate wrenches" << std::endl;
+    unsigned int row_index = 0;
+    for (std::vector<RepulsiveForce2>::const_iterator itrRF = repulsive_forces.begin(); itrRF != repulsive_forces.end(); ++itrRF)
+    {
+        const RepulsiveForce2 &RF = *itrRF;
+        /*
+        // Testcase: replace the for-loop above and possibly comment the 'Calculate delta p in map coordinates' section (depends on RF.pointOnA)
+    for (unsigned int cn = 0; cn<1; cn++) {
+        RepulsiveForce RF;
+        RF.frame_id  = "grippoint_right";
+        RF.amplitude = 1.0;
+        RF.direction = btVector3(0.0, 0.0, 1.0);
+        RF.pointOnA  = btVector3(0.43, -0.22, 0.9615);
+        //double dpx = 0.0; double dpy =  0.0; double dpz = 0.0;
+     // End Testcase
+        */
+        KDL::Frame p0;
+        Eigen::VectorXd wrench_calc(6);
+        wrench_calc.setZero();
 
+
+        /// Find the frame of the kinematic model on which the wrench acts.
+        for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
+        {
+            std::vector<RobotState::CollisionBody> &group = *itrGroups;
+            for (std::vector<RobotState::CollisionBody>::iterator itrBodies = group.begin(); itrBodies != group.end(); ++itrBodies)
+            {
+                RobotState::CollisionBody &collisionBody = *itrBodies;
+                if (collisionBody.frame_id == RF.frame_id )
+                {
+                    p0 = collisionBody.fk_pose;
+                }
+            }
+        }
+
+        /// Calculate delta p in map coordinates
+        double dpx = RF.pointOnA[0] - p0.p.x();
+        double dpy = RF.pointOnA[1] - p0.p.y();
+        double dpz = RF.pointOnA[2] - p0.p.z();
+
+        /// Compute 6xn Jacobian (this is w.r.t.root frame of the kinematic tree, so in this case: base_link)
+        Eigen::MatrixXd temp_jacobian(6,robot_state_->getNrJoints());// ToDo: get rid of this
+        KDL::Jacobian partial_jacobian(robot_state_->getNrJoints());
+        robot_state_->tree_.calcPartialJacobian(RF.frame_id, temp_jacobian);
+        partial_jacobian.data = temp_jacobian;
+
+        /// Change reference point: the force does not always act at the end of a certain link
+        partial_jacobian.changeRefPoint(KDL::Vector(dpx, dpy, dpz));
+
+        /// Change base: the Jacobian is computed w.r.t. base_link instead of map, while the force is expressed in map
+        std::map<std::string, KDL::Frame>::iterator itrRF = robot_state_->fk_poses_.find("base_link"); //ToDo: don't hardcode???
+        KDL::Frame BaseFrame_in_map = itrRF->second;
+        partial_jacobian.changeBase(BaseFrame_in_map.M);
+
+        /// Premultiply first three rows with force direction to get one row
+        //std::cout << "Force on " << RF.frame_id << " in direction " << RF.direction.getX() << ", " << RF.direction.getY() << ", " << RF.direction.getZ() << std::endl;
+        //ROS_INFO("Multiplying [%i, %i] x [%i, %i] into [%i,%i]", force_direction.rows(), force_direction.cols(),
+        //         partial_jacobian.data.block(0,0,3,robot_state_->getNrJoints()).rows(), partial_jacobian.data.block(0,0,3,robot_state_->getNrJoints()).cols(),
+        //         jacobian_pre_alloc_.block(row_index, 0, 1, robot_state_->getNrJoints()).rows(), jacobian_pre_alloc_.block(row_index, 0, 1, robot_state_->getNrJoints()).cols());
+        jacobian_pre_alloc_.block(row_index, 0, 1, robot_state_->getNrJoints()) =  RF.direction.transpose() * partial_jacobian.data.block(0, 0, 3, robot_state_->getNrJoints());
+
+        /// Add force magnitude to list
+        wrenches_pre_alloc_(row_index) = RF.amplitude;
+
+        /// Add amplitude to cost
+        cost_ +=RF.amplitude;
+
+        row_index++;
+
+    }
+
+    /// Extract total Jacobian and vector with wrenches
+    jacobian_ = jacobian_pre_alloc_.block(0, 0, row_index, robot_state_->getNrJoints());
+    Eigen::VectorXd wrenches = wrenches_pre_alloc_.block(0, 0, row_index, 1);
+    //std::cout << "Wrenches: \n" << wrenches_new_ << std::endl;
+
+    /// Multiply to get torques
+    torques_ = jacobian_.transpose() * wrenches;
+    //std::cout << "CA Torques: \n" << torques_ << std::endl;
 }
 #endif
 
@@ -1094,9 +1190,37 @@ void CollisionAvoidance::calculateRepulsiveForce(std::vector<Distance> &minimumD
         }
     }
 }
+void CollisionAvoidance::calculateRepulsiveForce(const std::vector<Distance> &minimumDistances, std::vector<RepulsiveForce2> &repulsiveForces, const collisionAvoidanceParameters::Parameters &param)
+{
+    RepulsiveForce2 F;
+    for (std::vector<Distance>::const_iterator itrMinDist = minimumDistances.begin(); itrMinDist != minimumDistances.end(); ++itrMinDist)
+    {
+        const Distance &dmin = *itrMinDist;
+        if (dmin.bt_distance.m_distance <= param.d_threshold )
+        {
+            F.frame_id = dmin.frame_id;
+
+            F.direction = Eigen::Vector3d(
+                        dmin.bt_distance.m_normalOnBInWorld.getX(),
+                        dmin.bt_distance.m_normalOnBInWorld.getY(),
+                        dmin.bt_distance.m_normalOnBInWorld.getZ());
+
+            btVector3 pointOnA = dmin.bt_distance.m_pointInWorld + dmin.bt_distance.m_distance * dmin.bt_distance.m_normalOnBInWorld;
+            F.pointOnA = Eigen::Vector3d(
+                        pointOnA.getX(),
+                        pointOnA.getY(),
+                        pointOnA.getZ());
+
+            F.amplitude = param.f_max / pow(param.d_threshold,param.order) * pow((param.d_threshold - dmin.bt_distance.m_distance),param.order) ;
+
+            // Store all minimum distances;
+            repulsiveForces.push_back(F);
+        }
+    }
+}
 #endif
 #ifdef USE_FCL
-void CollisionAvoidance::calculateRepulsiveForce(const std::vector<Distance2> &minimumDistances, std::vector<RepulsiveForce2> &repulsiveForces, collisionAvoidanceParameters::Parameters &param)
+void CollisionAvoidance::calculateRepulsiveForce(const std::vector<Distance2> &minimumDistances, std::vector<RepulsiveForce2> &repulsiveForces, const collisionAvoidanceParameters::Parameters &param)
 {
     RepulsiveForce2 F;
 
@@ -1115,6 +1239,7 @@ void CollisionAvoidance::calculateRepulsiveForce(const std::vector<Distance2> &m
 
             F.frame_id  = dmin.frame_id;
             F.direction = p1 - p0;
+            F.direction.normalize();
             F.pointOnA  = p0;
             F.amplitude = param.f_max / pow(param.d_threshold,param.order) * pow((param.d_threshold - dmin.result.min_distance),param.order);
 

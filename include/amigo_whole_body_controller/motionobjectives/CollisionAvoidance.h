@@ -157,10 +157,28 @@ protected:
 
     struct RepulsiveForce2 {
         std::string frame_id;
-        Eigen::VectorXd pointOnA;
-        Eigen::VectorXd direction;
+        Eigen::Vector3d pointOnA;
+        Eigen::Vector3d direction;
         float amplitude;
     };
+
+    // provide << printing functionality
+    friend std::ostream& operator << (std::ostream &o, const RepulsiveForce &r)
+    {
+        o << r.frame_id << " ";
+        o << r.pointOnA[0]  << " " << r.pointOnA[1]  << " " << r.pointOnA[2]  << " ";
+        o << r.direction[0] << " " << r.direction[1] << " " << r.direction[2];
+        return o;
+    }
+
+    // provide << printing functionality
+    friend std::ostream& operator << (std::ostream &o, const RepulsiveForce2 &r)
+    {
+        o << r.frame_id << " ";
+        o << r.pointOnA[0]  << " " << r.pointOnA[1]  << " " << r.pointOnA[2]  << " ";
+        o << r.direction[0] << " " << r.direction[1] << " " << r.direction[2];
+        return o;
+    }
 
     struct Wrench {
         std::string frame_id;
@@ -264,8 +282,10 @@ protected:
      * @param Vector with the minimal closest distances, Vector with the repulsive forces
      */
     // ToDo: use membervariablefor collisionAvoidanceParameters
+    // ToDo: use only 1 implementation for calculateRepulsiveForce
     void calculateRepulsiveForce(      std::vector<Distance>  &minimumDistances, std::vector<RepulsiveForce>  &repulsiveForces, collisionAvoidanceParameters::Parameters &param);
-    void calculateRepulsiveForce(const std::vector<Distance2> &minimumDistances, std::vector<RepulsiveForce2> &repulsiveForces, collisionAvoidanceParameters::Parameters &param);
+    void calculateRepulsiveForce(const std::vector<Distance>  &minimumDistances, std::vector<RepulsiveForce2> &repulsiveForces, const collisionAvoidanceParameters::Parameters &param);
+    void calculateRepulsiveForce(const std::vector<Distance2> &minimumDistances, std::vector<RepulsiveForce2> &repulsiveForces, const collisionAvoidanceParameters::Parameters &param);
 
     /**
      * @brief Calculate the wrenches as a function of the repulsive forces
