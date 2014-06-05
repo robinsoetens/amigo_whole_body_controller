@@ -167,7 +167,8 @@ protected:
     {
         o << r.frame_id << " ";
         o << r.pointOnA[0]  << " " << r.pointOnA[1]  << " " << r.pointOnA[2]  << " ";
-        o << r.direction[0] << " " << r.direction[1] << " " << r.direction[2];
+        o << r.direction[0] << " " << r.direction[1] << " " << r.direction[2] << " ";
+        o << r.amplitude;
         return o;
     }
 
@@ -176,7 +177,8 @@ protected:
     {
         o << r.frame_id << " ";
         o << r.pointOnA[0]  << " " << r.pointOnA[1]  << " " << r.pointOnA[2]  << " ";
-        o << r.direction[0] << " " << r.direction[1] << " " << r.direction[2];
+        o << r.direction[0] << " " << r.direction[1] << " " << r.direction[2] << " ";
+        o << r.amplitude;
         return o;
     }
 
