@@ -24,7 +24,7 @@ start_time = None
 with open(fname) as f:
 	for line in f.readlines():
 		if line.startswith('rp_'):
-			a = line.split(' ')
+			a = line.replace('\n','').split(' ')
 
 			t = int(a[1]) / 1000000.0 # a[1] is in ms
 			if not start_time:
@@ -49,6 +49,9 @@ with open(fname) as f:
 				'n1':	a[7],
 				'n2':	a[8],
 				'n': [a[6], a[7], a[8]],
+
+				# amplitude
+				'a': [a[9]],
 			}
 			data.append(d)
 
@@ -60,6 +63,7 @@ data_temp = [d for d in data if d['type'] == 'rp_temp']
 data_fcl  = [d for d in data if d['type'] == 'rp_fcl']
 
 link = options.link
+print 'using for link ', link
 
 t_bt  = [d['time'] for d in data_bt if d['name'] == link]
 p_bt  = [d['p']    for d in data_bt if d['name'] == link]
@@ -70,19 +74,31 @@ p_temp  = [d['p']    for d in data_temp if d['name'] == link]
 t_fcl  = [d['time'] for d in data_fcl if d['name'] == link]
 p_fcl  = [d['p']    for d in data_fcl if d['name'] == link]
 
-axis = plt.subplot(3,1,1)
+a_bt   = [d['a'] for d in data_bt   if d['name'] == link]
+a_temp = [d['a'] for d in data_temp if d['name'] == link]
+a_fcl  = [d['a'] for d in data_fcl  if d['name'] == link]
+
+axis = plt.subplot(4,1,1)
 plt.plot(t_bt, p_bt)
 plt.xlim(time_min, time_max)
 plt.legend(['x', 'y', 'z'])
 
-axis = plt.subplot(3,1,2)
+axis = plt.subplot(4,1,2)
 plt.plot(t_temp, p_temp)
 plt.xlim(time_min, time_max)
 plt.legend(['x', 'y', 'z'])
 
-axis = plt.subplot(3,1,3)
+axis = plt.subplot(4,1,3)
 plt.plot(t_fcl, p_fcl)
 plt.xlim(time_min, time_max)
 plt.legend(['x', 'y', 'z'])
+
+axis = plt.subplot(4,1,4)
+plt.plot(
+	t_bt,   a_bt,
+	t_temp, a_temp,
+	t_fcl,  a_fcl)
+plt.xlim(time_min, time_max)
+plt.legend(['bullet', 'temp', 'fcl'])
 
 plt.show()
