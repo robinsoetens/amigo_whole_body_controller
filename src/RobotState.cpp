@@ -51,7 +51,7 @@ void RobotState::updateCollisionBodyPoses() {
 void RobotState::KDLFrameToStampedPose(const KDL::Frame& FK_pose, geometry_msgs::PoseStamped &pose)
 {
     // ToDo: get rid of hardcoding
-    pose.header.frame_id = "map";
+    pose.header.frame_id = "/map";
     // Position
     pose.pose.position.x = FK_pose.p.x();
     pose.pose.position.y = FK_pose.p.y();

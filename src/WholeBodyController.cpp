@@ -62,7 +62,7 @@ bool WholeBodyController::initialize(const double Ts)
         n.param<double> ("/whole_body_controller/admittance_control/damping/"+iter->first, admittance_damping[iter->second], 10);
     }
 
-    loadParameterFiles(robot_state_);
+    loadParameterFiles();
 
     // Construct the FK and Jacobian solvers
     robot_state_.fk_solver_ = new KDL::TreeFkSolverPos_recursive(robot_state_.tree_.kdl_tree_);
@@ -325,7 +325,7 @@ std::vector<MotionObjective*> WholeBodyController::getCartesianImpedances(const 
     return output;
 }
 
-void WholeBodyController::loadParameterFiles(RobotState &robot_state)
+void WholeBodyController::loadParameterFiles()
 {
     ros::NodeHandle n("~");
     std::string ns = ros::this_node::getName();
@@ -354,9 +354,9 @@ void WholeBodyController::loadParameterFiles(RobotState &robot_state)
             }
 
             // add group of collision bodies to the robot
-            robot_state.robot_.groups.push_back(robot_state_group);
+            robot_state_.robot_.groups.push_back(robot_state_group);
         }
-        if (robot_state.robot_.groups.size() == 0)
+        if (robot_state_.robot_.groups.size() == 0)
         {
             ROS_WARN("No collision model loaded");
         }
@@ -372,18 +372,18 @@ void WholeBodyController::loadParameterFiles(RobotState &robot_state)
                 RobotState::Exclusion exclusion;
                 exclusion.fromXmlRpc(Excl);
 
-                robot_state.exclusion_checks.checks.push_back(exclusion);
+                robot_state_.exclusion_checks.checks.push_back(exclusion);
             }
         }
 
-        if (robot_state.exclusion_checks.checks.size() == 0)
+        if (robot_state_.exclusion_checks.checks.size() == 0)
         {
             ROS_WARN("No exclusions from self-collision avoindance checks");
         }
-        else if (robot_state.exclusion_checks.checks.size() > 0)
+        else if (robot_state_.exclusion_checks.checks.size() > 0)
         {
             ROS_DEBUG("Exclusions from self-collision checks are: ");
-            for (std::vector<RobotState::Exclusion>::iterator it = robot_state.exclusion_checks.checks.begin(); it != robot_state.exclusion_checks.checks.end(); ++it)
+            for (std::vector<RobotState::Exclusion>::iterator it = robot_state_.exclusion_checks.checks.begin(); it != robot_state_.exclusion_checks.checks.end(); ++it)
             {
                 RobotState::Exclusion excl = *it;
                 ROS_DEBUG("Name body A = %s", excl.name_body_A.c_str());

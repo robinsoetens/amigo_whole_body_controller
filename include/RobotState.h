@@ -71,7 +71,8 @@ public:
 #endif
 #ifdef USE_FCL
         fcl::Transform3f fcl_transform;
-        fcl::CollisionGeometry* fcl_shape;
+        boost::shared_ptr<fcl::CollisionGeometry> fcl_shape;
+        boost::shared_ptr<fcl::CollisionObject> fcl_object;
 #endif
 
         void fromXmlRpc(XmlRpc::XmlRpcValue& value)

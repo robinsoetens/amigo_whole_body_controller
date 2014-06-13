@@ -36,10 +36,15 @@
 #endif
 
 #ifdef USE_FCL
+
+// VWM stuff
+#include <vwm/vwmclient.h>
+
 // FCL closest point
 #include <fcl/distance.h>
 #include <fcl/shape/geometric_shapes.h>
 #include <fcl/shape/geometric_shape_to_BVH_model.h>
+
 #endif
 
 // Timer
@@ -123,6 +128,7 @@ protected:
     RobotState* robot_state_;
 
     ros::Publisher pub_model_marker_;
+    ros::Publisher pub_model_marker_fcl_;
     ros::Publisher pub_forces_marker_;
     ros::Publisher pub_forces_marker_fcl_;
     ros::Publisher pub_bbx_marker_;
@@ -144,10 +150,20 @@ protected:
 
     struct RepulsiveForce {
         std::string frame_id;
-        btVector3 pointOnA;
-        btVector3 direction;
-        btScalar amplitude;
-    } ;
+        Eigen::Vector3d pointOnA;
+        Eigen::Vector3d direction;
+        float amplitude;
+    };
+
+    // provide << printing functionality
+    friend std::ostream& operator << (std::ostream &o, const RepulsiveForce &r)
+    {
+        o << r.frame_id << " ";
+        o << r.pointOnA[0]  << " " << r.pointOnA[1]  << " " << r.pointOnA[2]  << " ";
+        o << r.direction[0] << " " << r.direction[1] << " " << r.direction[2] << " ";
+        o << r.amplitude;
+        return o;
+    }
 
     struct Wrench {
         std::string frame_id;
@@ -162,6 +178,10 @@ protected:
     KDL::Frame no_fix_;
 
     octomap::OcTreeStamped* octomap_;
+
+#ifdef USE_FCL
+    vwm_tools::vwmClient client_;
+#endif
 
     btConvexPenetrationDepthSolver*	depthSolver;
     btSimplexSolverInterface* simplexSolver;
@@ -193,7 +213,10 @@ protected:
      * @brief Calculate the repulsive forces as a result of environment collision avoidance
      * @param Output: Vector with the minimum distances to the environment, vector with the repulsive forces
      */
-    void environmentCollision(std::vector<Distance> &min_distances, std::vector<RepulsiveForce> &repulsive_forces);
+    void environmentCollision(std::vector<Distance>  &min_distances);
+#ifdef USE_FCL
+    void environmentCollisionVWM(std::vector<Distance2> &min_distances);
+#endif
 
     /**
      * @brief Construct the collision bodies
@@ -225,9 +248,8 @@ protected:
     void distanceCalculation(btConvexShape &shapeA, btConvexShape &shapeB, btTransform& transformA, btTransform& transformB, btPointCollector& distance_out);
 #endif
 #ifdef USE_FCL
-    static fcl::BVHModel<fcl::OBBRSS>* shapeToMesh(const fcl::CollisionGeometry &shape);
-    static void shapeToMesh(const fcl::CollisionGeometry &shape, fcl::BVHModel<fcl::OBBRSS>* &model);    
-    void distanceCalculation(const fcl::CollisionGeometry& shapeA, fcl::CollisionGeometry& shapeB, const fcl::Transform3f& transformA, const fcl::Transform3f& transformB, fcl::DistanceResult& result);
+    static boost::shared_ptr<fcl::CollisionGeometry> shapeToMesh(const fcl::CollisionGeometry &shape, const fcl::Transform3f pose = fcl::Transform3f());
+    void distanceCalculation(const fcl::CollisionObject* o1, const fcl::CollisionObject* o2, fcl::DistanceResult& result);
 #endif
 
     /**
@@ -245,13 +267,19 @@ protected:
      * @param Vector with the minimal closest distances, Vector with the repulsive forces
      */
     // ToDo: use membervariablefor collisionAvoidanceParameters
-    void calculateRepulsiveForce(std::vector<Distance> &minimumDistances, std::vector<RepulsiveForce> &repulsiveForces, collisionAvoidanceParameters::Parameters &param);
+    // ToDo: use only 1 implementation for calculateRepulsiveForce
+#ifdef USE_BULLET
+    void calculateRepulsiveForce(const std::vector<Distance>  &minimumDistances, std::vector<RepulsiveForce> &repulsiveForces, const collisionAvoidanceParameters::Parameters &param);
+#endif
+#ifdef USE_FCL
+    void calculateRepulsiveForce(const std::vector<Distance2> &minimumDistances, std::vector<RepulsiveForce> &repulsiveForces, const collisionAvoidanceParameters::Parameters &param);
+#endif
 
     /**
      * @brief Calculate the wrenches as a function of the repulsive forces
      * @param Input: Vector with the repulsive forces, Output: Vector with the wrenches
      */
-    void calculateWrenches(std::vector<RepulsiveForce> &repulsive_forces);
+    void calculateWrenches(const std::vector<RepulsiveForce> &repulsive_forces);
 
     /**
      * @brief Output the wrench to the KDL tree
@@ -270,7 +298,12 @@ protected:
      * @brief Construct the visualization markers to visualize the collision model in RVIZ
      * @param Collision body information
      */
+#ifdef USE_BULLET
     void visualizeCollisionModel(RobotState::CollisionBody collisionBody,int id)  const;
+#endif
+#ifdef USE_FCL
+    void visualizeCollisionModelFCL(RobotState::CollisionBody collisionBody,int id)  const;
+#endif
 
     /**
      * @brief Construct the visualization markers to visualize the repulsive forces in RVIZ

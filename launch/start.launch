@@ -1,10 +1,11 @@
 <?xml version="1.0"?>
 
 <launch>
-
     <arg name="launch_prefix" default="" />
     
     <arg name="ROBOT_REAL" default="$(optenv ROBOT_REAL false)" />
+
+	<include file="$(find wire_volume)/launch/test_transport.launch" />
 
 <!--<include file="$(find amigo_joint_interface_converter)/launch/start.launch"/>-->
 	
@@ -28,5 +29,3 @@
 		<remap from="/amigo/neck/references" to="/TEST_TORQUES_NECK" /> 
 	</node>
 </launch>
-
-

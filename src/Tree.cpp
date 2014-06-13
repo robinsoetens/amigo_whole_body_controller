@@ -8,7 +8,7 @@ Tree::Tree() {
 Tree::~Tree() {
 }
 
-void Tree::calcPartialJacobian(std::string& link_name,
+void Tree::calcPartialJacobian(const std::string& link_name,
                                Eigen::MatrixXd& jacobian)
 {
     KDL::Jacobian kdl_jacobian;
