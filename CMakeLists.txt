@@ -11,13 +11,7 @@ add_definitions(${EIGEN_DEFINITIONS})
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-set(ROS_BUILD_TYPE Debug)
-
-find_package(octomap 1.5 REQUIRED)
-include_directories(BEFORE ${OCTOMAP_INCLUDE_DIRS})
-link_directories(${OCTOMAP_LIBRARY_DIRS})
-link_libraries(${OCTOMAP_LIBRARY_DIRS}/liboctomap.so ${OCTOMAP_LIBRARY_DIRS}/liboctomath.so)
-MESSAGE(STATUS "OctoMap paths:" ${OCTOMAP_INCLUDE_DIRS} " " ${OCTOMAP_LIBRARY_DIRS})
+set(ROS_BUILD_TYPE Release)
 
 rosbuild_find_ros_package(actionlib_msgs)
 include(${actionlib_msgs_PACKAGE_PATH}/cmake/actionbuild.cmake)
@@ -74,19 +68,19 @@ rosbuild_add_library(interfaces
                                src/interfaces/RobotInterface.cpp
 )
 
-rosbuild_find_ros_package(geolib_fcl)
-message("geolib_fcl_PACKAGE_PATH: " ${geolib_fcl_PACKAGE_PATH})
-if (geolib_fcl_PACKAGE_PATH)
-
-    rosbuild_add_library(vwm_tools
-        src/vwm/vwmclient.cpp
-        src/vwm/vwmobject.cpp
-    )
-    target_link_libraries(motionobjectives vwm_tools)
-    message(STATUS "WBC uses VWM")
-else()
+#rosbuild_find_ros_package(geolib_fcl)
+#message("geolib_fcl_PACKAGE_PATH: " ${geolib_fcl_PACKAGE_PATH})
+#if (geolib_fcl_PACKAGE_PATH)
+#
+#    rosbuild_add_library(vwm_tools
+#        src/vwm/vwmclient.cpp
+#        src/vwm/vwmobject.cpp
+#    )
+#    target_link_libraries(motionobjectives vwm_tools)
+#    message(STATUS "WBC uses VWM")
+#else()
     message(STATUS "WBC does not use VWM")
-endif()
+#endif()
 
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()

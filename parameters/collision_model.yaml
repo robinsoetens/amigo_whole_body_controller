@@ -31,7 +31,7 @@ collision_model:
           name: "BaseTop"
           shape:
                 shape_type: "Cone"
-                dimensions: {x: 0.21, y: 0.21, z: 0.29 } # radius,radius,0.5*height
+                dimensions: {x: 0.21, y: 0.21, z: 0.43 } # radius,radius,0.5*height
           transform:
                 frame_id: "base_link"
                 origin: {x: 0.02, y: 0.0, z: 0.655 }
