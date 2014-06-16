@@ -68,19 +68,19 @@ rosbuild_add_library(interfaces
                                src/interfaces/RobotInterface.cpp
 )
 
-#rosbuild_find_ros_package(geolib_fcl)
-#message("geolib_fcl_PACKAGE_PATH: " ${geolib_fcl_PACKAGE_PATH})
-#if (geolib_fcl_PACKAGE_PATH)
-#
-#    rosbuild_add_library(vwm_tools
-#        src/vwm/vwmclient.cpp
-#        src/vwm/vwmobject.cpp
-#    )
-#    target_link_libraries(motionobjectives vwm_tools)
-#    message(STATUS "WBC uses VWM")
-#else()
+rosbuild_find_ros_package(geolib_fcl)
+message("geolib_fcl_PACKAGE_PATH: " ${geolib_fcl_PACKAGE_PATH})
+if (geolib_fcl_PACKAGE_PATH)
+
+    rosbuild_add_library(vwm_tools
+        src/vwm/vwmclient.cpp
+        src/vwm/vwmobject.cpp
+    )
+    target_link_libraries(motionobjectives vwm_tools)
+    message(STATUS "WBC uses VWM")
+else()
     message(STATUS "WBC does not use VWM")
-#endif()
+endif()
 
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
