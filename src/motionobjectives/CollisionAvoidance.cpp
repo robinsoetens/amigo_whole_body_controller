@@ -1135,7 +1135,11 @@ void CollisionAvoidance::calculateRepulsiveForce(const std::vector<Distance2> &m
                                dmin.result.nearest_points[1][2]);
 
             F.frame_id  = dmin.frame_id;
-            F.direction = p1 - p0;
+
+            // The vector must point into the opposite direction of
+            // the vector from the current object to the other object
+            // - (pOther - pCurrent) = - (p1 - p0)
+            F.direction = p0 - p1;
             F.direction.normalize();
             F.pointOnA  = p0;
             F.amplitude = param.f_max / pow(param.d_threshold,param.order) * pow((param.d_threshold - dmin.result.min_distance),param.order);
