@@ -12,6 +12,8 @@
 
 #include <fcl/collision_data.h>
 
+#include <boost/thread/mutex.hpp>
+
 namespace vwm_tools {
 
 class vwmClient
@@ -20,6 +22,8 @@ private:
     vwm::ShapeCache cache;
 
     std::vector<fcl::CollisionObject*> world_objects;
+
+    boost::mutex mtx_;
 
 public:
 

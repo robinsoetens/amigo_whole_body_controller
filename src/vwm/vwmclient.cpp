@@ -45,7 +45,9 @@ void vwmClient::update()
         }
     }
 
+    mtx_.lock();
     world_objects = objects;
+    mtx_.unlock();
 
     updateTimer.stop();
     ROS_INFO("VWM update took %f ms, (%li/%li) collision bodies found", updateTimer.getElapsedTimeInMilliSec(), objects.size(), entities.size());
@@ -53,6 +55,7 @@ void vwmClient::update()
 
 std::vector<fcl::CollisionObject*> vwmClient::getWorldObjects()
 {
+    boost::lock_guard<boost::mutex> guard(mtx_);
     return world_objects;
 }
 
