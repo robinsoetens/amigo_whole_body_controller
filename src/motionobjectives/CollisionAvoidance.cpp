@@ -29,8 +29,7 @@
 using namespace std;
 
 CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts)
-    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL),
-      time_total(0), time_boost(0), time_fcl(0), time_octomap(0), report_counter(0)
+    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL), report_counter(0)
 {
     /// Status is always 2 (always active)
     type_     = "CollisionAvoidance";
@@ -93,8 +92,6 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
 void CollisionAvoidance::apply(RobotState &robotstate)
 {
-    timer_total.start();
-
     /// Reset stuff
     jacobian_pre_alloc_.setZero();
     wrenches_pre_alloc_.setZero();
@@ -113,8 +110,6 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     // Calculate the repulsive forces as a result of the self-collision avoidance.
     selfCollision(min_distances_total, min_distances_total_fcl);
 
-    timer_octomap.start();
-
     // Calculate the repulsive forces as a result of the environment collision avoidance.
     if (octomap_){
         if (octomap_->size() > 0)
@@ -130,9 +125,6 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     // Calculate the repulsive forces as a result of the volumetric world model
     environmentCollisionVWM(min_distances_total_fcl);
 #endif
-
-    timer_octomap.stop();
-    time_octomap += timer_octomap.getElapsedTimeInMilliSec();
 
     /// Calculate the repulsive forces and the corresponding 'wrenches' and Jacobians from the minimum distances
     calculateRepulsiveForce(min_distances_total,     repulsive_forces_total,     ca_param_.self_collision);
@@ -156,13 +148,8 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     visualize(min_distances_total);
     visualizeRepulsiveForces(min_distances_total_fcl);
 
-    timer_total.stop();
-    time_total += timer_total.getElapsedTimeInMilliSec();
-
     if (report_counter > 100)
     {
-        ROS_INFO("collision time:\n\ttotal: %f\n\tboost: %f\n\tfcl: %f\n\toctomap: %f", time_total, time_boost, time_fcl, time_octomap);
-
         report_counter = 0;
 #ifdef USE_FCL
         this->client_.update();
@@ -256,28 +243,16 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                         if (skip_check == false)
                         {
 #ifdef USE_BULLET
-                            Timer timer1;
-                            timer1.start();
-
                             Distance distance;
                             distance.frame_id = currentBody.frame_id;
                             distanceCalculation(*currentBody.bt_shape, *collisionBody.bt_shape, currentBody.bt_transform, collisionBody.bt_transform, distance.bt_distance);
                             distanceCollection.push_back(distance);
-
-                            timer1.stop();
-                            time_boost += timer1.getElapsedTimeInMilliSec();
 #endif
 #ifdef USE_FCL
-                            Timer timer2;
-                            timer2.start();
-
                             Distance2 distance2;
                             distance2.frame_id = currentBody.frame_id;
                             distanceCalculation(currentBody.fcl_object.get(), collisionBody.fcl_object.get(), distance2.result);
                             distanceCollection2.push_back(distance2);
-
-                            timer2.stop();
-                            time_fcl   += timer2.getElapsedTimeInMilliSec();
 #endif
                         }
                     }
