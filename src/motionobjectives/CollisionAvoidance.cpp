@@ -430,13 +430,17 @@ bool environmentCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::Collisi
 
 void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_distances) {
 
-    std::vector<fcl::CollisionObject*> objects = client_.getWorldObjects();
+    std::vector< boost::shared_ptr<fcl::CollisionObject> > objects = client_.getWorldObjects();
     if (!objects.size()) {
         return;
     }
 
     fcl::DynamicAABBTreeCollisionManager manager;
-    manager.registerObjects(objects);
+    std::vector< boost::shared_ptr<fcl::CollisionObject> >::iterator it;
+    for (it = objects.begin(); it < objects.end(); it++) {
+        boost::shared_ptr<fcl::CollisionObject> obj = *it;
+        manager.registerObject(obj.get());
+    }
     manager.setup();
 
     // Calculate closest distances using Bullet

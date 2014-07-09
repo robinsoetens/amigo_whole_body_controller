@@ -34,15 +34,14 @@ void vwmClient::update()
 
     const std::map<vwm::UUID, vwm::EntityHandle>& entities = world->getEntities();
 
-    std::vector<fcl::CollisionObject*> objects;
+    std::vector< boost::shared_ptr<fcl::CollisionObject> > objects;
     for(std::map<vwm::UUID, vwm::EntityHandle>::const_iterator it = entities.begin(); it != entities.end(); ++it) {
         vwm::EntityHandle e = it->second;
 
-        fcl::CollisionObject* obj = cache.getCollisionObject(e);
+        boost::shared_ptr<fcl::CollisionObject> obj = cache.getCollisionObject(e);
 
-        if (obj) {
+        if (obj)
             objects.push_back(obj);
-        }
     }
 
     mtx_.lock();
@@ -53,7 +52,7 @@ void vwmClient::update()
     ROS_INFO("VWM update took %f ms, (%li/%li) collision bodies found", updateTimer.getElapsedTimeInMilliSec(), objects.size(), entities.size());
 }
 
-std::vector<fcl::CollisionObject*> vwmClient::getWorldObjects()
+std::vector< boost::shared_ptr<fcl::CollisionObject> > vwmClient::getWorldObjects()
 {
     boost::lock_guard<boost::mutex> guard(mtx_);
     return world_objects;

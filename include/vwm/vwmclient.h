@@ -21,7 +21,7 @@ class vwmClient
 private:
     vwm::ShapeCache cache;
 
-    std::vector<fcl::CollisionObject*> world_objects;
+    std::vector< boost::shared_ptr<fcl::CollisionObject> > world_objects;
 
     boost::mutex mtx_;
 
@@ -37,7 +37,7 @@ public:
     // member functions
     void update();
 
-    std::vector<fcl::CollisionObject*> getWorldObjects();
+    std::vector< boost::shared_ptr<fcl::CollisionObject> > getWorldObjects();
 };
 
 } // namespace
