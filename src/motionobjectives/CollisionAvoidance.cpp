@@ -111,6 +111,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     selfCollision(min_distances_total, min_distances_total_fcl);
 
     // Calculate the repulsive forces as a result of the environment collision avoidance.
+    /*
     if (octomap_){
         if (octomap_->size() > 0)
         {
@@ -120,6 +121,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
             ROS_WARN_ONCE("Collision Avoidance: No octomap created!");
         }
     }
+    */
 
 #ifdef USE_FCL
     // Calculate the repulsive forces as a result of the volumetric world model
