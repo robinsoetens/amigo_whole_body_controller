@@ -40,7 +40,7 @@ void vwmClient::update()
 
         boost::shared_ptr<fcl::CollisionObject> obj = cache.getCollisionObject(e);
 
-        if (obj)
+        if (obj) // TODO: check if this holds for shared_ptrs
             objects.push_back(obj);
     }
 
