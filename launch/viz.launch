@@ -1,5 +1,0 @@
-<?xml version="1.0"?>
-
-<launch>
-	<node pkg="wire_volume" name="load_viz_plugin" type="load_plugin" args="wire_volume_viz viz_plugin" output="screen" />
-</launch>

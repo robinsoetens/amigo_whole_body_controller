@@ -5,7 +5,7 @@
     
     <arg name="ROBOT_REAL" default="$(optenv ROBOT_REAL false)" />
 
-	<include file="$(find wire_volume)/launch/start.launch" />
+	<include file="$(find amigo_whole_body_controller)/launch/wire_volume.launch" />
 
 <!--<include file="$(find amigo_joint_interface_converter)/launch/start.launch"/>-->
 	

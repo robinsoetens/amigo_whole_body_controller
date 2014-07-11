@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+
+<launch>
+	<include file="$(find wire_volume)/launch/start.launch" />
+
+	<!-- rviz -->
+	<node pkg="wire_volume" name="load_viz_plugin" type="load_plugin" args="wire_volume_viz viz_plugin" output="screen" />
+
+	<!-- load testlab B -->
+	<node pkg="wire_volume" name="load_from_file" type="load_from_file" args="$(find amigo_maps)/wire_volume/robotics_testlab_B.vwm" output="screen" />
+</launch>
