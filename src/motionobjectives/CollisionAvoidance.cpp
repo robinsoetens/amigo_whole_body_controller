@@ -87,6 +87,8 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
     ROS_INFO_STREAM("Initialized Obstacle Avoidance");
 
+    client_.startThread();
+
     return true;
 }
 
@@ -144,7 +146,7 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     }
 #endif
 
-    calculateWrenches(repulsive_forces_total);
+    calculateWrenches(repulsive_forces_total_fcl);
 
     /// Output
     visualize(min_distances_total);
@@ -153,9 +155,6 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     if (report_counter > 100)
     {
         report_counter = 0;
-#ifdef USE_FCL
-        this->client_.update();
-#endif
     }
     report_counter++;
 }

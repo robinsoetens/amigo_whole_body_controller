@@ -12,7 +12,7 @@
 namespace vwm_tools {
 
 vwmClient::vwmClient()
-    : cache(), world_objects()
+    : cache(), world_objects(), rate_(2)
 {
 }
 
@@ -50,6 +50,20 @@ void vwmClient::update()
 
     updateTimer.stop();
     ROS_INFO("VWM update took %f ms, (%li/%li) collision bodies found", updateTimer.getElapsedTimeInMilliSec(), objects.size(), entities.size());
+}
+
+void vwmClient::startThread()
+{
+    thread_ = boost::thread(&vwmClient::loop, this);
+}
+
+void vwmClient::loop()
+{
+    while (ros::ok())
+    {
+        update();
+        rate_.sleep();
+    }
 }
 
 std::vector< boost::shared_ptr<fcl::CollisionObject> > vwmClient::getWorldObjects()

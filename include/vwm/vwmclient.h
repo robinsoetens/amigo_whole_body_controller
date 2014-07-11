@@ -13,6 +13,10 @@
 #include <fcl/collision_data.h>
 
 #include <boost/thread/mutex.hpp>
+#include <boost/thread/thread.hpp>
+
+// Timer
+#include "profiling/Profiler.h"
 
 namespace vwm_tools {
 
@@ -24,6 +28,8 @@ private:
     std::vector< boost::shared_ptr<fcl::CollisionObject> > world_objects;
 
     boost::mutex mtx_;
+    boost::thread thread_;
+    ros::Rate rate_; // 10 hz
 
 public:
 
@@ -36,6 +42,8 @@ public:
 
     // member functions
     void update();
+    void startThread();
+    void loop();
 
     std::vector< boost::shared_ptr<fcl::CollisionObject> > getWorldObjects();
 };
