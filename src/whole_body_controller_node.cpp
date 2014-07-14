@@ -7,6 +7,8 @@
 // tf
 #include <tf/transform_listener.h>
 
+#include <profiling/StatsPublisher.h>
+
 using namespace std;
 
 const double loop_rate_ = 50;
@@ -232,7 +234,12 @@ int main(int argc, char **argv) {
 		r.sleep();
 	}
 
+    StatsPublisher sp;
+    sp.initialize();
+
     while(ros::ok()) {
+
+        sp.startTimer("main");
 
         ros::spinOnce();
 
@@ -259,7 +266,9 @@ int main(int argc, char **argv) {
 
         /// Update whole-body controller
         Eigen::VectorXd q_ref, qdot_ref;
+        sp.startTimer("wbcupdate");
         wbc->update(q_ref, qdot_ref);
+        sp.stopTimer("wbcupdate");
 
         /// Update the joint trajectory executer
         jte.update();
@@ -276,6 +285,8 @@ int main(int argc, char **argv) {
             ROS_WARN_ONCE("Publishing reference torques");
             robot_interface.publishJointTorques(wbc->getJointTorques(), wbc->getJointNames());
         }
+
+        sp.stopTimer("main");
 
         r.sleep();
     }
