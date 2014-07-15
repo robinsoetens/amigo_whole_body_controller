@@ -89,11 +89,15 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
     client_.startThread();
 
+    statsPublisher_.initialize();
+
     return true;
 }
 
 void CollisionAvoidance::apply(RobotState &robotstate)
 {
+    statsPublisher_.startTimer("CollisionAvoidance::apply");
+
     /// Reset stuff
     jacobian_pre_alloc_.setZero();
     wrenches_pre_alloc_.setZero();
@@ -109,8 +113,13 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     std::vector<RepulsiveForce> repulsive_forces_total;  // this will get removed eventually
     std::vector<RepulsiveForce> repulsive_forces_total_fcl;
 
+    statsPublisher_.startTimer("CollisionAvoidance::selfCollision");
+
     // Calculate the repulsive forces as a result of the self-collision avoidance.
     selfCollision(min_distances_total, min_distances_total_fcl);
+
+    statsPublisher_.stopTimer("CollisionAvoidance::selfCollision");
+
 
     // Calculate the repulsive forces as a result of the environment collision avoidance.
     /*
@@ -126,15 +135,23 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     */
 
 #ifdef USE_FCL
+    statsPublisher_.startTimer("CollisionAvoidance::environmentCollisionVWM");
+
     // Calculate the repulsive forces as a result of the volumetric world model
     environmentCollisionVWM(min_distances_total_fcl);
+
+    statsPublisher_.stopTimer("CollisionAvoidance::environmentCollisionVWM");
 #endif
+
+    statsPublisher_.startTimer("CollisionAvoidance::calculateRepulsiveForce");
 
     /// Calculate the repulsive forces and the corresponding 'wrenches' and Jacobians from the minimum distances
     calculateRepulsiveForce(min_distances_total,     repulsive_forces_total,     ca_param_.self_collision);
 #ifdef USE_FCL
     calculateRepulsiveForce(min_distances_total_fcl, repulsive_forces_total_fcl, ca_param_.self_collision);
 #endif
+
+    statsPublisher_.stopTimer("CollisionAvoidance::calculateRepulsiveForce");
 
 #ifdef DEBUG_REPULSIVE_FORCE
     uint64_t t = ros::Time::now().toNSec() / 1000;
@@ -146,17 +163,30 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     }
 #endif
 
+    statsPublisher_.startTimer("CollisionAvoidance::calculateWrenches");
+
     calculateWrenches(repulsive_forces_total_fcl);
 
+    statsPublisher_.stopTimer("CollisionAvoidance::calculateWrenches");
+
+
     /// Output
+    statsPublisher_.startTimer("CollisionAvoidance::visualize");
+
     visualize(min_distances_total);
     visualizeRepulsiveForces(min_distances_total_fcl);
+
+    statsPublisher_.stopTimer("CollisionAvoidance::visualize");
+
 
     if (report_counter > 100)
     {
         report_counter = 0;
     }
     report_counter++;
+
+    statsPublisher_.stopTimer("CollisionAvoidance::apply");
+    statsPublisher_.publish();
 }
 
 void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {

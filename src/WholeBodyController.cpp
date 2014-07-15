@@ -116,6 +116,7 @@ bool WholeBodyController::initialize(const double Ts)
     std::string filename = "joints";
     //std::string folderfilename = foldername + filename; // ToDo: make nice
     tracer_.Initialize(foldername, filename, column_names, buffersize);
+    statsPublisher_.initialize();
 
     ROS_INFO("Whole Body Controller Initialized");
 
@@ -180,6 +181,7 @@ bool WholeBodyController::setDesiredJointPosition(const std::string& joint_name,
 
 bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& qdot_reference)
 {
+    statsPublisher_.startTimer("WholeBodyController::update");
 
     /// Set some variables to zero
     tau_.setZero();
@@ -204,6 +206,8 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
         MotionObjective* motionobjective = *it_motionobjective;
         //ROS_INFO("Motion Objective: %p", motionobjective);
 
+        statsPublisher_.startTimer("WholeBodyController::motionobjective::" + motionobjective->type_);
+
         motionobjective->apply(robot_state_);
 
         unsigned int priority = motionobjective->getPriority();
@@ -216,6 +220,8 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
         } else {
             ROS_WARN("Number of rows of the Jacobian is getting too large, omitting Jacobian!!!");
         }
+
+        statsPublisher_.stopTimer("WholeBodyController::motionobjective::" + motionobjective->type_);
     }
 
     /// Update other motion objectives
@@ -270,6 +276,10 @@ bool WholeBodyController::update(Eigen::VectorXd &q_reference, Eigen::VectorXd& 
         tracer_.collectTracing(4*num_joints_+3, JointLimitAvoidance_.getCost());
         tracer_.collectTracing(4*num_joints_+4, PostureControl_.getCost());
     }
+
+    statsPublisher_.stopTimer("WholeBodyController::update");
+
+    statsPublisher_.publish();
 
     return true;
 

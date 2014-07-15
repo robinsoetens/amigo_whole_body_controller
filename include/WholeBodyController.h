@@ -16,6 +16,8 @@
 #include "ComputeNullspace.h"
 #include "amigo_whole_body_controller/Tracing.hpp"
 
+#include <profiling/StatsPublisher.h>
+
 class WholeBodyController {
 
 public:
@@ -164,6 +166,8 @@ protected:
     /** Tracing object */
     Tracing tracer_;
 
+    /** Profiling */
+    StatsPublisher statsPublisher_;
 };
 
 #endif

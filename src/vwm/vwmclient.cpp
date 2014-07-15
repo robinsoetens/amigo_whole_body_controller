@@ -7,8 +7,6 @@
 #include <wire_volume/EntityHandle.h>
 #include <wire_volume/WorldModel.h>
 
-#include "profiling/Profiler.h"
-
 namespace vwm_tools {
 
 vwmClient::vwmClient()

@@ -48,7 +48,7 @@
 #endif
 
 // Timer
-#include "profiling/Profiler.h"
+#include <profiling/StatsPublisher.h>
 
 /////
 
@@ -313,7 +313,7 @@ protected:
      */
     void findOuterPoints(RobotState::CollisionBody& collisionBody, btVector3 &min, btVector3 &max);
 
-
+    StatsPublisher statsPublisher_;
 };
 
 #endif

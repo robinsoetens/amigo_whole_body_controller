@@ -287,6 +287,7 @@ int main(int argc, char **argv) {
         }
 
         sp.stopTimer("main");
+        sp.publish();
 
         r.sleep();
     }
