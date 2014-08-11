@@ -197,6 +197,7 @@ protected:
      * @param Output: Vector with the minimum distances between robot collision bodies, vector with the repulsive forces
      */
     void selfCollision(std::vector<Distance> &min_distances, std::vector<Distance2> &min_distances2);
+    void selfCollisionFast(std::vector<Distance2> &min_distances);
 
     /**
      * @brief Calculate the repulsive forces as a result of environment collision avoidance

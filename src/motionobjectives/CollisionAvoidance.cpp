@@ -104,12 +104,13 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     torques_.setZero();
     cost_ = 0.0;
 
-    robot_state_ = &robotstate;
+    robot_state_ = &robotstate; // TODO: is this really necessary? This already happens in the contructor
     calculateTransform();
 
     // Calculate the wrenches as a result of (self-)collision avoidance
     std::vector<Distance> min_distances_total;
     std::vector<Distance2> min_distances_total_fcl;
+    std::vector<Distance2> min_distances_total_fast;
     std::vector<RepulsiveForce> repulsive_forces_total;  // this will get removed eventually
     std::vector<RepulsiveForce> repulsive_forces_total_fcl;
 
@@ -120,6 +121,9 @@ void CollisionAvoidance::apply(RobotState &robotstate)
 
     statsPublisher_.stopTimer("CollisionAvoidance::selfCollision");
 
+    statsPublisher_.startTimer("CollisionAvoidance::selfCollisionFast");
+    selfCollisionFast(min_distances_total_fast);
+    statsPublisher_.stopTimer("CollisionAvoidance::selfCollisionFast");
 
     // Calculate the repulsive forces as a result of the environment collision avoidance.
     /*
@@ -300,6 +304,10 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
     }
 }
 
+void CollisionAvoidance::selfCollisionFast(std::vector<Distance2> &min_distances)
+{
+
+}
 
 void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distances)
 {
