@@ -4,6 +4,7 @@
 #include <std_msgs/Float64.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <octomap_ros/conversions.h>
 
 #ifdef USE_FCL
 
@@ -556,8 +557,8 @@ void CollisionAvoidance::calculateWrenches(const std::vector<RepulsiveForce> &re
         partial_jacobian.changeRefPoint(KDL::Vector(dpx, dpy, dpz));
 
         /// Change base: the Jacobian is computed w.r.t. base_link instead of map, while the force is expressed in map
-        std::map<std::string, KDL::Frame>::iterator itrRF = robot_state_->fk_poses_.find("base_link"); //ToDo: don't hardcode???
-        KDL::Frame BaseFrame_in_map = itrRF->second;
+        std::map<std::string, KDL::Frame>::iterator itrFK = robot_state_->fk_poses_.find("base_link"); //ToDo: don't hardcode???
+        KDL::Frame BaseFrame_in_map = itrFK->second;
         partial_jacobian.changeBase(BaseFrame_in_map.M);
 
         /// Premultiply first three rows with force direction to get one row
