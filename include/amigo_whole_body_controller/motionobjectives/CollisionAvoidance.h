@@ -20,7 +20,7 @@
 #include "Tree.h"
 
 // Map
-#include <tue_map_3d/Map3D.h>
+#include <octomap/OcTreeStamped.h>
 
 #ifdef USE_BULLET
 // Bullet GJK Closest Point calculation

@@ -7,6 +7,8 @@
 // tf
 #include <tf/transform_listener.h>
 
+#include <octomap_msgs/conversions.h>
+
 #include <profiling/StatsPublisher.h>
 
 using namespace std;

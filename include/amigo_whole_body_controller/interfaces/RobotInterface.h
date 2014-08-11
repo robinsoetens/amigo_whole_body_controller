@@ -10,6 +10,7 @@
 #include <ros/ros.h>
 #include <WholeBodyController.h>
 #include <sensor_msgs/JointState.h>
+#include <tf/transform_listener.h>
 
 class RobotInterface {
 
