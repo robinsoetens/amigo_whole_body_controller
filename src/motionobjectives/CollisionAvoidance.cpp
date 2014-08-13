@@ -29,8 +29,30 @@
 
 using namespace std;
 
+/// @brief Distance data stores the distance request and the result given by distance algorithm.
+struct DistanceData
+{
+  DistanceData()
+  {
+    done = false;
+    verbose = false;
+  }
+
+  /// @brief Distance request
+  fcl::DistanceRequest request;
+
+  /// @brief Distance result
+  fcl::DistanceResult result;
+
+  /// @brief Whether the distance iteration can stop
+  bool done;
+
+  bool verbose;
+
+};
+
 CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts)
-    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL), report_counter(0)
+    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL)
 {
     /// Status is always 2 (always active)
     type_     = "CollisionAvoidance";
@@ -183,13 +205,6 @@ void CollisionAvoidance::apply(RobotState &robotstate)
 
     statsPublisher_.stopTimer("CollisionAvoidance::visualize");
 
-
-    if (report_counter > 100)
-    {
-        report_counter = 0;
-    }
-    report_counter++;
-
     statsPublisher_.stopTimer("CollisionAvoidance::apply");
     statsPublisher_.publish();
 }
@@ -305,10 +320,38 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
     }
 }
 
+#ifdef USE_FCL
+bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObject* o2, void* cdata_, fcl::FCL_REAL& dist)
+{
+  DistanceData* cdata = static_cast<DistanceData*>(cdata_);
+  const fcl::DistanceRequest& request = cdata->request;
+  fcl::DistanceResult& result = cdata->result;
+
+  if(cdata->done) { dist = result.min_distance; return true; }
+
+  fcl::distance(o1, o2, request, result);
+
+  dist = result.min_distance;
+
+  if(dist <= 0) return true; // in collision or in touch
+
+  return cdata->done;
+}
+
 void CollisionAvoidance::selfCollisionFast(std::vector<Distance2> &min_distances)
 {
+    DistanceData cdata;
+    cdata.verbose = true;
+    cdata.request.enable_nearest_points = true;
 
+    std::cout << "starting with self collision" << std::endl;
+    cout << "asdf";
+
+    selfCollisionManager.distance(&cdata, selfCollisionDistanceFunction);
+
+    fcl::DistanceResult result = cdata.result;
 }
+#endif
 
 void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distances)
 {
@@ -432,25 +475,6 @@ void CollisionAvoidance::environmentCollision(std::vector<Distance> &min_distanc
 }
 
 #ifdef USE_FCL
-/// @brief Distance data stores the distance request and the result given by distance algorithm.
-struct DistanceData
-{
-  DistanceData()
-  {
-    done = false;
-  }
-
-  /// @brief Distance request
-  fcl::DistanceRequest request;
-
-  /// @brief Distance result
-  fcl::DistanceResult result;
-
-  /// @brief Whether the distance iteration can stop
-  bool done;
-
-};
-
 bool environmentCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObject* o2, void* cdata_, fcl::FCL_REAL& dist)
 {
   DistanceData* cdata = static_cast<DistanceData*>(cdata_);
@@ -707,9 +731,13 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
             }
 #ifdef USE_FCL
             collisionBody.fcl_object = boost::shared_ptr<fcl::CollisionObject>(new fcl::CollisionObject(collisionBody.fcl_shape));
+
+            selfCollisionManager.registerObject(collisionBody.fcl_object.get());
 #endif
         }
     }
+
+    selfCollisionManager.setup();
 }
 
 

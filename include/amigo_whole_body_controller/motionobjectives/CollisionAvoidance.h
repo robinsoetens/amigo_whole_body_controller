@@ -45,14 +45,16 @@
 #include <fcl/shape/geometric_shapes.h>
 #include <fcl/shape/geometric_shape_to_BVH_model.h>
 
+#include <fcl/broadphase/broadphase_dynamic_AABB_tree.h>
+
 #endif
 
 // Timer
 #include <profiling/StatsPublisher.h>
 
-/////
-
 // ToDo: why not make total wrenches and total distances member variables? Now they're passed on from function to function
+
+// TODO: put everything into a namespace
 
 class CollisionAvoidance : public MotionObjective
 {
@@ -66,7 +68,6 @@ class CollisionAvoidance : public MotionObjective
         Eigen::Vector3d min_;
         Eigen::Vector3d max_;
     };
-
 
 public:
 
@@ -85,6 +86,60 @@ public:
         Parameters self_collision;
         Parameters environment_collision;
     } ca_param_;
+
+    struct CollisionGeometryData
+    {
+      CollisionGeometryData(RobotState::CollisionBody *link)
+      {
+        ptr.link = link;
+      }
+
+      /*
+      const std::string& getID() const
+      {
+        switch (type)
+        {
+        case BodyTypes::ROBOT_LINK:
+          return ptr.link->getName();
+        case BodyTypes::ROBOT_ATTACHED:
+          return ptr.ab->getName();
+        default:
+          break;
+        }
+        return ptr.obj->id_;
+      }
+
+      std::string getTypeString() const
+      {
+        switch (type)
+        {
+        case BodyTypes::ROBOT_LINK:
+          return "Robot link";
+        case BodyTypes::ROBOT_ATTACHED:
+          return "Robot attached";
+        default:
+          break;
+        }
+        return "Object";
+      }
+      */
+
+      /** \brief Check if two CollisionGeometryData objects point to the same source object */
+      bool sameObject(const CollisionGeometryData &other) const
+      {
+        return ptr.raw == other.ptr.raw;
+      }
+
+      union
+      {
+/*      const robot_model::LinkModel    *link;
+        const robot_state::AttachedBody *ab;
+        const World::Object             *obj; */
+        const RobotState::CollisionBody *link;
+        const void                      *raw;
+      } ptr;
+
+    };
 
     //ToDo: make configure, start- and stophook. Components can be started/stopped in an actionlib kind of fashion
 
@@ -180,6 +235,8 @@ protected:
     octomap::OcTreeStamped* octomap_;
 
 #ifdef USE_FCL
+    fcl::DynamicAABBTreeCollisionManager selfCollisionManager;
+
     vwm_tools::vwmClient client_;
 #endif
 
@@ -189,8 +246,6 @@ protected:
     // Minimum and maximum point of the BBX
     std::vector<octomath::Vector3> min_;
     std::vector<octomath::Vector3> max_;
-
-    int report_counter;
 
     /**
      * @brief Calculate the repulsive forces as a result of self collision avoidance
