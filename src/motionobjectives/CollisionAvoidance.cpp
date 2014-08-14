@@ -4,7 +4,6 @@
 #include <std_msgs/Float64.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <octomap_ros/conversions.h>
 
 #ifdef USE_FCL
 
@@ -1434,8 +1433,9 @@ void CollisionAvoidance::removeOctomapBBX(const geometry_msgs::Point& goal, cons
             bbx_min.z = Frame_map_goal.p.z() - 0.1;
 
             ROS_INFO("Bounding box max: (%f %f %f), min (%f %f %f)",bbx_max.x,bbx_max.y,bbx_max.z,bbx_min.x, bbx_min.y, bbx_min.z );
-            octomath::Vector3 min = octomap::pointMsgToOctomap(bbx_min);
-            octomath::Vector3 max = octomap::pointMsgToOctomap(bbx_max);
+
+            octomap::point3d min(bbx_min.x, bbx_min.y, bbx_min.z);
+            octomap::point3d max(bbx_max.x, bbx_max.y, bbx_max.z);
 
             for(OctreeType::leaf_bbx_iterator it = octomap_->begin_leafs_bbx(min,max),
                 end=octomap_->end_leafs_bbx(); it!= end; ++it){

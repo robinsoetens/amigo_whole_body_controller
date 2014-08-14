@@ -20,7 +20,6 @@
   <depend package="geometry_msgs"/>
   <depend package="sensor_msgs"/>
   <depend package="octomap"/>
-  <depend package="octomap_ros"/>
   <depend package="octomap_msgs"/>
   <depend package="code_profiler"/>
 
