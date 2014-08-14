@@ -231,8 +231,8 @@ void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
     object_collision_body.bt_shape = new btCylinderShapeZ(btVector3(x_dim, y_dim, z_dim));
 #endif
 #ifdef USE_FCL
-    object_collision_body.fcl_shape = shapeToMesh(fcl::Cylinder(r, z_dim));
-    object_collision_body.fcl_object = boost::shared_ptr<fcl::CollisionObject>(new fcl::CollisionObject(object_collision_body.fcl_shape));
+    boost::shared_ptr<fcl::CollisionGeometry> fcl_shape = shapeToMesh(fcl::Cylinder(r, z_dim));
+    object_collision_body.fcl_object = boost::shared_ptr<fcl::CollisionObject>(new fcl::CollisionObject(fcl_shape));
 #endif
 
     object_collision_body.fix_pose.Identity();                      //ToDo: is now initialized as p = [0,0,0], M = [0,0,0,1]
@@ -340,7 +340,7 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObjec
 
   if(dist <= 0) return true; // in collision or in touch
 
-  return cdata->done;
+  return cdata  ->done;
 }
 
 void CollisionAvoidance::selfCollisionFast(std::vector<Distance2> &min_distances)
@@ -678,13 +678,15 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
             std::cout << "\ty: " << y << std::endl;
             std::cout << "\tz: " << z << std::endl;
 
+            boost::shared_ptr<fcl::CollisionGeometry> fcl_shape;
+
             if (type=="Box")
             {
 #ifdef USE_BULLET
                 collisionBody.bt_shape = new btBoxShape(btVector3(x,y,z));
 #endif
 #ifdef USE_FCL
-                collisionBody.fcl_shape = shapeToMesh(fcl::Box(x*2, y*2, z*2));
+                fcl_shape = shapeToMesh(fcl::Box(x*2, y*2, z*2));
 #endif
             }
             else if (type == "Sphere")
@@ -693,7 +695,7 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
                 collisionBody.bt_shape = new btSphereShape(x);
 #endif
 #ifdef USE_FCL
-                collisionBody.fcl_shape = shapeToMesh(fcl::Sphere(x));
+                fcl_shape = shapeToMesh(fcl::Sphere(x));
 #endif
             }
             else if (type == "Cone")
@@ -702,7 +704,7 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
                 collisionBody.bt_shape = new btConeShapeZ(x-0.05,2*z);
 #endif
 #ifdef USE_FCL
-                collisionBody.fcl_shape = shapeToMesh(fcl::Cone(x, 2*z));
+                fcl_shape = shapeToMesh(fcl::Cone(x, 2*z));
                 assert(x == y);
 #endif
             }
@@ -716,7 +718,7 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
                 // fcl cylinders are oriented around the z axis, so we must rotate pi/2 around x
                 fcl::Quaternion3f q;
                 q.fromAxisAngle(fcl::Vec3f(1, 0, 0), M_PI_2);
-                collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, y*2), fcl::Transform3f(q));
+                fcl_shape = shapeToMesh(fcl::Cylinder(x, y*2), fcl::Transform3f(q));
 #endif
             }
             else if (type == "CylinderZ")
@@ -726,7 +728,7 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
 #endif
 #ifdef USE_FCL
                 assert(x == y);
-                collisionBody.fcl_shape = shapeToMesh(fcl::Cylinder(x, z*2)); // TODO: check what happens with z
+                fcl_shape = shapeToMesh(fcl::Cylinder(x, z*2)); // TODO: check what happens with z
 #endif
             }
             else
@@ -734,7 +736,7 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
                 ROS_WARN("Collision shape '%s' not found", type.c_str());
             }
 #ifdef USE_FCL
-            collisionBody.fcl_object = boost::shared_ptr<fcl::CollisionObject>(new fcl::CollisionObject(collisionBody.fcl_shape));
+            collisionBody.fcl_object = boost::shared_ptr<fcl::CollisionObject>(new fcl::CollisionObject(fcl_shape));
 
             selfCollisionManager.registerObject(collisionBody.fcl_object.get());
 #endif
@@ -763,8 +765,9 @@ void CollisionAvoidance::calculateTransform()
             setTransform(collisionBody.fk_pose, collisionBody.fix_pose, collisionBody.bt_transform);
 #endif
 #ifdef USE_FCL
-            setTransform(collisionBody.fk_pose, collisionBody.fix_pose, collisionBody.fcl_transform);
-            collisionBody.fcl_object.get()->setTransform(collisionBody.fcl_transform);
+            fcl::Transform3f fcl_transform;
+            setTransform(collisionBody.fk_pose, collisionBody.fix_pose, fcl_transform);
+            collisionBody.fcl_object.get()->setTransform(fcl_transform);
 #endif
 
 #ifdef VERBOSE_TRANSFORMS
