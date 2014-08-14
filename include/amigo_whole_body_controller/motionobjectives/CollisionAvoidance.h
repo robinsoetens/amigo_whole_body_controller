@@ -55,6 +55,61 @@
 // ToDo: why not make total wrenches and total distances member variables? Now they're passed on from function to function
 
 // TODO: put everything into a namespace
+namespace wbc {
+
+struct CollisionGeometryData
+{
+  CollisionGeometryData(RobotState::CollisionBody *link)
+  {
+    ptr.link = link;
+  }
+
+  /*
+  const std::string& getID() const
+  {
+    switch (type)
+    {
+    case BodyTypes::ROBOT_LINK:
+      return ptr.link->getName();
+    case BodyTypes::ROBOT_ATTACHED:
+      return ptr.ab->getName();
+    default:
+      break;
+    }
+    return ptr.obj->id_;
+  }
+
+  std::string getTypeString() const
+  {
+    switch (type)
+    {
+    case BodyTypes::ROBOT_LINK:
+      return "Robot link";
+    case BodyTypes::ROBOT_ATTACHED:
+      return "Robot attached";
+    default:
+      break;
+    }
+    return "Object";
+  }
+  */
+
+  /** \brief Check if two CollisionGeometryData objects point to the same source object */
+  bool sameObject(const CollisionGeometryData &other) const
+  {
+    return ptr.raw == other.ptr.raw;
+  }
+
+  union
+  {
+/*      const robot_model::LinkModel    *link;
+    const robot_state::AttachedBody *ab;
+    const World::Object             *obj; */
+    const RobotState::CollisionBody *link;
+    const void                      *raw;
+  } ptr;
+
+};
 
 class CollisionAvoidance : public MotionObjective
 {
@@ -86,60 +141,6 @@ public:
         Parameters self_collision;
         Parameters environment_collision;
     } ca_param_;
-
-    struct CollisionGeometryData
-    {
-      CollisionGeometryData(RobotState::CollisionBody *link)
-      {
-        ptr.link = link;
-      }
-
-      /*
-      const std::string& getID() const
-      {
-        switch (type)
-        {
-        case BodyTypes::ROBOT_LINK:
-          return ptr.link->getName();
-        case BodyTypes::ROBOT_ATTACHED:
-          return ptr.ab->getName();
-        default:
-          break;
-        }
-        return ptr.obj->id_;
-      }
-
-      std::string getTypeString() const
-      {
-        switch (type)
-        {
-        case BodyTypes::ROBOT_LINK:
-          return "Robot link";
-        case BodyTypes::ROBOT_ATTACHED:
-          return "Robot attached";
-        default:
-          break;
-        }
-        return "Object";
-      }
-      */
-
-      /** \brief Check if two CollisionGeometryData objects point to the same source object */
-      bool sameObject(const CollisionGeometryData &other) const
-      {
-        return ptr.raw == other.ptr.raw;
-      }
-
-      union
-      {
-/*      const robot_model::LinkModel    *link;
-        const robot_state::AttachedBody *ab;
-        const World::Object             *obj; */
-        const RobotState::CollisionBody *link;
-        const void                      *raw;
-      } ptr;
-
-    };
 
     //ToDo: make configure, start- and stophook. Components can be started/stopped in an actionlib kind of fashion
 
@@ -373,3 +374,5 @@ protected:
 };
 
 #endif
+
+} // namespace

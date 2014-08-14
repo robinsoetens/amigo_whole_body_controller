@@ -11,16 +11,17 @@
 
 #include <profiling/StatsPublisher.h>
 
+
 using namespace std;
 
 const double loop_rate_ = 50;
 
 typedef actionlib::SimpleActionServer<amigo_whole_body_controller::ArmTaskAction> action_server;
 action_server* add_motion_objective_server_;
-CollisionAvoidance* collision_avoidance;
+wbc::CollisionAvoidance* collision_avoidance;
 CartesianImpedance* cartesian_impedance;
 
-WholeBodyController* wbc;
+WholeBodyController* wholeBodyController;
 
 /// For using a static octomap during grasp 
 bool octomap_cb = true;
@@ -105,16 +106,16 @@ void GoalCB() {
 	}
     /// If a remove tip frame is present: remove objective
     if (!goal.remove_tip_frame.empty()) {
-        std::vector<MotionObjective*> imps_to_remove = wbc->getCartesianImpedances(goal.remove_tip_frame,goal.remove_root_frame);
+        std::vector<MotionObjective*> imps_to_remove = wholeBodyController->getCartesianImpedances(goal.remove_tip_frame,goal.remove_root_frame);
         for (unsigned int i = 0; i < imps_to_remove.size(); i++) {
-            wbc->removeMotionObjective(imps_to_remove[i]);
+            wholeBodyController->removeMotionObjective(imps_to_remove[i]);
         }
     }
     /// Else: add motion objectives
 
     // ToDo make smarter, double check for tipframe and is looping necessary!?
     else {
-        std::vector<MotionObjective*> imps_to_remove = wbc->getCartesianImpedances(goal.position_constraint.link_name,goal.position_constraint.header.frame_id);
+        std::vector<MotionObjective*> imps_to_remove = wholeBodyController->getCartesianImpedances(goal.position_constraint.link_name,goal.position_constraint.header.frame_id);
         for (unsigned int i = 0; i < imps_to_remove.size(); i++) {
             if (goal.position_constraint.link_name == imps_to_remove[i]->tip_frame_)
             {
@@ -131,7 +132,7 @@ void GoalCB() {
                     cart_imp->setImpedance(goal.stiffness);
                     cart_imp->setPositionTolerance(goal.position_constraint.constraint_region_shape);
                     cart_imp->setOrientationTolerance(goal.orientation_constraint.absolute_roll_tolerance, goal.orientation_constraint.absolute_pitch_tolerance, goal.orientation_constraint.absolute_yaw_tolerance);
-                    cart_imp->setVelocity(wbc->robot_state_);
+                    cart_imp->setVelocity(wholeBodyController->robot_state_);
                     return;
                 }
                 else
@@ -142,7 +143,7 @@ void GoalCB() {
 
             }
 
-            wbc->removeMotionObjective(imps_to_remove[i]);
+            wholeBodyController->removeMotionObjective(imps_to_remove[i]);
         }
 
         cartesian_impedance = new CartesianImpedance(goal.position_constraint.link_name, 1.0/loop_rate_);
@@ -156,14 +157,14 @@ void GoalCB() {
         cartesian_impedance->setImpedance(goal.stiffness);
         cartesian_impedance->setPositionTolerance(goal.position_constraint.constraint_region_shape);
         cartesian_impedance->setOrientationTolerance(goal.orientation_constraint.absolute_roll_tolerance, goal.orientation_constraint.absolute_pitch_tolerance, goal.orientation_constraint.absolute_yaw_tolerance);
-        if (!wbc->addMotionObjective(cartesian_impedance)) {
+        if (!wholeBodyController->addMotionObjective(cartesian_impedance)) {
             ROS_ERROR("Could not initialize cartesian impedance for new motion objective");
             exit(-1);
         }
     }
 }
 
-void loadParameterFiles(CollisionAvoidance::collisionAvoidanceParameters &ca_param)
+void loadParameterFiles(wbc::CollisionAvoidance::collisionAvoidanceParameters &ca_param)
 {
     ros::NodeHandle n("~");
     std::string ns = ros::this_node::getName();
@@ -177,8 +178,9 @@ void loadParameterFiles(CollisionAvoidance::collisionAvoidanceParameters &ca_par
     n.getParam("/map_3d/resolution", ca_param.environment_collision.octomap_resolution);
 }
 
-
 int main(int argc, char **argv) {
+
+    using namespace wbc;
 
     // Initialize node
     ros::init(argc, argv, "whole_body_controller");
@@ -202,13 +204,13 @@ int main(int argc, char **argv) {
     ROS_WARN("Omit admittance = %d",omit_admittance);
 
     /// Whole body controller object
-    wbc = new WholeBodyController(1/loop_rate_);
+    wholeBodyController = new WholeBodyController(1/loop_rate_);
 
     /// Robot interface
-    RobotInterface robot_interface(wbc);
+    RobotInterface robot_interface(wholeBodyController);
 
     /// Joint trajectory executer
-    JointTrajectoryAction jte(wbc);
+    JointTrajectoryAction jte(wholeBodyController);
 
     ros::Rate r(loop_rate_);
 
@@ -218,7 +220,7 @@ int main(int argc, char **argv) {
     add_motion_objective_server_->start();
 
     collision_avoidance = new CollisionAvoidance(ca_param, 1/loop_rate_);
-    if (!wbc->addMotionObjective(collision_avoidance)) {
+    if (!wholeBodyController->addMotionObjective(collision_avoidance)) {
         ROS_ERROR("Could not initialize collision avoidance");
         exit(-1);
     }
@@ -246,8 +248,8 @@ int main(int argc, char **argv) {
         ros::spinOnce();
 
         // Beun oplossing
-        std::vector<MotionObjective*> left_imp = wbc->getCartesianImpedances("grippoint_left", root_frame);
-        std::vector<MotionObjective*> right_imp = wbc->getCartesianImpedances("grippoint_right", root_frame);
+        std::vector<MotionObjective*> left_imp = wholeBodyController->getCartesianImpedances("grippoint_left", root_frame);
+        std::vector<MotionObjective*> right_imp = wholeBodyController->getCartesianImpedances("grippoint_right", root_frame);
         if (!left_imp.empty()){
             if (cartesian_impedance->getStatus() == 1 && add_motion_objective_server_->isActive()){
 
@@ -269,7 +271,7 @@ int main(int argc, char **argv) {
         /// Update whole-body controller
         Eigen::VectorXd q_ref, qdot_ref;
         sp.startTimer("wbcupdate");
-        wbc->update(q_ref, qdot_ref);
+        wholeBodyController->update(q_ref, qdot_ref);
         sp.stopTimer("wbcupdate");
 
         /// Update the joint trajectory executer
@@ -279,13 +281,13 @@ int main(int argc, char **argv) {
         if (!omit_admittance)
         {
             ROS_WARN_ONCE("Publishing reference positions");
-            robot_interface.publishJointReferences(wbc->getJointReferences(), wbc->getJointNames());
+            robot_interface.publishJointReferences(wholeBodyController->getJointReferences(), wholeBodyController->getJointNames());
             //ROS_ERROR_ONCE("NO REFERENCES PUBLISHED");
         }
         else
         {
             ROS_WARN_ONCE("Publishing reference torques");
-            robot_interface.publishJointTorques(wbc->getJointTorques(), wbc->getJointNames());
+            robot_interface.publishJointTorques(wholeBodyController->getJointTorques(), wholeBodyController->getJointNames());
         }
 
         sp.stopTimer("main");
@@ -297,7 +299,7 @@ int main(int argc, char **argv) {
     //ToDo: delete all motion objectives
     delete add_motion_objective_server_;
     delete collision_avoidance;
-    delete wbc;
+    delete wholeBodyController;
     delete cartesian_impedance;
 
     return 0;

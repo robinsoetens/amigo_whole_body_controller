@@ -29,6 +29,8 @@
 
 using namespace std;
 
+namespace wbc {
+
 /// @brief Distance data stores the distance request and the result given by distance algorithm.
 struct DistanceData
 {
@@ -324,8 +326,12 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObject* o2, void* cdata_, fcl::FCL_REAL& dist)
 {
   DistanceData* cdata = static_cast<DistanceData*>(cdata_);
+
   const fcl::DistanceRequest& request = cdata->request;
   fcl::DistanceResult& result = cdata->result;
+
+  const CollisionGeometryData* cd1 = static_cast<const CollisionGeometryData*>(o1->getCollisionGeometry()->getUserData());
+  const CollisionGeometryData* cd2 = static_cast<const CollisionGeometryData*>(o2->getCollisionGeometry()->getUserData());
 
   if(cdata->done) { dist = result.min_distance; return true; }
 
@@ -1441,3 +1447,5 @@ void CollisionAvoidance::removeOctomapBBX(const geometry_msgs::Point& goal, cons
         }
     }
 }
+
+} // namespace
