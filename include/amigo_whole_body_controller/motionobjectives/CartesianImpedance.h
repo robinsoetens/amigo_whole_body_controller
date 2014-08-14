@@ -26,7 +26,7 @@
 //
 #include <fstream>
 #include <amigo_ref_interpolator/interpolator.h>
-#include <tue_gazebo_plugins/ReferenceGenerator.h>
+//include <tue_gazebo_plugins/ReferenceGenerator.h>
 #include "amigo_whole_body_controller/Tracing.hpp"
 
 class CartesianImpedance : public MotionObjective {
@@ -61,7 +61,7 @@ public:
 
     std::vector<refgen::RefGenerator> ref_generators;
 
-    std::vector<controller::RefGenerator> ref_generator_;
+    //std::vector<controller::RefGenerator> ref_generator_;
 
 protected:
 

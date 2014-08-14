@@ -98,13 +98,14 @@ void CartesianImpedance::setVelocity(RobotState &robotstate){
     ROS_INFO("Current  end-effector pose = %f %f %f", frame_root_tip.p.x(), frame_root_tip.p.y(), frame_root_tip.p.z());
     ROS_INFO("Refreshing the end-effector velocity = %f %f %f %f %f %f with sample time %f", ee_vel_root.vel.x(),ee_vel_root.vel.y(), ee_vel_root.vel.z(), ee_vel_root.rot.x(),ee_vel_root.rot.y(),ee_vel_root.rot.z(),Ts_);
 
+    /*
     ref_generator_[0].setCurrentVelocity(ee_vel_root.vel.x());
     ref_generator_[1].setCurrentVelocity(ee_vel_root.vel.y());
     ref_generator_[2].setCurrentVelocity(ee_vel_root.vel.z());
     ref_generator_[3].setCurrentVelocity(ee_vel_root.rot.x());
     ref_generator_[4].setCurrentVelocity(ee_vel_root.rot.y());
     ref_generator_[5].setCurrentVelocity(ee_vel_root.rot.z());
-
+    */
 }
 
 
@@ -132,6 +133,7 @@ bool CartesianImpedance::initialize(RobotState &robotstate) {
     double roll, pitch, yaw;
     frame_root_tip.M.GetRPY(roll, pitch, yaw);
 
+    /*
     ref_generator_.resize(6);
     ref_generator_[0] = controller::RefGenerator(frame_root_tip.p.x(), 0.5, 0.8);
     ref_generator_[1] = controller::RefGenerator(frame_root_tip.p.y(), 0.5, 0.8);
@@ -139,6 +141,7 @@ bool CartesianImpedance::initialize(RobotState &robotstate) {
     ref_generator_[3] = controller::RefGenerator(roll, 0.5, 0.8);
     ref_generator_[4] = controller::RefGenerator(pitch, 0.5, 0.8);
     ref_generator_[5] = controller::RefGenerator(yaw, 0.5, 0.8);
+    */
 
     /// Initialize vector and matrix objects
     unsigned int number_joints = robotstate.getNrJoints();
@@ -491,17 +494,20 @@ void CartesianImpedance::refGeneration(KDL::Frame& goal, KDL::Frame& ref)
     goal.M.GetRPY(roll, pitch, yaw);
 
     /// Generate
+    /*
     ref_generator_[0].generate(goal.p.x(), 0.02, false);
     ref_generator_[1].generate(goal.p.y(), 0.02, false);
     ref_generator_[2].generate(goal.p.z(), 0.02, false);
     ref_generator_[3].generate(roll,  0.02, false);
     ref_generator_[4].generate(pitch, 0.02, false);
     ref_generator_[5].generate(yaw,   0.02, false);
+    */
 
     /// Assign
+    /*
     ref.p.x(ref_generator_[0].getPositionReference());
     ref.p.y(ref_generator_[1].getPositionReference());
     ref.p.z(ref_generator_[2].getPositionReference());
     ref.M = KDL::Rotation::RPY(ref_generator_[3].getPositionReference(), ref_generator_[4].getPositionReference(), ref_generator_[5].getPositionReference());
-
+    */
 }

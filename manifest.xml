@@ -28,7 +28,7 @@
   <depend package="kdl"/>
   <depend package="kdl_parser"/>
 
-  <depend package="amigo_arm_navigation"/>
+  <depend package="arm_navigation_msgs"/>
   <depend package="geolib_fcl"/>
   <depend package="amigo_ref_interpolator"/>
   <depend package="tue_gazebo_plugins"/>
