@@ -27,7 +27,7 @@
 #define GEOM_SPHERE_seg     8
 #define GEOM_SPHERE_ring    8
 
-using namespace std;
+
 
 namespace wbc {
 
@@ -351,7 +351,6 @@ void CollisionAvoidance::selfCollisionFast(std::vector<Distance2> &min_distances
     cdata.request.enable_nearest_points = true;
 
     std::cout << "starting with self collision" << std::endl;
-    cout << "asdf";
 
     selfCollisionManager.distance(&cdata, selfCollisionDistanceFunction);
 
@@ -901,7 +900,7 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 {
     const btTransform& transform = collisionBody.bt_transform;
     std::string type = collisionBody.collision_shape.shape_type;
-    string frame_id = "/map";
+    std::string frame_id = "/map";
 
     double x = collisionBody.collision_shape.dimensions.x;
     double y = collisionBody.collision_shape.dimensions.y;
@@ -1408,7 +1407,7 @@ void CollisionAvoidance::findOuterPoints(RobotState::CollisionBody& collisionBod
     }
 }
 
-void CollisionAvoidance::removeOctomapBBX(const geometry_msgs::Point& goal, const string& root){
+void CollisionAvoidance::removeOctomapBBX(const geometry_msgs::Point& goal, const std::string& root){
 
     if (octomap_){
         if (octomap_->size() > 0){

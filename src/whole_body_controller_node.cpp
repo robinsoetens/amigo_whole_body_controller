@@ -12,7 +12,6 @@
 #include <profiling/StatsPublisher.h>
 
 
-using namespace std;
 
 const double loop_rate_ = 50;
 

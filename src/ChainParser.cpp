@@ -1,7 +1,5 @@
 #include "ChainParser.h"
 
-using namespace std;
-
 ChainParser::ChainParser() {
 
 }
@@ -66,8 +64,8 @@ bool ChainParser::parse(Tree& tree,
         return false;
     }
 
-    vector<double> q_min_vec;
-    vector<double> q_max_vec;
+    std::vector<double> q_min_vec;
+    std::vector<double> q_max_vec;
 
     for(int i = 0; i < chain_params.size(); ++i) {
         ROS_INFO("Going to parse chain ...");
@@ -95,11 +93,11 @@ bool ChainParser::parse(Tree& tree,
 bool ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, Tree tree, urdf::Model& robot_model,
                                std::map<std::string, unsigned int>& joint_name_to_index,
                                std::vector<std::string>& index_to_joint_name,
-                               vector<double>& q_min, vector<double>& q_max) {
+                               std::vector<double>& q_min, std::vector<double>& q_max) {
     ros::NodeHandle n("~");
     std::string ns = n.getNamespace();
 
-    cout << chain_description << endl;
+    std::cout << chain_description << std::endl;
 
     if (chain_description.getType() != XmlRpc::XmlRpcValue::TypeStruct) {
         ROS_ERROR("Chain description should be a struct containing 'root' and 'tip'. (namespace: %s)", n.getNamespace().c_str());
@@ -139,7 +137,7 @@ bool ChainParser::parseChain(XmlRpc::XmlRpcValue& chain_description, Tree tree, 
 
             unsigned int full_joint_index = 0;
 
-            map<string, unsigned int>::iterator it_joint = joint_name_to_index.find(joint.getName());
+            std::map<std::string, unsigned int>::iterator it_joint = joint_name_to_index.find(joint.getName());
 
             if (it_joint == joint_name_to_index.end()) {
                 // joint name is not yet in map, so give it a new fresh index and add it to the map

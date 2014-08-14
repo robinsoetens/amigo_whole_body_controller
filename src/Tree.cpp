@@ -1,7 +1,5 @@
 #include "Tree.h"
 
-using namespace std;
-
 Tree::Tree() {
 }
 
@@ -28,7 +26,7 @@ void Tree::calcPartialJacobian(const std::string& link_name,
     }
 }
 
-void Tree::getJointNames(std::map<string, unsigned int> &jnt_name_to_index_in,std::map<string, unsigned int> &jnt_name_to_index_out)
+void Tree::getJointNames(std::map<std::string, unsigned int> &jnt_name_to_index_in,std::map<std::string, unsigned int> &jnt_name_to_index_out)
 {
     jnt_name_to_index_out = jnt_name_to_index_in;
     joint_name_to_index_ = jnt_name_to_index_in;

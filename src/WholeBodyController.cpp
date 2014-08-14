@@ -9,7 +9,6 @@
 #include <time.h>
 
 
-using namespace std;
 
 WholeBodyController::WholeBodyController(const double Ts)
 {
@@ -403,7 +402,7 @@ void WholeBodyController::loadParameterFiles()
 
     } catch(XmlRpc::XmlRpcException& ex)
     {
-        cout << ex.getMessage() << endl;
+        std::cout << ex.getMessage() << std::endl;
     }
 
 }

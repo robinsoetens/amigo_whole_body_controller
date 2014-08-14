@@ -1,7 +1,5 @@
 #include "Chain.h"
 
-using namespace std;
-
 Chain::Chain() : chain_jnt_to_jac_solver_(0), joint_positions_(0) {
 }
 
