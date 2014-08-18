@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import sys
 import rospy
 import roslib; roslib.load_manifest('amigo_whole_body_controller')
 from code_profiler.msg import Statistics
@@ -18,7 +19,12 @@ class LiveProfile:
 
         self.start_agg = rospy.get_rostime()
 
-        rospy.Subscriber("/whole_body_controller/profiler_stats", Statistics, self.callback)
+        args = sys.argv
+        if len(args) < 2:
+            print 'usage: ' + args[0] + ' topicname'
+            exit()
+
+        rospy.Subscriber(args[1], Statistics, self.callback)
         rospy.spin()
 
     def callback(self, data):
