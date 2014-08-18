@@ -232,6 +232,10 @@ void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
 #endif
 #ifdef USE_FCL
     boost::shared_ptr<fcl::CollisionGeometry> fcl_shape = shapeToMesh(fcl::Cylinder(r, z_dim));
+
+    // also set the user data so we can find out which link was in collision after a collision check
+    fcl_shape->setUserData(new CollisionGeometryData(&object_collision_body));
+
     object_collision_body.fcl_object = boost::shared_ptr<fcl::CollisionObject>(new fcl::CollisionObject(fcl_shape));
 #endif
 
@@ -331,6 +335,11 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObjec
 
   const CollisionGeometryData* cd1 = static_cast<const CollisionGeometryData*>(o1->getCollisionGeometry()->getUserData());
   const CollisionGeometryData* cd2 = static_cast<const CollisionGeometryData*>(o2->getCollisionGeometry()->getUserData());
+
+  const RobotState::CollisionBody *link1 = cd1->ptr.link;
+  const RobotState::CollisionBody *link2 = cd2->ptr.link;
+
+  ROS_INFO("collision between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
 
   if(cdata->done) { dist = result.min_distance; return true; }
 
@@ -737,6 +746,9 @@ void CollisionAvoidance::initializeCollisionModel(RobotState& robotstate)
             }
 #ifdef USE_FCL
             collisionBody.fcl_object = boost::shared_ptr<fcl::CollisionObject>(new fcl::CollisionObject(fcl_shape));
+
+            // also set the user data so we can find out which link was in collision after a collision check
+            fcl_shape.get()->setUserData(new CollisionGeometryData(&collisionBody));
 
             selfCollisionManager.registerObject(collisionBody.fcl_object.get());
 #endif
