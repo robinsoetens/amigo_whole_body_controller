@@ -360,9 +360,27 @@ void CollisionAvoidance::selfCollisionFast(std::vector<Distance2> &min_distances
 
     std::cout << "starting with self collision" << std::endl;
 
-    selfCollisionManager.distance(&cdata, selfCollisionDistanceFunction);
+    // Loop through all collision groups
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroup = robot_state_->robot_.groups.begin(); itrGroup != robot_state_->robot_.groups.end(); ++itrGroup)
+    {
+        std::vector<RobotState::CollisionBody> &Group = *itrGroup;
+        for (std::vector<RobotState::CollisionBody>::iterator itrBody = Group.begin(); itrBody != Group.end(); ++itrBody)
+        {
+            // Loop through al the bodies of the group
+            std::vector<Distance> distanceCollection;
+            std::vector<Distance2> distanceCollection2;
+            RobotState::CollisionBody &currentBody = *itrBody;
 
-    fcl::DistanceResult result = cdata.result;
+            selfCollisionManager.distance(currentBody.fcl_object.get(), &cdata, selfCollisionDistanceFunction);
+
+            Distance2 distance2;
+            distance2.result = cdata.result;
+            distance2.frame_id = currentBody.frame_id;
+
+            // TODO: push information to the result
+            distanceCollection2.push_back(distance2);
+        }
+    }
 }
 #endif
 
