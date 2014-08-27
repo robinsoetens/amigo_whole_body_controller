@@ -61,7 +61,13 @@ generate_messages(
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES amigo_whole_body_controller
-#  CATKIN_DEPENDS actionlib actionlib_msgs amigo_msgs amigo_ref_interpolator arm_navigation_msgs bullet code_profiler sensor_msgs geolib_fcl geometry_msgs orocos_kdl kdl_parser octomap octomap octomap_msgs roscpp rospy std_msgs tf tue_gazebo_plugins visualization_msgs
+  CATKIN_DEPENDS
+    # TODO, other deps
+    std_msgs
+    actionlib_msgs
+    arm_navigation_msgs
+    geometry_msgs
+    message_runtime
 #  DEPENDS system_lib
 )
 
