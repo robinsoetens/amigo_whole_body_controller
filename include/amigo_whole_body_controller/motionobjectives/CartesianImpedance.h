@@ -26,7 +26,7 @@
 //
 #include <fstream>
 #include <amigo_ref_interpolator/interpolator.h>
-#include <tue_gazebo_plugins/ReferenceGenerator.h>
+#include "ReferenceGenerator.h"
 #include "amigo_whole_body_controller/Tracing.hpp"
 
 class CartesianImpedance : public MotionObjective {

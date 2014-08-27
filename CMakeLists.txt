@@ -22,7 +22,6 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   tf
-  tue_gazebo_plugins
   visualization_msgs
 )
 
@@ -108,6 +107,9 @@ add_library(amigo_whole_body_controller
 
   src/interfaces/JointTrajectoryAction.cpp
   src/interfaces/RobotInterface.cpp
+
+  src/ReferenceGenerator.cpp
+  #src/ReferenceGenerator.h
 
   src/vwm/vwmclient.cpp
   src/vwm/vwmobject.cpp
