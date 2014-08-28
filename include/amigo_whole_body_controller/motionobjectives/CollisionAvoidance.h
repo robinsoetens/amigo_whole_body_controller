@@ -37,9 +37,6 @@
 
 #ifdef USE_FCL
 
-// VWM stuff
-#include <vwm/vwmclient.h>
-
 // FCL closest point
 #include <fcl/distance.h>
 #include <fcl/shape/geometric_shapes.h>
@@ -237,8 +234,6 @@ protected:
 
 #ifdef USE_FCL
     fcl::DynamicAABBTreeCollisionManager selfCollisionManager;
-
-    vwm_tools::vwmClient client_;
 #endif
 
     btConvexPenetrationDepthSolver*	depthSolver;

@@ -111,8 +111,6 @@ bool CollisionAvoidance::initialize(RobotState &robotstate)
 
     ROS_INFO_STREAM("Initialized Obstacle Avoidance");
 
-    client_.startThread();
-
     statsPublisher_.initialize();
 
     return true;
@@ -525,7 +523,7 @@ bool environmentCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::Collisi
 
 void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_distances) {
 
-    std::vector< boost::shared_ptr<fcl::CollisionObject> > objects = client_.getWorldObjects();
+    std::vector< boost::shared_ptr<fcl::CollisionObject> > objects; // TODO: add vwm objects
     if (!objects.size()) {
         return;
     }
@@ -1106,7 +1104,6 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 #ifdef USE_FCL
 void CollisionAvoidance::visualizeCollisionModelFCL(RobotState::CollisionBody collisionBody,int id) const
 {
-    //const fcl::CollisionGeometry *cg = collisionBody.fcl_shape.get();
     const fcl::CollisionObject &obj = *collisionBody.fcl_object.get();
 
     visualization_msgs::Marker m;

@@ -90,9 +90,9 @@ link_directories(${OCTOMAP_LIBRARY_DIRS})
 
 # show the headers in qtcreator
 file(GLOB HEADERS 
-  RELATIVE ${CMAKE_SOURCE_DIR} "include/*.h"
-  RELATIVE ${CMAKE_SOURCE_DIR} "include/*/*.h"
-  RELATIVE ${CMAKE_SOURCE_DIR} "include/*/*/*.h"
+  RELATIVE ${PROJECT_SOURCE_DIR} "include/*.h"
+  RELATIVE ${PROJECT_SOURCE_DIR} "include/*/*.h"
+  RELATIVE ${PROJECT_SOURCE_DIR} "include/*/*/*.h"
 )
 
 # Declare a cpp library
