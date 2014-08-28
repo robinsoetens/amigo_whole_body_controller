@@ -88,8 +88,16 @@ link_directories(${Boost_LIBRARY_DIRS})
 link_directories(${orocos_kdl_LIBRARY_DIRS})
 link_directories(${OCTOMAP_LIBRARY_DIRS})
 
+# show the headers in qtcreator
+file(GLOB HEADERS 
+  RELATIVE ${CMAKE_SOURCE_DIR} "include/*.h"
+  RELATIVE ${CMAKE_SOURCE_DIR} "include/*/*.h"
+  RELATIVE ${CMAKE_SOURCE_DIR} "include/*/*/*.h"
+)
+
 # Declare a cpp library
 add_library(amigo_whole_body_controller
+  ${HEADERS}
   src/WholeBodyController.cpp
   src/AdmittanceController.cpp
   src/ComputeNullspace.cpp                                        
@@ -109,10 +117,9 @@ add_library(amigo_whole_body_controller
   src/interfaces/RobotInterface.cpp
 
   src/ReferenceGenerator.cpp
-  #src/ReferenceGenerator.h
 
-  src/vwm/vwmclient.cpp
-  src/vwm/vwmobject.cpp
+# src/vwm/vwmclient.cpp
+# src/vwm/vwmobject.cpp
 )
 target_link_libraries(amigo_whole_body_controller
   ${catkin_LIBRARIES}
