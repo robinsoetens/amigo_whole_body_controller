@@ -8,7 +8,7 @@
 
 #include <geolib_fcl/shapecache.h>
 
-#include <geolib/Box.h>
+//#include <geolib/Box.h>
 
 #include <fcl/collision_data.h>
 
