@@ -45,6 +45,9 @@ struct DistanceData
   /// @brief Distance result
   fcl::DistanceResult result;
 
+  /// @brief Store the robot state for collision group
+  RobotState *robotState;
+
   /// @brief Whether the distance iteration can stop
   bool done;
 
@@ -326,37 +329,68 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 #ifdef USE_FCL
 bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObject* o2, void* cdata_, fcl::FCL_REAL& dist)
 {
-  DistanceData* cdata = static_cast<DistanceData*>(cdata_);
+    DistanceData* cdata = static_cast<DistanceData*>(cdata_);
 
-  const fcl::DistanceRequest& request = cdata->request;
-  fcl::DistanceResult& result = cdata->result;
+    if(cdata->done)
+        return true;
 
-  const CollisionGeometryData* cd1 = static_cast<const CollisionGeometryData*>(o1->getCollisionGeometry()->getUserData());
-  const CollisionGeometryData* cd2 = static_cast<const CollisionGeometryData*>(o2->getCollisionGeometry()->getUserData());
+    const CollisionGeometryData* cd1 = static_cast<const CollisionGeometryData*>(o1->getCollisionGeometry()->getUserData());
+    const CollisionGeometryData* cd2 = static_cast<const CollisionGeometryData*>(o2->getCollisionGeometry()->getUserData());
 
-  const RobotState::CollisionBody *link1 = cd1->ptr.link;
-  const RobotState::CollisionBody *link2 = cd2->ptr.link;
+    // do not collision check geoms part of the same object / link / attached body
+    if (cd1->sameObject(*cd2)) {
+        ROS_INFO("\tskip collision the same link");
+        return false;
+    }
 
-  ROS_INFO("collision between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
+    const RobotState::CollisionBody *link1 = cd1->ptr.link;
+    const RobotState::CollisionBody *link2 = cd2->ptr.link;
 
-  if(cdata->done) { dist = result.min_distance; return true; }
+    std::vector< std::vector<RobotState::CollisionBody> >::iterator group1 = cdata->robotState->robot_.groups.end();
+    std::vector< std::vector<RobotState::CollisionBody> >::iterator group2 = cdata->robotState->robot_.groups.end();
 
-  fcl::distance(o1, o2, request, result);
+    // find the collision group
+    for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroup = cdata->robotState->robot_.groups.begin(); itrGroup != cdata->robotState->robot_.groups.end(); ++itrGroup)
+    {
+        for (std::vector<RobotState::CollisionBody>::iterator itrBody = itrGroup->begin(); itrBody != itrGroup->end(); ++itrBody)
+        {
+            //RobotState::CollisionBody body1 = *itrBody;
 
-  dist = result.min_distance;
+            if (&(*itrBody) == link1)
+                group1 = itrGroup;
+            if (&(*itrBody) == link2)
+                group2 = itrGroup;
+        }
+    }
 
-  if(dist <= 0) return true; // in collision or in touch
+    if (   group1 != cdata->robotState->robot_.groups.end()
+        && group2 != cdata->robotState->robot_.groups.end()
+        && group1 == group2
+    ) {
+        ROS_INFO("\tskip collision in same group between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
+        return false;
+    }
 
-  return cdata  ->done;
+    ROS_INFO("\tcollision between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
+
+    const fcl::DistanceRequest& request = cdata->request;
+    fcl::DistanceResult& result = cdata->result;
+
+    fcl::distance(o1, o2, request, result);
+
+    dist = result.min_distance;
+
+    if(dist <= 0) return true; // in collision or in touch
+
+    return cdata->done;
 }
 
 void CollisionAvoidance::selfCollisionFast(std::vector<Distance2> &min_distances)
 {
     DistanceData cdata;
+    cdata.robotState = robot_state_;
     cdata.verbose = true;
     cdata.request.enable_nearest_points = true;
-
-    std::cout << "starting with self collision" << std::endl;
 
     // Loop through all collision groups
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroup = robot_state_->robot_.groups.begin(); itrGroup != robot_state_->robot_.groups.end(); ++itrGroup)
@@ -369,6 +403,7 @@ void CollisionAvoidance::selfCollisionFast(std::vector<Distance2> &min_distances
             std::vector<Distance2> distanceCollection2;
             RobotState::CollisionBody &currentBody = *itrBody;
 
+            ROS_INFO("selfcollision for %s", currentBody.frame_id.c_str());
             selfCollisionManager.distance(currentBody.fcl_object.get(), &cdata, selfCollisionDistanceFunction);
 
             Distance2 distance2;
