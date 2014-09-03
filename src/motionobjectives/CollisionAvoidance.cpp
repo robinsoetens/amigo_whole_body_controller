@@ -366,6 +366,10 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObjec
         }
     }
 
+    // check if the link is in a group
+    assert(group1 != cdata->robotState->robot_.groups.end());
+    assert(group2 != cdata->robotState->robot_.groups.end());
+
     if (   group1 != cdata->robotState->robot_.groups.end()
         && group2 != cdata->robotState->robot_.groups.end()
         && group1 == group2
