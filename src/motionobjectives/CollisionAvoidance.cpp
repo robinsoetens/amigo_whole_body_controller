@@ -26,6 +26,7 @@
 #define GEOM_SPHERE_seg     8
 #define GEOM_SPHERE_ring    8
 
+//#define VERBOSE_COLLISION_CHECKS
 
 
 namespace wbc {
@@ -339,7 +340,9 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObjec
 
     // do not collision check geoms part of the same object / link / attached body
     if (cd1->sameObject(*cd2)) {
+#ifdef VERBOSE_COLLISION_CHECKS
         ROS_INFO("\tskip collision the same link");
+#endif
         return false;
     }
 
@@ -367,11 +370,15 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObjec
         && group2 != cdata->robotState->robot_.groups.end()
         && group1 == group2
     ) {
+#ifdef VERBOSE_COLLISION_CHECKS
         ROS_INFO("\tskip collision in same group between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
+#endif
         return false;
     }
 
+#ifdef VERBOSE_COLLISION_CHECKS
     ROS_INFO("\tcollision between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
+#endif
 
     const fcl::DistanceRequest& request = cdata->request;
     fcl::DistanceResult& result = cdata->result;
@@ -399,19 +406,17 @@ void CollisionAvoidance::selfCollisionFast(std::vector<Distance2> &min_distances
         for (std::vector<RobotState::CollisionBody>::iterator itrBody = Group.begin(); itrBody != Group.end(); ++itrBody)
         {
             // Loop through al the bodies of the group
-            std::vector<Distance> distanceCollection;
-            std::vector<Distance2> distanceCollection2;
             RobotState::CollisionBody &currentBody = *itrBody;
 
+#ifdef VERBOSE_COLLISION_CHECKS
             ROS_INFO("selfcollision for %s", currentBody.frame_id.c_str());
+#endif
             selfCollisionManager.distance(currentBody.fcl_object.get(), &cdata, selfCollisionDistanceFunction);
 
             Distance2 distance2;
             distance2.result = cdata.result;
             distance2.frame_id = currentBody.frame_id;
-
-            // TODO: push information to the result
-            distanceCollection2.push_back(distance2);
+            min_distances.push_back(distance2);
         }
     }
 }
