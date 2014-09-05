@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Rayman/amigo_whole_body_controller.png)](https://travis-ci.org/Rayman/amigo_whole_body_controller)
+
 amigo_whole_body_controller
 ===========================
 Whole-Body Control Framework for the Amigo service robot at the TU/e
