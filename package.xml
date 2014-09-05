@@ -17,7 +17,6 @@
   <build_depend>message_generation</build_depend>
   <build_depend>actionlib</build_depend>
   <build_depend>actionlib_msgs</build_depend>
-  <build_depend>amigo_ref_interpolator</build_depend>
   <build_depend>arm_navigation_msgs</build_depend>
   <build_depend>bullet</build_depend>
   <build_depend>code_profiler</build_depend>
@@ -37,7 +36,6 @@
   <run_depend>message_runtime</run_depend>
   <run_depend>actionlib</run_depend>
   <run_depend>actionlib_msgs</run_depend>
-  <run_depend>amigo_ref_interpolator</run_depend>
   <run_depend>arm_navigation_msgs</run_depend>
   <run_depend>bullet</run_depend>
   <run_depend>code_profiler</run_depend>

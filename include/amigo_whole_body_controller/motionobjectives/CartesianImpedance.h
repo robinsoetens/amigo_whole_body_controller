@@ -25,7 +25,6 @@
 
 //
 #include <fstream>
-#include <amigo_ref_interpolator/interpolator.h>
 #include "ReferenceGenerator.h"
 #include "amigo_whole_body_controller/Tracing.hpp"
 
@@ -58,8 +57,6 @@ public:
     void cancelGoal();
 
     KDL::Twist getError();
-
-    std::vector<refgen::RefGenerator> ref_generators;
 
     std::vector<controller::RefGenerator> ref_generator_;
 

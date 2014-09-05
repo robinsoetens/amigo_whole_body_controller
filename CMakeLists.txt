@@ -9,7 +9,6 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   actionlib
   actionlib_msgs
-  amigo_ref_interpolator
   arm_navigation_msgs
   code_profiler
   sensor_msgs
