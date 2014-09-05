@@ -12,7 +12,6 @@ find_package(catkin REQUIRED COMPONENTS
   arm_navigation_msgs
   code_profiler
   sensor_msgs
-  geolib_fcl
   geometry_msgs
   kdl_parser
   octomap_msgs
@@ -21,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   visualization_msgs
+  fcl
 )
 
 ## System dependencies are found with CMake's conventions
@@ -101,6 +101,8 @@ add_library(amigo_whole_body_controller
   src/ComputeNullspace.cpp
   src/Chain.cpp
   src/ChainParser.cpp
+  src/conversions.cpp
+  src/ReferenceGenerator.cpp
   src/RobotState.cpp
   src/Tree.cpp
   src/Tracing.cpp
@@ -114,7 +116,6 @@ add_library(amigo_whole_body_controller
   src/interfaces/JointTrajectoryAction.cpp
   src/interfaces/RobotInterface.cpp
 
-  src/ReferenceGenerator.cpp
 
 # src/vwm/vwmclient.cpp
 # src/vwm/vwmobject.cpp

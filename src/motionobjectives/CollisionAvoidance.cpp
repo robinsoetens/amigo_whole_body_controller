@@ -4,11 +4,11 @@
 #include <std_msgs/Float64.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
+#include "../conversions.h"
 
 #ifdef USE_FCL
 
 #include <fcl/broadphase/broadphase_dynamic_AABB_tree.h>
-#include <geolib_fcl/tools.h>
 
 #endif
 
@@ -266,7 +266,7 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 {
     // Loop through all collision groups
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroup = robot_state_->robot_.groups.begin(); itrGroup != robot_state_->robot_.groups.end(); ++itrGroup)
-    {        
+    {
         std::vector<RobotState::CollisionBody> &Group = *itrGroup;
         for (std::vector<RobotState::CollisionBody>::iterator itrBody = Group.begin(); itrBody != Group.end(); ++itrBody)
         {
@@ -1151,7 +1151,7 @@ void CollisionAvoidance::visualizeCollisionModelFCL(RobotState::CollisionBody co
     const fcl::CollisionObject &obj = *collisionBody.fcl_object.get();
 
     visualization_msgs::Marker m;
-    vwm::objectFCLtoMarker(obj, m);
+    objectFCLtoMarker(obj, m);
     m.id = id;
     m.header.frame_id = "/map";
 
@@ -1415,7 +1415,7 @@ void CollisionAvoidance::visualizeBBX(octomath::Vector3 min, octomath::Vector3 m
 
 
 void CollisionAvoidance::setOctoMap(octomap::OcTreeStamped* octree)
-{  
+{
     delete octomap_;
     octomap_ = octree;
 }
