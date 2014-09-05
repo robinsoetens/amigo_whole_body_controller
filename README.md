@@ -1,7 +1,6 @@
 amigo_whole_body_controller
 ===========================
 Whole-Body Control Framework for the Amigo service robot at the TU/e
----------------------------
 
 Installation
 ------------
