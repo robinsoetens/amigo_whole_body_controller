@@ -1,14 +1,12 @@
 <?xml version="1.0"?>
 
 <launch>
-    <arg name="launch_prefix" default="" />
-    
-    <arg name="ROBOT_REAL" default="$(optenv ROBOT_REAL false)" />
+	<arg name="launch_prefix" default="" />
 
-	<include file="$(find amigo_whole_body_controller)/launch/wire_volume.launch" />
+	<arg name="ROBOT_REAL" default="$(optenv ROBOT_REAL false)" />
 
-<!--<include file="$(find amigo_joint_interface_converter)/launch/start.launch"/>-->
-	
+	<!--<include file="$(find amigo_joint_interface_converter)/launch/start.launch"/>-->
+
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/parameters.yaml" command="load" ns="whole_body_controller"/>
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/joint_limit_avoidance.yaml" command="load" ns="whole_body_controller"/>
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/posture_control.yaml" command="load" ns="whole_body_controller"/>
@@ -18,14 +16,14 @@
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/collision_model.yaml" command="load" ns="whole_body_controller"/>
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/collision_avoidance.yaml" command="load" ns="whole_body_controller"/>
 	<rosparam file="$(find amigo_whole_body_controller)/parameters/joint_trajectory_action.yaml" command="load" ns="whole_body_controller"/>
-	
+
 	<node pkg="amigo_whole_body_controller" type="whole_body_controller" name="whole_body_controller" respawn="false" output="screen"> <!-- launch-prefix="${arg launch_prefix}"/> -->
 		<param name="omit_admittance" value="$(arg ROBOT_REAL)"/> <!--If ROBOT_REAL is true, admittance controller is omitted since this is implemented in Orocos-->
 		<param name="tracing_folder" value="/tmp/"/>
 		<param name="tracing_buffersize" value="0"/>
 	<!--<remap from="/amigo/right_arm/references" to="/TEST_TORQUES_RIGHT" />
-		<remap from="/amigo/left_arm/references" to="/TEST_TORQUES_LEFT" /> 
+		<remap from="/amigo/left_arm/references" to="/TEST_TORQUES_LEFT" />
 		<remap from="/amigo/torso/references" to="/TEST_TORQUES_TORSO" />-->
-		<remap from="/amigo/neck/references" to="/TEST_TORQUES_NECK" /> 
+		<remap from="/amigo/neck/references" to="/TEST_TORQUES_NECK" />
 	</node>
 </launch>
