@@ -5,11 +5,10 @@ project(amigo_whole_body_controller)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  message_generation
   cmake_modules
+  message_generation
   actionlib
   actionlib_msgs
-  amigo_msgs
   amigo_ref_interpolator
   arm_navigation_msgs
   code_profiler
@@ -83,13 +82,13 @@ include_directories(
   ${BULLET_INCLUDE_DIRS}
 )
 
-link_directories(${catkin_LIBRARY_DIRS})
-link_directories(${Boost_LIBRARY_DIRS})
-link_directories(${orocos_kdl_LIBRARY_DIRS})
-link_directories(${OCTOMAP_LIBRARY_DIRS})
+# link_directories(${catkin_LIBRARY_DIRS})
+# link_directories(${Boost_LIBRARY_DIRS})
+# link_directories(${orocos_kdl_LIBRARY_DIRS})
+# link_directories(${OCTOMAP_LIBRARY_DIRS})
 
 # show the headers in qtcreator
-file(GLOB HEADERS 
+file(GLOB HEADERS
   RELATIVE ${PROJECT_SOURCE_DIR} "include/*.h"
   RELATIVE ${PROJECT_SOURCE_DIR} "include/*/*.h"
   RELATIVE ${PROJECT_SOURCE_DIR} "include/*/*/*.h"
@@ -100,7 +99,7 @@ add_library(amigo_whole_body_controller
   ${HEADERS}
   src/WholeBodyController.cpp
   src/AdmittanceController.cpp
-  src/ComputeNullspace.cpp                                        
+  src/ComputeNullspace.cpp
   src/Chain.cpp
   src/ChainParser.cpp
   src/RobotState.cpp
