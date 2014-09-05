@@ -21,6 +21,7 @@ install:
 
 before_script:
   - source ~/.tue/setup.bash # source ROS
+  - rosdep install -a -r -i # install all missing system deps
   - cd ${TUE_SYSTEM_DIR}/src
 
   # Link the repo we are testing to the new workspace
