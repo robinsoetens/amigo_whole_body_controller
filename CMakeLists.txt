@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
   arm_navigation_msgs
   code_profiler
+  control_msgs
   sensor_msgs
   geometry_msgs
   kdl_parser

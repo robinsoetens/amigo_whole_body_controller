@@ -20,6 +20,7 @@
   <build_depend>arm_navigation_msgs</build_depend>
   <build_depend>bullet</build_depend>
   <build_depend>code_profiler</build_depend>
+  <build_depend>control_msgs</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend version_gte="1.3.0">orocos_kdl</build_depend>
@@ -39,6 +40,7 @@
   <run_depend>arm_navigation_msgs</run_depend>
   <run_depend>bullet</run_depend>
   <run_depend>code_profiler</run_depend>
+  <run_depend>control_msgs</run_depend>
   <run_depend>sensor_msgs</run_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend version_gte="1.3.0">orocos_kdl</run_depend>
