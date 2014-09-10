@@ -377,18 +377,25 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObjec
         return false;
     }
 
-#ifdef VERBOSE_COLLISION_CHECKS
-    ROS_INFO("\tcollision between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
-#endif
-
     const fcl::DistanceRequest& request = cdata->request;
     fcl::DistanceResult& result = cdata->result;
 
     fcl::distance(o1, o2, request, result);
 
+#ifdef VERBOSE_COLLISION_CHECKS
+    if (dist >= FLT_MAX) {
+        ROS_INFO("\tcollision between %15s and %15s, inf  -> %2.3f",   link1->frame_id.c_str(), link2->frame_id.c_str(), result.min_distance);
+    } else {
+        ROS_INFO("\tcollision between %15s and %15s, %2.3f -> %2.3f", link1->frame_id.c_str(), link2->frame_id.c_str(), dist, result.min_distance);
+    }
+#endif
+
     dist = result.min_distance;
 
-    if(dist <= 0) return true; // in collision or in touch
+    if(dist <= 0) {
+        return true; // in collision or in touch
+        ROS_WARN("\ttouch between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
+    }
 
     return cdata->done;
 }
