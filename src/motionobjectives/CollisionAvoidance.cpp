@@ -384,7 +384,9 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObjec
         if ( (link1->name_collision_body == excluded_bodies.name_body_A && link2->name_collision_body == excluded_bodies.name_body_B)
           || (link1->name_collision_body == excluded_bodies.name_body_B && link2->name_collision_body == excluded_bodies.name_body_A) )
         {
+#ifdef VERBOSE_COLLISION_CHECKS
             ROS_INFO("\texcluded collision check between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
+#endif
             return false;
         }
     }
