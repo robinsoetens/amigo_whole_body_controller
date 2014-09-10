@@ -377,6 +377,18 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObjec
         return false;
     }
 
+    for (std::vector<RobotState::Exclusion> ::iterator itrExcl = cdata->robotState->exclusion_checks.checks.begin(); itrExcl != cdata->robotState->exclusion_checks.checks.end(); ++itrExcl)
+    {
+        RobotState::Exclusion &excluded_bodies = *itrExcl;
+
+        if ( (link1->name_collision_body == excluded_bodies.name_body_A && link2->name_collision_body == excluded_bodies.name_body_B)
+          || (link1->name_collision_body == excluded_bodies.name_body_B && link2->name_collision_body == excluded_bodies.name_body_A) )
+        {
+            ROS_INFO("\texcluded collision check between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
+            return false;
+        }
+    }
+
     const fcl::DistanceRequest& request = cdata->request;
     fcl::DistanceResult& result = cdata->result;
 
