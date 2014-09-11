@@ -51,6 +51,8 @@
 
 using namespace controller;
 
+const double RefGenerator::EPSILON = 1e-5;
+
 RefGenerator::RefGenerator() :
     pos_(0), vel_(0), acc_(0), max_vel_(0), max_acc_(0) {
 }

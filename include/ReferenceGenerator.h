@@ -61,7 +61,7 @@ private:
 	double max_vel_; //the maximum allowed velocity of the joint to generate a reference for
 	double max_acc_; //the maximum allowed acceleration of the joint to generate a reference for
 
-	const static double EPSILON = 1e-5; //error margin
+    const static double EPSILON; //error margin
 
 	/**
 	 * \return the sign of a i.e. -1 or 1
