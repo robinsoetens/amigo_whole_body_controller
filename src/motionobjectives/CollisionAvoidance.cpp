@@ -393,8 +393,8 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* co_other, fcl::Collisio
     dist = result.min_distance;
 
     if(dist <= 0) {
-        return true; // in collision or in touch
         ROS_WARN("\ttouch between %s and %s", link_self->frame_id.c_str(), link_other->frame_id.c_str());
+        return true; // in collision or in touch
     }
 
     return cdata->done;
@@ -579,7 +579,7 @@ void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_dis
 
     fcl::DynamicAABBTreeCollisionManager manager;
     std::vector< boost::shared_ptr<fcl::CollisionObject> >::iterator it;
-    for (it = objects.begin(); it < objects.end(); it++) {
+    for (it = objects.begin(); it < objects.end(); ++it) {
         boost::shared_ptr<fcl::CollisionObject> obj = *it;
         manager.registerObject(obj.get());
     }

@@ -133,7 +133,7 @@ void RobotInterface::setAmclPose()
     {
         listener_.transformPose("/map", base_link_pose, map_pose);
         base_initialized_ = true;
-    } catch (tf::TransformException ex) {
+    } catch (tf::TransformException &ex) {
         ROS_ERROR("%s",ex.what());
         return;
     }
