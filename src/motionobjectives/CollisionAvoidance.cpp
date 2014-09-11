@@ -328,51 +328,49 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
 }
 
 #ifdef USE_FCL
-bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObject* o2, void* cdata_, fcl::FCL_REAL& dist)
+bool selfCollisionDistanceFunction(fcl::CollisionObject* co_other, fcl::CollisionObject* co_self, void* cdata_, fcl::FCL_REAL& dist)
 {
     DistanceData* cdata = static_cast<DistanceData*>(cdata_);
 
     if(cdata->done)
         return true;
 
-    const CollisionGeometryData* cd1 = static_cast<const CollisionGeometryData*>(o1->getCollisionGeometry()->getUserData());
-    const CollisionGeometryData* cd2 = static_cast<const CollisionGeometryData*>(o2->getCollisionGeometry()->getUserData());
+    const CollisionGeometryData* cgd_self  = static_cast<const CollisionGeometryData*>(co_self ->getCollisionGeometry()->getUserData());
+    const CollisionGeometryData* cgd_other = static_cast<const CollisionGeometryData*>(co_other->getCollisionGeometry()->getUserData());
 
     // do not collision check geoms part of the same object / link / attached body
-    if (cd1->sameObject(*cd2)) {
+    if (cgd_self->sameObject(*cgd_other)) {
 #ifdef VERBOSE_COLLISION_CHECKS
         ROS_INFO("\tskip collision the same link");
 #endif
         return false;
     }
 
-    const RobotState::CollisionBody *link1 = cd1->ptr.link;
-    const RobotState::CollisionBody *link2 = cd2->ptr.link;
+    const RobotState::CollisionBody *link_self  = cgd_self ->ptr.link;
+    const RobotState::CollisionBody *link_other = cgd_other->ptr.link;
 
-    std::vector< std::vector<RobotState::CollisionBody> >::iterator group1 = cdata->robotState->robot_.groups.end();
-    std::vector< std::vector<RobotState::CollisionBody> >::iterator group2 = cdata->robotState->robot_.groups.end();
+    std::vector< std::vector<RobotState::CollisionBody> >::iterator group_self = cdata->robotState->robot_.groups.end();
+    std::vector< std::vector<RobotState::CollisionBody> >::iterator group_other  = cdata->robotState->robot_.groups.end();
 
     // find the collision group
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroup = cdata->robotState->robot_.groups.begin(); itrGroup != cdata->robotState->robot_.groups.end(); ++itrGroup)
     {
         for (std::vector<RobotState::CollisionBody>::iterator itrBody = itrGroup->begin(); itrBody != itrGroup->end(); ++itrBody)
         {
-            //RobotState::CollisionBody body1 = *itrBody;
-
-            if (&(*itrBody) == link1)
-                group1 = itrGroup;
-            if (&(*itrBody) == link2)
-                group2 = itrGroup;
+            if (&(*itrBody) == link_self)
+                group_self = itrGroup;
+            if (&(*itrBody) == link_other)
+                group_other = itrGroup;
         }
     }
 
     // check if the link is in a group
-    assert(group1 != cdata->robotState->robot_.groups.end());
-    assert(group2 != cdata->robotState->robot_.groups.end());
+    assert(group_self  != cdata->robotState->robot_.groups.end());
+    assert(group_other != cdata->robotState->robot_.groups.end());
 
-    if (group1 == group2) {
+    if (group_self == group_other) {
 #ifdef VERBOSE_COLLISION_CHECKS
-        ROS_INFO("\tskip collision in same group between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
+        ROS_INFO("\tskip collision in same group between %s and %s", link_self->frame_id.c_str(), link_other->frame_id.c_str());
 #endif
         return false;
     }
@@ -381,11 +379,11 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObjec
     {
         RobotState::Exclusion &excluded_bodies = *itrExcl;
 
-        if ( (link1->name_collision_body == excluded_bodies.name_body_A && link2->name_collision_body == excluded_bodies.name_body_B)
-          || (link1->name_collision_body == excluded_bodies.name_body_B && link2->name_collision_body == excluded_bodies.name_body_A) )
+        if ( (link_self->name_collision_body == excluded_bodies.name_body_A && link_other->name_collision_body == excluded_bodies.name_body_B)
+          || (link_self->name_collision_body == excluded_bodies.name_body_B && link_other->name_collision_body == excluded_bodies.name_body_A) )
         {
 #ifdef VERBOSE_COLLISION_CHECKS
-            ROS_INFO("\texcluded collision check between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
+            ROS_INFO("\texcluded collision check between %s and %s", link_self->frame_id.c_str(), link_other->frame_id.c_str());
 #endif
             return false;
         }
@@ -394,13 +392,13 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObjec
     const fcl::DistanceRequest& request = cdata->request;
     fcl::DistanceResult& result = cdata->result;
 
-    fcl::distance(o1, o2, request, result);
+    fcl::distance(co_self, co_other, request, result);
 
 #ifdef VERBOSE_COLLISION_CHECKS
     if (dist >= FLT_MAX) {
-        ROS_INFO("\tcollision between %15s and %15s, inf  -> %2.3f",   link1->frame_id.c_str(), link2->frame_id.c_str(), result.min_distance);
+        ROS_INFO("\tcollision between %15s and %15s, inf  -> %2.3f",  link_self->frame_id.c_str(), link_other->frame_id.c_str(), result.min_distance);
     } else {
-        ROS_INFO("\tcollision between %15s and %15s, %2.3f -> %2.3f", link1->frame_id.c_str(), link2->frame_id.c_str(), dist, result.min_distance);
+        ROS_INFO("\tcollision between %15s and %15s, %2.3f -> %2.3f", link_self->frame_id.c_str(), link_other->frame_id.c_str(), dist, result.min_distance);
     }
 #endif
 
@@ -408,7 +406,7 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObjec
 
     if(dist <= 0) {
         return true; // in collision or in touch
-        ROS_WARN("\ttouch between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
+        ROS_WARN("\ttouch between %s and %s", link_self->frame_id.c_str(), link_other->frame_id.c_str());
     }
 
     return cdata->done;
