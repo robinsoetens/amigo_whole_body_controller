@@ -414,11 +414,6 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* co_other, fcl::Collisio
 
 void CollisionAvoidance::selfCollisionFast(std::vector<Distance2> &min_distances)
 {
-    DistanceData cdata;
-    cdata.robotState = robot_state_;
-    cdata.verbose = true;
-    cdata.request.enable_nearest_points = true;
-
     // Loop through all collision groups
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroup = robot_state_->robot_.groups.begin(); itrGroup != robot_state_->robot_.groups.end(); ++itrGroup)
     {
@@ -431,6 +426,12 @@ void CollisionAvoidance::selfCollisionFast(std::vector<Distance2> &min_distances
 #ifdef VERBOSE_COLLISION_CHECKS
             ROS_INFO("selfcollision for %s", currentBody.frame_id.c_str());
 #endif
+
+            DistanceData cdata;
+            cdata.robotState = robot_state_;
+            cdata.verbose = true;
+            cdata.request.enable_nearest_points = true;
+
             selfCollisionManager.distance(currentBody.fcl_object.get(), &cdata, selfCollisionDistanceFunction);
 
             Distance2 distance2;
