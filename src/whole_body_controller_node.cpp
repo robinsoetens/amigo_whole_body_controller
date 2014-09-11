@@ -22,65 +22,34 @@ CartesianImpedance* cartesian_impedance;
 
 WholeBodyController* wholeBodyController;
 
-/// For using a static octomap during grasp 
+/// For using a static octomap during grasp
 bool octomap_cb = true;
 
 
-#if ROS_VERSION_MINIMUM(1,9,0)
-// Groovy
+
 void octoMapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
 {
-    if (octomap_cb){
+    if (octomap_cb) {
         octomap::AbstractOcTree* tree = octomap_msgs::msgToMap(*msg);
-        if(tree){
+        if (tree) {
             octomap::OcTreeStamped* octree = dynamic_cast<octomap::OcTreeStamped*>(tree);
-            if(!octree){
+            if (!octree) {
                 ROS_ERROR("No Octomap created");
             }
-            else{
+            else
+            {
                 collision_avoidance->setOctoMap(octree);
             }
-            //delete tree;
+            // delete tree;
          }
-         else{
+         else
+         {
             ROS_ERROR("Octomap conversion error");
             exit(1);
          }
-		//delete tree;
+        // delete tree;
      }
 }
-#elif ROS_VERSION_MINIMUM(1,8,0)
-// Fuerte
-void octoMapCallback(const octomap_msgs::OctomapBinary::ConstPtr& msg)
-{
-    octomap::AbstractOcTree* octree;
-    octree = octomap_msgs::binaryMsgDataToMap(msg->data);
-    std::stringstream datastream;
-    //ROS_INFO("Writing data to stream");
-    octree->writeData(datastream);
-    //octree->readBinaryData(datastream);
-    if (octree) {
-        octomap::OcTreeStamped* octreestamped;
-        octreestamped = new octomap::OcTreeStamped(0.05);
-        //ROS_INFO("Reading data from stream");
-        octreestamped->readData(datastream);
-        //ROS_INFO("Read data from stream");
-        //octreestamped = dynamic_cast<octomap::OcTreeStamped*>(octree);
-        if (!octreestamped){
-            ROS_ERROR("No Octomap created");
-        }
-        else{
-            collision_avoidance->setOctoMap(octreestamped);
-        }
-        //delete octree;
-    }
-    else{
-        ROS_ERROR("Octomap conversion error");
-        exit(1);
-    }
-
-}
-#endif
 
 void CancelCB() {
     ROS_INFO("Canceling goal");
@@ -95,14 +64,15 @@ void GoalCB() {
     // ToDo: keep track of all goals (this most probably means we can't use SIMPLEactionserver stuff)
     // We can keep using the simple action server stuff but in that case cannot keep track of multiple goals at once
     ROS_DEBUG("Received new motion objective");
-	if (goal.goal_type.compare("grasp")==0){
-		octomap_cb = false;
-		ROS_INFO("Received grasp goal, removing object pose from STATIC octomap, this should be generalized!");
-		collision_avoidance->removeOctomapBBX(goal.position_constraint.position, goal.position_constraint.header.frame_id);
-	}
-	else{
-		octomap_cb = true;
-	}
+    if (goal.goal_type.compare("grasp")==0) {
+        octomap_cb = false;
+        ROS_INFO("Received grasp goal, removing object pose from STATIC octomap, this should be generalized!");
+        collision_avoidance->removeOctomapBBX(goal.position_constraint.position, goal.position_constraint.header.frame_id);
+    }
+    else
+    {
+        octomap_cb = true;
+    }
     /// If a remove tip frame is present: remove objective
     if (!goal.remove_tip_frame.empty()) {
         std::vector<MotionObjective*> imps_to_remove = wholeBodyController->getCartesianImpedances(goal.remove_tip_frame,goal.remove_root_frame);
@@ -111,9 +81,9 @@ void GoalCB() {
         }
     }
     /// Else: add motion objectives
-
     // ToDo make smarter, double check for tipframe and is looping necessary!?
-    else {
+    else
+    {
         std::vector<MotionObjective*> imps_to_remove = wholeBodyController->getCartesianImpedances(goal.position_constraint.link_name,goal.position_constraint.header.frame_id);
         for (unsigned int i = 0; i < imps_to_remove.size(); i++) {
             if (goal.position_constraint.link_name == imps_to_remove[i]->tip_frame_)
@@ -200,7 +170,7 @@ int main(int argc, char **argv) {
     bool omit_admittance = false;
     std::string ns = ros::this_node::getName();
     nh_private.param<bool> (ns+"/omit_admittance", omit_admittance, true);
-    ROS_WARN("Omit admittance = %d",omit_admittance);
+    ROS_WARN("Omit admittance = %d", omit_admittance);
 
     /// Whole body controller object
     wholeBodyController = new WholeBodyController(1/loop_rate_);
@@ -225,23 +195,22 @@ int main(int argc, char **argv) {
     }
 
     std::string root_frame;
-    
+
     /// Before startup: make sure all joint values are initialized properly
     bool initcheck = false;
     ros::spinOnce();
-    while(!initcheck && ros::ok()) {
-		ros::spinOnce();
-		robot_interface.setAmclPose();
-		initcheck = robot_interface.isInitialized();
-		if (!initcheck) ROS_INFO("Waiting for all joints to be initialized");
-		r.sleep();
-	}
+    while (!initcheck && ros::ok()) {
+        ros::spinOnce();
+        robot_interface.setAmclPose();
+        initcheck = robot_interface.isInitialized();
+        if (!initcheck) ROS_INFO("Waiting for all joints to be initialized");
+        r.sleep();
+    }
 
     StatsPublisher sp;
     sp.initialize();
 
-    while(ros::ok()) {
-
+    while (ros::ok()) {
         sp.startTimer("main");
 
         ros::spinOnce();
@@ -249,18 +218,18 @@ int main(int argc, char **argv) {
         // Beun oplossing
         std::vector<MotionObjective*> left_imp = wholeBodyController->getCartesianImpedances("grippoint_left", root_frame);
         std::vector<MotionObjective*> right_imp = wholeBodyController->getCartesianImpedances("grippoint_right", root_frame);
-        if (!left_imp.empty()){
-            if (cartesian_impedance->getStatus() == 1 && add_motion_objective_server_->isActive()){
+        if (!left_imp.empty()) {
+            if (cartesian_impedance->getStatus() == 1 && add_motion_objective_server_->isActive()) {
 
                 add_motion_objective_server_->setSucceeded();
-                //ROS_INFO("Impedance status %i, Tip frame: %s root frame: %s",cartesian_impedance->getStatus(),left_imp[0]->tip_frame_.c_str(),left_imp[0]->root_frame_.c_str());
+                // ROS_INFO("Impedance status %i, Tip frame: %s root frame: %s",cartesian_impedance->getStatus(),left_imp[0]->tip_frame_.c_str(),left_imp[0]->root_frame_.c_str());
             }
         }
-        if (!right_imp.empty()){
-            if (cartesian_impedance->getStatus() == 1 && add_motion_objective_server_->isActive()){
+        if (!right_imp.empty()) {
+            if (cartesian_impedance->getStatus() == 1 && add_motion_objective_server_->isActive()) {
 
                 add_motion_objective_server_->setSucceeded();
-                //ROS_INFO("Impedance status %i, Tip frame: %s root frame: %s",cartesian_impedance->getStatus(),right_imp[0]->tip_frame_.c_str(),right_imp[0]->root_frame_.c_str());
+                // ROS_INFO("Impedance status %i, Tip frame: %s root frame: %s",cartesian_impedance->getStatus(),right_imp[0]->tip_frame_.c_str(),right_imp[0]->root_frame_.c_str());
             }
         }
 
@@ -276,12 +245,12 @@ int main(int argc, char **argv) {
         /// Update the joint trajectory executer
         jte.update();
 
-        //ToDo: set stuff succeeded
+        // ToDo: set stuff succeeded
         if (!omit_admittance)
         {
             ROS_WARN_ONCE("Publishing reference positions");
             robot_interface.publishJointReferences(wholeBodyController->getJointReferences(), wholeBodyController->getJointNames());
-            //ROS_ERROR_ONCE("NO REFERENCES PUBLISHED");
+            // ROS_ERROR_ONCE("NO REFERENCES PUBLISHED");
         }
         else
         {
@@ -295,7 +264,7 @@ int main(int argc, char **argv) {
         r.sleep();
     }
 
-    //ToDo: delete all motion objectives
+    // ToDo: delete all motion objectives
     delete add_motion_objective_server_;
     delete collision_avoidance;
     delete wholeBodyController;
