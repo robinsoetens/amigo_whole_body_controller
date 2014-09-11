@@ -370,7 +370,7 @@ bool selfCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::CollisionObjec
     assert(group1 != cdata->robotState->robot_.groups.end());
     assert(group2 != cdata->robotState->robot_.groups.end());
 
-    if (&(*group1) == &(*group2)) {
+    if (group1 == group2) {
 #ifdef VERBOSE_COLLISION_CHECKS
         ROS_INFO("\tskip collision in same group between %s and %s", link1->frame_id.c_str(), link2->frame_id.c_str());
 #endif
