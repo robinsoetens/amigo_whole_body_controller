@@ -154,13 +154,8 @@ int main(int argc, char **argv) {
     // Initialize node
     ros::init(argc, argv, "whole_body_controller");
     ros::NodeHandle nh_private("~");
-#if ROS_VERSION_MINIMUM(1,9,0)
-    // Groovy
-    ros::Subscriber sub_octomap   = nh_private.subscribe<octomap_msgs::Octomap>("/octomap_binary", 10, &octoMapCallback);
-#elif ROS_VERSION_MINIMUM(1,8,0)
-    // Fuerte
-    ros::Subscriber sub_octomap   = nh_private.subscribe<octomap_msgs::OctomapBinary>("/octomap_binary", 10, &octoMapCallback);
-#endif
+
+    nh_private.subscribe<octomap_msgs::Octomap>("/octomap_binary", 10, &octoMapCallback);
 
     // Load parameter files
     CollisionAvoidance::collisionAvoidanceParameters ca_param;
