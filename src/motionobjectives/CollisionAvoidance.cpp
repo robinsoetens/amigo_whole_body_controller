@@ -136,19 +136,17 @@ void CollisionAvoidance::apply(RobotState &robotstate)
     // Calculate the wrenches as a result of (self-)collision avoidance
     std::vector<Distance> min_distances_total;
     std::vector<Distance2> min_distances_total_fcl;
-    std::vector<Distance2> min_distances_total_fast;
     std::vector<RepulsiveForce> repulsive_forces_total;  // this will get removed eventually
     std::vector<RepulsiveForce> repulsive_forces_total_fcl;
 
-    statsPublisher_.startTimer("CollisionAvoidance::selfCollision");
-
     // Calculate the repulsive forces as a result of the self-collision avoidance.
-    selfCollision(min_distances_total, min_distances_total_fcl);
 
+    statsPublisher_.startTimer("CollisionAvoidance::selfCollision");
+    selfCollision(min_distances_total);
     statsPublisher_.stopTimer("CollisionAvoidance::selfCollision");
 
     statsPublisher_.startTimer("CollisionAvoidance::selfCollisionFast");
-    selfCollisionFast(min_distances_total_fast);
+    selfCollisionFast(min_distances_total_fcl);
     statsPublisher_.stopTimer("CollisionAvoidance::selfCollisionFast");
 
     // Calculate the repulsive forces as a result of the environment collision avoidance.
@@ -262,7 +260,7 @@ void CollisionAvoidance::removeObjectCollisionModel() {
 
 }
 
-void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std::vector<Distance2> &min_distances2)
+void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances)
 {
     // Loop through all collision groups
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroup = robot_state_->robot_.groups.begin(); itrGroup != robot_state_->robot_.groups.end(); ++itrGroup)
@@ -272,7 +270,6 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
         {
             // Loop through al the bodies of the group
             std::vector<Distance> distanceCollection;
-            std::vector<Distance2> distanceCollection2;
             RobotState::CollisionBody &currentBody = *itrBody;
 
             // Distance check with other groups if the name of the groups is different than the current group
@@ -306,12 +303,6 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
                             distanceCalculation(*currentBody.bt_shape, *collisionBody.bt_shape, currentBody.bt_transform, collisionBody.bt_transform, distance.bt_distance);
                             distanceCollection.push_back(distance);
 #endif
-#ifdef USE_FCL
-                            Distance2 distance2;
-                            distance2.frame_id = currentBody.frame_id;
-                            distanceCalculation(currentBody.fcl_object.get(), collisionBody.fcl_object.get(), distance2.result);
-                            distanceCollection2.push_back(distance2);
-#endif
                         }
                     }
                 }
@@ -319,9 +310,6 @@ void CollisionAvoidance::selfCollision(std::vector<Distance> &min_distances, std
             // Find minimum distance
 #ifdef USE_BULLET
             pickMinimumDistance(distanceCollection,  min_distances);
-#endif
-#ifdef USE_FCL
-            pickMinimumDistance(distanceCollection2, min_distances2);
 #endif
         }
     }
