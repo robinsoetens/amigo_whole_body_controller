@@ -868,6 +868,9 @@ void CollisionAvoidance::calculateTransform()
 #endif
         }
     }
+#ifdef USE_FCL
+    selfCollisionManager.update();
+#endif
 }
 
 
