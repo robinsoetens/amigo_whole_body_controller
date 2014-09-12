@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   visualization_msgs
   fcl
+  ed_wbc
 )
 
 ## System dependencies are found with CMake's conventions
