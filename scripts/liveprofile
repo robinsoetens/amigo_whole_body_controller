@@ -1,0 +1,3 @@
+#!/bin/bash
+
+rosrun code_profiler liveprofile.py /whole_body_controller/profiler_stats
