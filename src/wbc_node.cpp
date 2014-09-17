@@ -7,42 +7,48 @@
 #include "WholeBodyController.h"
 #include <ed_wbc/ed_client.h>
 
+#include <boost/shared_ptr.hpp>
+
 namespace wbc {
 
 class WholeBodyControllerEdNode {
 
-    protected:
-        // nodehandle must be created before everything else
-        ros::NodeHandle private_nh;
+  protected:
+    // nodehandle must be created before everything else
+    ros::NodeHandle private_nh;
 
-        wbc::CollisionAvoidance::collisionAvoidanceParameters loadCollisionAvoidanceParameters() const;
+  public:
+    WholeBodyControllerEdNode(ros::Rate &loop_rate);
 
-        void GoalCB();
+    WholeBodyController wholeBodyController_;
 
-        void CancelCB();
+    RobotInterface robot_interface;
 
-    public:
-        WholeBodyControllerEdNode(ros::Rate &loop_rate);
+    JointTrajectoryAction jte;
 
-        WholeBodyController wholeBodyController_;
+    /// Action server for adding/removing cartesian impedance goals
+    typedef actionlib::ActionServer<amigo_whole_body_controller::ArmTaskAction> MotionObjectiveServer;
+    MotionObjectiveServer motion_objective_server_;
 
-        RobotInterface robot_interface;
+    /// Motion objectives
 
-        JointTrajectoryAction jte;
+    CollisionAvoidance::collisionAvoidanceParameters ca_param;
+    CollisionAvoidance collision_avoidance;
 
-        /// Action server for adding/removing cartesian impedance goals
-        actionlib::SimpleActionServer<amigo_whole_body_controller::ArmTaskAction> add_motion_objective_server_;
+    /// Determine whether to publish torques or position references */
+    bool omit_admittance;
 
-        /// Motion objectives
+    /// main loop
+    void update();
 
-        CollisionAvoidance::collisionAvoidanceParameters ca_param;
-        CollisionAvoidance collision_avoidance;
+  protected:
+    wbc::CollisionAvoidance::collisionAvoidanceParameters loadCollisionAvoidanceParameters() const;
 
-        /// Determine whether to publish torques or position references */
-        bool omit_admittance;
+    std::vector< boost::shared_ptr<MotionObjective> > motion_objectives_;
 
-        /// main loop
-        void update();
+    void goalCB(MotionObjectiveServer::GoalHandle handle);
+
+    void cancelCB(MotionObjectiveServer::GoalHandle handle);
 
 };
 
@@ -51,20 +57,19 @@ WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate &loop_rate)
       wholeBodyController_(loop_rate.expectedCycleTime().toSec()),
       robot_interface(&wholeBodyController_),
       jte(&wholeBodyController_),
-      add_motion_objective_server_(private_nh, "/add_motion_objective", false),
+      motion_objective_server_(private_nh, "/add_motion_objective", false),
       ca_param(loadCollisionAvoidanceParameters()),
       collision_avoidance(ca_param, loop_rate.expectedCycleTime().toSec()),
       omit_admittance(false)
 {
-    add_motion_objective_server_.registerGoalCallback(
-        boost::bind(&WholeBodyControllerEdNode::GoalCB, this)
+    motion_objective_server_.registerGoalCallback(
+        boost::bind(&WholeBodyControllerEdNode::goalCB, this, _1)
     );
-    add_motion_objective_server_.registerPreemptCallback(
-        boost::bind(&WholeBodyControllerEdNode::CancelCB, this)
+    motion_objective_server_.registerCancelCallback(
+        boost::bind(&WholeBodyControllerEdNode::cancelCB, this, _1)
     );
 
-    //add_motion_objective_server_->registerPreemptCallback(boost::bind(&CancelCB));
-    add_motion_objective_server_.start();
+    motion_objective_server_.start();
 
     if (!wholeBodyController_.addMotionObjective(&collision_avoidance)) {
         ROS_ERROR("Could not initialize collision avoidance");
@@ -104,14 +109,25 @@ wbc::CollisionAvoidance::collisionAvoidanceParameters WholeBodyControllerEdNode:
     return ca_param;
 }
 
-void WholeBodyControllerEdNode::GoalCB() {
-    ROS_INFO("GoalCB");
+void WholeBodyControllerEdNode::goalCB(MotionObjectiveServer::GoalHandle handle) {
+    ROS_INFO("GoalCB", handle.getGoalID().id.c_str());
+
+    MotionObjectiveServer::GoalConstPtr goal = handle.getGoal();
+
+    /// If a remove tip frame is present: remove objective
+    if (!goal->remove_tip_frame.empty()) {
+        std::vector<MotionObjective*> imps_to_remove = wholeBodyController_.getCartesianImpedances(goal->remove_tip_frame, goal->remove_root_frame);
+        for (unsigned int i = 0; i < imps_to_remove.size(); i++) {
+            wholeBodyController_.removeMotionObjective(imps_to_remove[i]);
+        }
+    }
+
 }
 
-void WholeBodyControllerEdNode::CancelCB() {
-    ROS_INFO("Canceling goal");
-    add_motion_objective_server_.setPreempted();
-    // ToDo: remove motion objective
+void WholeBodyControllerEdNode::cancelCB(MotionObjectiveServer::GoalHandle handle) {
+    ROS_INFO("CancelCB", handle.getGoalID().id.c_str());
+
+    // TODO: remote the motion objective
 }
 
 
