@@ -31,22 +31,21 @@ class WholeBodyControllerEdNode {
     public:
         WholeBodyControllerEdNode(ros::Rate &loop_rate);
 
-        void update();
-
         WholeBodyController wholeBodyController_;
 
         RobotInterface robot_interface;
 
         JointTrajectoryAction jte;
 
+        /** @brief Action server for adding/removing cartesian impedance goals */
         actionlib::SimpleActionServer<amigo_whole_body_controller::ArmTaskAction> add_motion_objective_server_;
 
         // Motion objectives
         CollisionAvoidance::collisionAvoidanceParameters ca_param;
         CollisionAvoidance collision_avoidance;
 
-    private:
-
+        /** @brief main loop */
+        void update();
 
 };
 
