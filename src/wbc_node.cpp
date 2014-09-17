@@ -37,17 +37,18 @@ class WholeBodyControllerEdNode {
 
         JointTrajectoryAction jte;
 
-        /** @brief Action server for adding/removing cartesian impedance goals */
+        /// Action server for adding/removing cartesian impedance goals
         actionlib::SimpleActionServer<amigo_whole_body_controller::ArmTaskAction> add_motion_objective_server_;
 
-        // Motion objectives
+        /// Motion objectives
+
         CollisionAvoidance::collisionAvoidanceParameters ca_param;
         CollisionAvoidance collision_avoidance;
 
-        /** @brief Determine whether to publish torques or position references */
+        /// Determine whether to publish torques or position references */
         bool omit_admittance;
 
-        /** @brief main loop */
+        /// main loop
         void update();
 
 };
@@ -82,7 +83,7 @@ WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate &loop_rate)
     private_nh.param<bool> (ns+"/omit_admittance", omit_admittance, true);
     ROS_WARN("Omit admittance = %d", omit_admittance);
 
-    /// Before startup: make sure all joint values are initialized properly
+    // Before startup: make sure all joint values are initialized properly
     bool initcheck = false;
     ros::spinOnce();
     while (!initcheck && ros::ok()) {
@@ -123,15 +124,15 @@ void WholeBodyControllerEdNode::CancelCB() {
 
 void WholeBodyControllerEdNode::update() {
 
-    /// Set base pose in whole-body controller (remaining joints are set implicitly in the callback functions in robot_interface)
+    // Set base pose in whole-body controller (remaining joints are set implicitly in the callback functions in robot_interface)
     robot_interface.setAmclPose();
 
-    /// Update whole-body controller
+    // Update whole-body controller
     Eigen::VectorXd q_ref, qdot_ref;
 
     wholeBodyController_.update(q_ref, qdot_ref);
 
-    /// Update the joint trajectory executer
+    // Update the joint trajectory executer
     jte.update();
 
     // ToDo: set stuff succeeded
