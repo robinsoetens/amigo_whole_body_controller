@@ -130,15 +130,15 @@ target_link_libraries(amigo_whole_body_controller
   ${BULLET_LIBRARIES}
 )
 
-add_executable(wbc
+add_executable(whole_body_controller
   src/whole_body_controller_node.cpp
 )
-target_link_libraries(wbc amigo_whole_body_controller)
+target_link_libraries(whole_body_controller amigo_whole_body_controller)
 
-add_executable(whole_body_controller
+add_executable(wbc
   src/wbc_node.cpp
 )
-target_link_libraries(whole_body_controller amigo_whole_body_controller)
+target_link_libraries(wbc amigo_whole_body_controller)
 
 add_dependencies(amigo_whole_body_controller ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(amigo_whole_body_controller ${catkin_EXPORTED_TARGETS})
