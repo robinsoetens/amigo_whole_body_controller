@@ -1,4 +1,5 @@
 #include "WholeBodyController.h"
+#include "WholeBodyController.h"
 #include <amigo_whole_body_controller/interfaces/RobotInterface.h>
 #include <amigo_whole_body_controller/interfaces/JointTrajectoryAction.h>
 #include <amigo_whole_body_controller/ArmTaskAction.h>
@@ -17,8 +18,18 @@ namespace wbc {
 
 class WholeBodyControllerEdNode {
 
+    protected:
+        // nodehandle must be created before everything else
+        ros::NodeHandle private_nh;
+
+        wbc::CollisionAvoidance::collisionAvoidanceParameters loadCollisionAvoidanceParameters() const;
+
+        void GoalCB();
+
+        void CancelCB();
+
     public:
-        WholeBodyControllerEdNode(ros::Rate loop_rate);
+        WholeBodyControllerEdNode(ros::Rate &loop_rate);
 
         void update();
 
@@ -35,24 +46,18 @@ class WholeBodyControllerEdNode {
         CollisionAvoidance collision_avoidance;
 
     private:
-        ros::NodeHandle private_nh;
 
-        wbc::CollisionAvoidance::collisionAvoidanceParameters loadCollisionAvoidanceParameters() const;
-
-        void GoalCB();
-
-        void CancelCB();
 
 };
 
-WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate loop_rate)
-    : wholeBodyController_(1/loop_rate.expectedCycleTime().toSec()),
+WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate &loop_rate)
+    : private_nh("~"),
+      wholeBodyController_(1/loop_rate.expectedCycleTime().toSec()),
       robot_interface(&wholeBodyController_),
       jte(&wholeBodyController_),
-      private_nh("~"),
       add_motion_objective_server_(private_nh, "/add_motion_objective", false),
       ca_param(loadCollisionAvoidanceParameters()),
-      collision_avoidance(ca_param, 1/loop_rate.expectedCycleTime().toSec())
+      collision_avoidance(ca_param, 0.5)
 {
     add_motion_objective_server_.registerGoalCallback(
         boost::bind(&WholeBodyControllerEdNode::GoalCB, this)
@@ -106,9 +111,9 @@ void WholeBodyControllerEdNode::update() {
 int main(int argc, char **argv) {
 
     ros::init(argc, argv, "whole_body_controller");
+    ros::NodeHandle nh;
 
     ros::Rate loop_rate(50);
-
     wbc::WholeBodyControllerEdNode wbcEdNode(loop_rate);
 
     while (ros::ok()) {
