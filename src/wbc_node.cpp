@@ -57,7 +57,7 @@ WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate &loop_rate)
       jte(&wholeBodyController_),
       add_motion_objective_server_(private_nh, "/add_motion_objective", false),
       ca_param(loadCollisionAvoidanceParameters()),
-      collision_avoidance(ca_param, 0.5)
+      collision_avoidance(ca_param, 1/loop_rate.expectedCycleTime().toSec())
 {
     add_motion_objective_server_.registerGoalCallback(
         boost::bind(&WholeBodyControllerEdNode::GoalCB, this)
