@@ -44,6 +44,9 @@ class WholeBodyControllerEdNode {
         CollisionAvoidance::collisionAvoidanceParameters ca_param;
         CollisionAvoidance collision_avoidance;
 
+        /** @brief Determine whether to publish torques or position references */
+        bool omit_admittance;
+
         /** @brief main loop */
         void update();
 
@@ -56,7 +59,8 @@ WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate &loop_rate)
       jte(&wholeBodyController_),
       add_motion_objective_server_(private_nh, "/add_motion_objective", false),
       ca_param(loadCollisionAvoidanceParameters()),
-      collision_avoidance(ca_param, 1/loop_rate.expectedCycleTime().toSec())
+      collision_avoidance(ca_param, 1/loop_rate.expectedCycleTime().toSec()),
+      omit_admittance(false)
 {
     add_motion_objective_server_.registerGoalCallback(
         boost::bind(&WholeBodyControllerEdNode::GoalCB, this)
@@ -71,6 +75,22 @@ WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate &loop_rate)
     if (!wholeBodyController_.addMotionObjective(&collision_avoidance)) {
         ROS_ERROR("Could not initialize collision avoidance");
         exit(-1);
+    }
+
+    // get omit_admittance from the parameter server
+    std::string ns = ros::this_node::getName();
+    private_nh.param<bool> (ns+"/omit_admittance", omit_admittance, true);
+    ROS_WARN("Omit admittance = %d", omit_admittance);
+
+    /// Before startup: make sure all joint values are initialized properly
+    bool initcheck = false;
+    ros::spinOnce();
+    while (!initcheck && ros::ok()) {
+        ros::spinOnce();
+        robot_interface.setAmclPose();
+        initcheck = robot_interface.isInitialized();
+        if (!initcheck) ROS_INFO("Waiting for all joints to be initialized");
+        loop_rate.sleep();
     }
 }
 
@@ -103,6 +123,29 @@ void WholeBodyControllerEdNode::CancelCB() {
 
 void WholeBodyControllerEdNode::update() {
 
+    /// Set base pose in whole-body controller (remaining joints are set implicitly in the callback functions in robot_interface)
+    robot_interface.setAmclPose();
+
+    /// Update whole-body controller
+    Eigen::VectorXd q_ref, qdot_ref;
+
+    wholeBodyController_.update(q_ref, qdot_ref);
+
+    /// Update the joint trajectory executer
+    jte.update();
+
+    // ToDo: set stuff succeeded
+    if (!omit_admittance)
+    {
+        ROS_WARN_ONCE("Publishing reference positions");
+        robot_interface.publishJointReferences(wholeBodyController_.getJointReferences(), wholeBodyController_.getJointNames());
+        // ROS_ERROR_ONCE("NO REFERENCES PUBLISHED");
+    }
+    else
+    {
+        ROS_WARN_ONCE("Publishing reference torques");
+        robot_interface.publishJointTorques(wholeBodyController_.getJointTorques(), wholeBodyController_.getJointNames());
+    }
 }
 
 } // namespace
@@ -115,10 +158,16 @@ int main(int argc, char **argv) {
     ros::Rate loop_rate(50);
     wbc::WholeBodyControllerEdNode wbcEdNode(loop_rate);
 
+    StatsPublisher sp;
+    sp.initialize();
+
     while (ros::ok()) {
         ros::spinOnce();
 
+        sp.startTimer("main");
         wbcEdNode.update();
+        sp.stopTimer("main");
+        sp.publish();
 
         loop_rate.sleep();
     }
