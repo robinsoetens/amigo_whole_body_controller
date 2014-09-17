@@ -54,12 +54,12 @@ class WholeBodyControllerEdNode {
 
 WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate &loop_rate)
     : private_nh("~"),
-      wholeBodyController_(1/loop_rate.expectedCycleTime().toSec()),
+      wholeBodyController_(loop_rate.expectedCycleTime().toSec()),
       robot_interface(&wholeBodyController_),
       jte(&wholeBodyController_),
       add_motion_objective_server_(private_nh, "/add_motion_objective", false),
       ca_param(loadCollisionAvoidanceParameters()),
-      collision_avoidance(ca_param, 1/loop_rate.expectedCycleTime().toSec()),
+      collision_avoidance(ca_param, loop_rate.expectedCycleTime().toSec()),
       omit_admittance(false)
 {
     add_motion_objective_server_.registerGoalCallback(
