@@ -28,8 +28,20 @@ class WholeBodyControllerEdNode {
 
         JointTrajectoryAction jte;
 
+        actionlib::SimpleActionServer<amigo_whole_body_controller::ArmTaskAction> add_motion_objective_server_;
+
+        // Motion objectives
+        CollisionAvoidance::collisionAvoidanceParameters ca_param;
+        CollisionAvoidance collision_avoidance;
+
     private:
         ros::NodeHandle private_nh;
+
+        wbc::CollisionAvoidance::collisionAvoidanceParameters loadCollisionAvoidanceParameters() const;
+
+        void GoalCB();
+
+        void CancelCB();
 
 };
 
@@ -37,9 +49,53 @@ WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate loop_rate)
     : wholeBodyController_(1/loop_rate.expectedCycleTime().toSec()),
       robot_interface(&wholeBodyController_),
       jte(&wholeBodyController_),
-      private_nh("~") {
+      private_nh("~"),
+      add_motion_objective_server_(private_nh, "/add_motion_objective", false),
+      ca_param(loadCollisionAvoidanceParameters()),
+      collision_avoidance(ca_param, 1/loop_rate.expectedCycleTime().toSec())
+{
+    add_motion_objective_server_.registerGoalCallback(
+        boost::bind(&WholeBodyControllerEdNode::GoalCB, this)
+    );
+    add_motion_objective_server_.registerPreemptCallback(
+        boost::bind(&WholeBodyControllerEdNode::CancelCB, this)
+    );
 
+    //add_motion_objective_server_->registerPreemptCallback(boost::bind(&CancelCB));
+    add_motion_objective_server_.start();
+
+    if (!wholeBodyController_.addMotionObjective(&collision_avoidance)) {
+        ROS_ERROR("Could not initialize collision avoidance");
+        exit(-1);
+    }
 }
+
+wbc::CollisionAvoidance::collisionAvoidanceParameters WholeBodyControllerEdNode::loadCollisionAvoidanceParameters() const {
+    wbc::CollisionAvoidance::collisionAvoidanceParameters ca_param;
+    ros::NodeHandle n("~");
+    std::string ns = ros::this_node::getName();
+    n.param<double> (ns+"/collision_avoidance/self_collision/F_max", ca_param.self_collision.f_max, 1.0);
+    n.param<double> (ns+"/collision_avoidance/self_collision/d_threshold", ca_param.self_collision.d_threshold, 1.0);
+    n.param<int> (ns+"/collision_avoidance/self_collision/order", ca_param.self_collision.order, 1);
+
+    n.param<double> (ns+"/collision_avoidance/environment_collision/F_max", ca_param.environment_collision.f_max, 1.0);
+    n.param<double> (ns+"/collision_avoidance/environment_collision/d_threshold", ca_param.environment_collision.d_threshold, 1.0);
+    n.param<int> (ns+"/collision_avoidance/environment_collision/order", ca_param.environment_collision.order, 1);
+    n.getParam("/map_3d/resolution", ca_param.environment_collision.octomap_resolution);
+
+    return ca_param;
+}
+
+void WholeBodyControllerEdNode::GoalCB() {
+    ROS_INFO("GoalCB");
+}
+
+void WholeBodyControllerEdNode::CancelCB() {
+    ROS_INFO("Canceling goal");
+    add_motion_objective_server_.setPreempted();
+    // ToDo: remove motion objective
+}
+
 
 void WholeBodyControllerEdNode::update() {
 
