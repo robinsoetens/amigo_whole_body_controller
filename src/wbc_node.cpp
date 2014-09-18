@@ -20,6 +20,8 @@ class WholeBodyControllerEdNode {
   public:
     WholeBodyControllerEdNode(ros::Rate &loop_rate);
 
+    ros::Rate &loop_rate_;
+
     WholeBodyController wholeBodyController_;
 
     RobotInterface robot_interface;
@@ -29,6 +31,9 @@ class WholeBodyControllerEdNode {
     /// Action server for adding/removing cartesian impedance goals
     typedef actionlib::ActionServer<amigo_whole_body_controller::ArmTaskAction> MotionObjectiveServer;
     MotionObjectiveServer motion_objective_server_;
+
+    typedef std::map<std::string, MotionObjectivePtr> GoalMotionObjectiveMap;
+    GoalMotionObjectiveMap goal_map;
 
     /// Motion objectives
 
@@ -54,6 +59,7 @@ class WholeBodyControllerEdNode {
 
 WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate &loop_rate)
     : private_nh("~"),
+      loop_rate_(loop_rate),
       wholeBodyController_(loop_rate.expectedCycleTime().toSec()),
       robot_interface(&wholeBodyController_),
       jte(&wholeBodyController_),
@@ -110,26 +116,45 @@ wbc::CollisionAvoidance::collisionAvoidanceParameters WholeBodyControllerEdNode:
 }
 
 void WholeBodyControllerEdNode::goalCB(MotionObjectiveServer::GoalHandle handle) {
-    ROS_INFO("GoalCB", handle.getGoalID().id.c_str());
+    std::string id = handle.getGoalID().id;
+    ROS_INFO("GoalCB: %s", id.c_str());
 
     MotionObjectiveServer::GoalConstPtr goal = handle.getGoal();
 
-    /// If a remove tip frame is present: remove objective
-    if (!goal->remove_tip_frame.empty()) {
-        std::vector<MotionObjective*> imps_to_remove = wholeBodyController_.getCartesianImpedances(goal->remove_tip_frame, goal->remove_root_frame);
-        for (unsigned int i = 0; i < imps_to_remove.size(); i++) {
-            wholeBodyController_.removeMotionObjective(imps_to_remove[i]);
-        }
+    CartesianImpedance *cartesian_impedance = new CartesianImpedance(goal->position_constraint.link_name, loop_rate_.expectedCycleTime().toSec());
+    geometry_msgs::PoseStamped goal_pose;
+    goal_pose.pose.position = goal->position_constraint.position;
+    goal_pose.pose.orientation = goal->orientation_constraint.orientation;
+    goal_pose.header.frame_id = goal->position_constraint.header.frame_id;
+    // ToDo: include offset
+    cartesian_impedance->setGoal(goal_pose);
+    cartesian_impedance->setGoalOffset(goal->position_constraint.target_point_offset);
+    cartesian_impedance->setImpedance(goal->stiffness);
+    cartesian_impedance->setPositionTolerance(goal->position_constraint.constraint_region_shape);
+    cartesian_impedance->setOrientationTolerance(goal->orientation_constraint.absolute_roll_tolerance, goal->orientation_constraint.absolute_pitch_tolerance, goal->orientation_constraint.absolute_yaw_tolerance);
+
+    if (!wholeBodyController_.addMotionObjective(cartesian_impedance)) {
+        ROS_ERROR("Could not initialize cartesian impedance for new motion objective");
+        exit(-1);
     }
 
+    // add it to the map
+    goal_map[id] = MotionObjectivePtr(cartesian_impedance);
 }
 
 void WholeBodyControllerEdNode::cancelCB(MotionObjectiveServer::GoalHandle handle) {
-    ROS_INFO("CancelCB", handle.getGoalID().id.c_str());
+    std::string id = handle.getGoalID().id;
+    ROS_INFO("cancelCB: %s", id.c_str());
 
-    // TODO: remote the motion objective
+    // delete from the WBC
+    MotionObjectivePtr motion_objective = goal_map[id];
+    wholeBodyController_.removeMotionObjective(motion_objective.get());
+
+    // delete from the map
+    if (1 != goal_map.erase(id)) {
+        ROS_WARN("could not find %s in the goal_map", id.c_str());
+    }
 }
-
 
 void WholeBodyControllerEdNode::update() {
 
