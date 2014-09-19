@@ -140,6 +140,7 @@ void WholeBodyControllerEdNode::goalCB(MotionObjectiveServer::GoalHandle handle)
 
     // add it to the map
     goal_map[id] = std::pair<MotionObjectiveServer::GoalHandle, MotionObjectivePtr>(handle, MotionObjectivePtr(cartesian_impedance));
+    handle.setAccepted();
 }
 
 void WholeBodyControllerEdNode::cancelCB(MotionObjectiveServer::GoalHandle handle) {
