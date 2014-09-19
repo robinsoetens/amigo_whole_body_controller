@@ -158,6 +158,28 @@ void WholeBodyControllerEdNode::cancelCB(MotionObjectiveServer::GoalHandle handl
 
 void WholeBodyControllerEdNode::update() {
 
+    // check for succeeded motion objectives
+    // using a variation of Mark Ransom algorithm (http://stackoverflow.com/a/180772)
+    for(GoalMotionObjectiveMap::iterator it = goal_map.begin(); it != goal_map.end();)
+    {
+        MotionObjectiveServer::GoalHandle handle = it->second.first;
+        MotionObjectivePtr motion_objective      = it->second.second;
+
+        if (motion_objective->getStatus() == 1) // status == done
+        {
+            wholeBodyController_.removeMotionObjective(motion_objective.get());
+            handle.setSucceeded();
+            goal_map.erase(it++);  // Note the post increment here.
+                                   // This increments 'it' and returns a copy of
+                                   // the original 'it' to be used by erase()
+        }
+        else
+        {
+            ++it;  // Use Pre-Increment here as it is more effecient
+                   // Because no copy of it is required.
+        }
+    }
+
     // Set base pose in whole-body controller (remaining joints are set implicitly in the callback functions in robot_interface)
     robot_interface.setAmclPose();
 
