@@ -32,7 +32,7 @@ class WholeBodyControllerEdNode {
     typedef actionlib::ActionServer<amigo_whole_body_controller::ArmTaskAction> MotionObjectiveServer;
     MotionObjectiveServer motion_objective_server_;
 
-    typedef std::map<std::string, MotionObjectivePtr> GoalMotionObjectiveMap;
+    typedef std::map<std::string, std::pair<MotionObjectiveServer::GoalHandle, MotionObjectivePtr> > GoalMotionObjectiveMap;
     GoalMotionObjectiveMap goal_map;
 
     /// Motion objectives
@@ -139,7 +139,7 @@ void WholeBodyControllerEdNode::goalCB(MotionObjectiveServer::GoalHandle handle)
     }
 
     // add it to the map
-    goal_map[id] = MotionObjectivePtr(cartesian_impedance);
+    goal_map[id] = std::pair<MotionObjectiveServer::GoalHandle, MotionObjectivePtr>(handle, MotionObjectivePtr(cartesian_impedance));
 }
 
 void WholeBodyControllerEdNode::cancelCB(MotionObjectiveServer::GoalHandle handle) {
@@ -147,7 +147,7 @@ void WholeBodyControllerEdNode::cancelCB(MotionObjectiveServer::GoalHandle handl
     ROS_INFO("cancelCB: %s", id.c_str());
 
     // delete from the WBC
-    MotionObjectivePtr motion_objective = goal_map[id];
+    MotionObjectivePtr motion_objective = goal_map[id].second;
     wholeBodyController_.removeMotionObjective(motion_objective.get());
 
     // delete from the map
