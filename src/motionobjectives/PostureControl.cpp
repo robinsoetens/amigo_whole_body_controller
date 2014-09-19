@@ -1,5 +1,6 @@
 #include "amigo_whole_body_controller/motionobjectives/PostureControl.h"
-#include <ros/ros.h>
+
+#include <ros/console.h>
 
 PostureControl::PostureControl() {
 

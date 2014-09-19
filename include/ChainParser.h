@@ -1,9 +1,6 @@
 #ifndef WBC_CHAIN_PARSER_H_
 #define WBC_CHAIN_PARSER_H_
 
-// ROS
-#include <ros/ros.h>
-
 // Construct Chain
 #include "ConstructChain.h"
 
@@ -19,6 +16,8 @@
 
 #include "Tree.h"
 #include "Chain.h"
+
+#include <XmlRpcValue.h>
 
 class ChainParser {
 

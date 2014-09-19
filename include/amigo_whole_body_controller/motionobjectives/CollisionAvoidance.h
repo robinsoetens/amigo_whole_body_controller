@@ -7,9 +7,6 @@
 #ifndef WBC_OBSTACLEAVOIDANCE_H_
 #define WBC_OBSTACLEAVOIDANCE_H_
 
-// ROS
-#include "ros/ros.h"
-
 // Eigen
 #include <Eigen/Core>
 
@@ -159,7 +156,7 @@ public:
     void apply(RobotState& robotstate);
 
     void setOctoMap(octomap::OcTreeStamped* octree);
-    
+
     void removeOctomapBBX(const geometry_msgs::Point& goal, const std::string& root);
 
     /** Adds object collisionmodel to robot collisionmodel

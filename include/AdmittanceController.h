@@ -7,9 +7,6 @@
 #ifndef ADMITTANCECONTROLLER_H_
 #define ADMITTANCECONTROLLER_H_
 
-// ROS
-#include "ros/ros.h"
-
 // Eigen
 #include <Eigen/Core>
 

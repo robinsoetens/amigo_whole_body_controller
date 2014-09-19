@@ -46,8 +46,6 @@
  *	implied, of TU/e.													*
  ************************************************************************/
 
-#include "ros/ros.h"
-
 namespace controller {
 
 class RefGenerator {

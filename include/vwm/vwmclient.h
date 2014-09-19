@@ -1,7 +1,6 @@
 #ifndef VWMCLIENT_H
 #define VWMCLIENT_H
 
-#include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 
 #include <wire_volume/transport/Client.h>

@@ -7,7 +7,6 @@
 #ifndef ROBOTINTERFACE_H
 #define ROBOTINTERFACE_H
 
-#include <ros/ros.h>
 #include <WholeBodyController.h>
 #include <sensor_msgs/JointState.h>
 #include <tf/transform_listener.h>
@@ -50,7 +49,7 @@ public:
       * Sets base pose into whole-body controller using tf
       */
     void setAmclPose();
-    
+
     /** Checks if all joints have been initialized */
     bool isInitialized();
 
@@ -84,10 +83,10 @@ protected:
 
     /** Maps joint name to the correct publisher */
     std::map<std::string, JointRefPublisher*> joint_name_to_pub_;
-    
+
     /** Maps joint name to initialize bool */
     std::map<std::string, bool> initialize_map_;
-    
+
     /** Bool indicates whether values have been received for all joints and the base */
     bool initialized_, base_initialized_;
 

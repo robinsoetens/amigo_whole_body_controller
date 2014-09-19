@@ -1,6 +1,7 @@
 #include "amigo_whole_body_controller/motionobjectives/CartesianImpedance.h"
 
 #include <tf/transform_datatypes.h>
+#include <ros/node_handle.h>
 
 CartesianImpedance::CartesianImpedance(const std::string& tip_frame, const double Ts) {
 

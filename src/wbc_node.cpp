@@ -1,4 +1,3 @@
-#include <ros/ros.h>
 #include <profiling/StatsPublisher.h>
 #include <amigo_whole_body_controller/interfaces/RobotInterface.h>
 #include <amigo_whole_body_controller/interfaces/JointTrajectoryAction.h>

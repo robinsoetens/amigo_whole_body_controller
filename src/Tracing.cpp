@@ -3,10 +3,9 @@
 /// For tracing
 #include <iostream>
 #include <fstream>
-
-
-#include <ros/ros.h>
 #include <time.h>
+
+#include <ros/node_handle.h>
 
 Tracing::Tracing() :
     number_columns_(0),

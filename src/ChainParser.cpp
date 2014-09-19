@@ -1,5 +1,8 @@
 #include "ChainParser.h"
 
+#include <ros/node_handle.h>
+#include <ros/console.h>
+
 ChainParser::ChainParser() {
 
 }

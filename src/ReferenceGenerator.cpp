@@ -46,8 +46,9 @@
  *	implied, of TU/e.													*
  ************************************************************************/
 
-#include "ros/ros.h"
 #include "ReferenceGenerator.h"
+
+#include <math.h> /* fabs */
 
 using namespace controller;
 

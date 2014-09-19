@@ -1,5 +1,7 @@
 #include "AdmittanceController.h"
 
+#include <ros/console.h>
+
 #define PI 3.14159265358979
 #define eps 1e-16
 

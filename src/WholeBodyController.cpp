@@ -1,5 +1,8 @@
 #include "WholeBodyController.h"
+
 #include "ChainParser.h"
+#include <ros/node_handle.h>
+#include <ros/this_node.h>
 #include <tf/transform_datatypes.h>
 #include <std_msgs/Float64MultiArray.h>
 

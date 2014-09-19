@@ -1,6 +1,7 @@
 #include "ComputeNullspace.h"
+
 #include <Eigen/SVD>
-#include <ros/ros.h>
+#include <ros/console.h>
 
 ComputeNullspace::ComputeNullspace() {
 
