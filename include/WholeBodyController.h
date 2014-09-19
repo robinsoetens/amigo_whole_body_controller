@@ -7,11 +7,13 @@
 #ifndef WHOLEBODYCONTROLLER_H_
 #define WHOLEBODYCONTROLLER_H_
 
-// WholeBodyController
-#include "amigo_whole_body_controller/motionobjectives/CartesianImpedance.h"
+// motion objectives
+#include "amigo_whole_body_controller/motionobjectives/MotionObjective.h"
+//#include "amigo_whole_body_controller/motionobjectives/CartesianImpedance.h"
 #include "amigo_whole_body_controller/motionobjectives/JointLimitAvoidance.h"
 #include "amigo_whole_body_controller/motionobjectives/PostureControl.h"
-#include "amigo_whole_body_controller/motionobjectives/CollisionAvoidance.h"
+//#include "amigo_whole_body_controller/motionobjectives/CollisionAvoidance.h"
+
 #include "AdmittanceController.h"
 #include "ComputeNullspace.h"
 #include "amigo_whole_body_controller/Tracing.hpp"

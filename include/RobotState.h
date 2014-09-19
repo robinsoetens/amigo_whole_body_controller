@@ -8,17 +8,13 @@
 #define ROBOTSTATE_H
 
 #include <map>
-#include "Chain.h"
 #include "Tree.h"
 #include <XmlRpc.h>
 
-// Messages
 #include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
-// KDL
-#include <kdl/treefksolverpos_recursive.hpp>
 #include <kdl/frames.hpp>
+#include <kdl/treefksolverpos_recursive.hpp>
 
 // Choose what collision library will be used
 #define USE_FCL
@@ -29,7 +25,7 @@
 #include <BulletCollision/NarrowPhaseCollision/btPointCollector.h>
 
 #ifdef USE_FCL
-#include <fcl/collision.h>
+#include <fcl/collision_object.h>
 #endif
 
 class RobotState

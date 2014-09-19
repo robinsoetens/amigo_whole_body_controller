@@ -3,6 +3,9 @@
 #include <amigo_whole_body_controller/interfaces/JointTrajectoryAction.h>
 #include <amigo_whole_body_controller/ArmTaskAction.h>
 
+#include "amigo_whole_body_controller/motionobjectives/CollisionAvoidance.h"
+#include "amigo_whole_body_controller/motionobjectives/CartesianImpedance.h"
+
 #include "WholeBodyController.h"
 #include <ed_wbc/ed_client.h>
 
