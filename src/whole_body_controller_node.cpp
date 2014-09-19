@@ -2,15 +2,9 @@
 #include <amigo_whole_body_controller/interfaces/RobotInterface.h>
 #include <amigo_whole_body_controller/interfaces/JointTrajectoryAction.h>
 #include <amigo_whole_body_controller/ArmTaskAction.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
-// tf
-#include <tf/transform_listener.h>
 #include <octomap_msgs/conversions.h>
 #include <profiling/StatsPublisher.h>
-
-// connection to ed
-#include <ed_wbc/ed_client.h>
 
 const double loop_rate_ = 50;
 

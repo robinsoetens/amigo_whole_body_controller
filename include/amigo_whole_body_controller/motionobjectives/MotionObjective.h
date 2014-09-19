@@ -75,4 +75,7 @@ protected:
 
 };
 
+typedef boost::shared_ptr<MotionObjective> MotionObjectivePtr;
+typedef boost::shared_ptr<const MotionObjective> MotionObjectiveConstPtr;
+
 #endif
