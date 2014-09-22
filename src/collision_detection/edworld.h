@@ -2,8 +2,11 @@
 #define EDWORLD_H
 
 #include "world.h"
+
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/thread.hpp>
+
 #include <ed_wbc/ed_client.h>
-#include <boost/thread.hpp>
 #include <ros/rate.h>
 
 namespace wbc {
@@ -18,7 +21,7 @@ class EdWorld : public World
 
     void start();
 
-    boost::shared_ptr<fcl::BroadPhaseCollisionManager> getCollisionManager() const;
+    boost::shared_ptr<fcl::BroadPhaseCollisionManager> getCollisionManager();
 
   protected:
 
@@ -30,7 +33,7 @@ class EdWorld : public World
 
     boost::thread thread_;
 
-    boost::mutex mtx_;
+    boost::mutex mutex_;
 
     boost::shared_ptr<fcl::BroadPhaseCollisionManager> world_;
 

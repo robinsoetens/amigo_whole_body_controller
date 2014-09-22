@@ -33,15 +33,16 @@ void EdWorld::start()
     thread_ = boost::thread(&EdWorld::loop, this);
 }
 
-boost::shared_ptr<fcl::BroadPhaseCollisionManager> EdWorld::getCollisionManager() const
+boost::shared_ptr<fcl::BroadPhaseCollisionManager> EdWorld::getCollisionManager()
 {
-    // TODO: locking
+    boost::lock_guard<boost::mutex> lock(mutex_);
     return world_;
 }
 
 void EdWorld::update()
 {
     fcl::BroadPhaseCollisionManager *world = client_.getWorld();
+    boost::lock_guard<boost::mutex> lock(mutex_);
     world_ = boost::shared_ptr<fcl::BroadPhaseCollisionManager>(world);
 }
 
