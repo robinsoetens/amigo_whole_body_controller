@@ -1,9 +1,11 @@
 #ifndef EDWORLD_H
 #define EDWORLD_H
 
+#include "world.h"
+
 namespace wbc {
 
-class EdWorld
+class EdWorld : public World
 {
 public:
     EdWorld();
