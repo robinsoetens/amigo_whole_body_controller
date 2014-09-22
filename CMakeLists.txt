@@ -111,6 +111,7 @@ add_library(amigo_whole_body_controller
 
   src/collision_detection/world.cpp
   src/collision_detection/edworld.cpp
+  src/collision_detection/octomapworld.cpp
 
   src/motionobjectives/MotionObjective.cpp
   src/motionobjectives/CartesianImpedance.cpp
