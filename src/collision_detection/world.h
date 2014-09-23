@@ -13,7 +13,7 @@ public:
 
     virtual void initialize() {}
 
-    virtual boost::shared_ptr<fcl::BroadPhaseCollisionManager> getCollisionManager() const = 0;
+    virtual boost::shared_ptr<fcl::BroadPhaseCollisionManager> getCollisionManager() = 0;
 
     virtual void start() = 0;
 };

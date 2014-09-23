@@ -7,7 +7,7 @@
 namespace wbc {
 
 EdWorld::EdWorld() :
-    rate_(10)
+    rate_(5)
 {
 
 }

@@ -7,7 +7,7 @@
 #include "amigo_whole_body_controller/motionobjectives/CartesianImpedance.h"
 
 #include "WholeBodyController.h"
-#include <ed_wbc/ed_client.h>
+#include "collision_detection/edworld.h"
 
 #include <boost/shared_ptr.hpp>
 
@@ -41,6 +41,9 @@ class WholeBodyControllerEdNode {
 
     CollisionAvoidance::collisionAvoidanceParameters ca_param;
     CollisionAvoidance collision_avoidance;
+
+    /// Connection to ED (the world model)
+    EdWorld world_;
 
     /// Determine whether to publish torques or position references */
     bool omit_admittance;
