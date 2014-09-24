@@ -1,68 +1,8 @@
-#include <profiling/StatsPublisher.h>
-#include <amigo_whole_body_controller/interfaces/RobotInterface.h>
-#include <amigo_whole_body_controller/interfaces/JointTrajectoryAction.h>
-#include <amigo_whole_body_controller/ArmTaskAction.h>
-
-#include "amigo_whole_body_controller/motionobjectives/CollisionAvoidance.h"
-#include "amigo_whole_body_controller/motionobjectives/CartesianImpedance.h"
-
-#include "WholeBodyController.h"
-#include "collision_detection/edworld.h"
-
-#include <boost/shared_ptr.hpp>
+#include "amigo_whole_body_controller/wbc_node.h"
 
 namespace wbc {
 
-class WholeBodyControllerEdNode {
-
-  protected:
-    // nodehandle must be created before everything else
-    ros::NodeHandle private_nh;
-
-  public:
-    WholeBodyControllerEdNode(ros::Rate &loop_rate);
-
-    ros::Rate &loop_rate_;
-
-    WholeBodyController wholeBodyController_;
-
-    RobotInterface robot_interface;
-
-    JointTrajectoryAction jte;
-
-    /// Action server for adding/removing cartesian impedance goals
-    typedef actionlib::ActionServer<amigo_whole_body_controller::ArmTaskAction> MotionObjectiveServer;
-    MotionObjectiveServer motion_objective_server_;
-
-    typedef std::map<std::string, std::pair<MotionObjectiveServer::GoalHandle, MotionObjectivePtr> > GoalMotionObjectiveMap;
-    GoalMotionObjectiveMap goal_map;
-
-    /// Motion objectives
-
-    CollisionAvoidance::collisionAvoidanceParameters ca_param;
-    CollisionAvoidance collision_avoidance;
-
-    /// Connection to ED (the world model)
-    EdWorld world_;
-
-    /// Determine whether to publish torques or position references */
-    bool omit_admittance;
-
-    /// main loop
-    void update();
-
-  protected:
-    wbc::CollisionAvoidance::collisionAvoidanceParameters loadCollisionAvoidanceParameters() const;
-
-    std::vector< boost::shared_ptr<MotionObjective> > motion_objectives_;
-
-    void goalCB(MotionObjectiveServer::GoalHandle handle);
-
-    void cancelCB(MotionObjectiveServer::GoalHandle handle);
-
-};
-
-WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate &loop_rate)
+WholeBodyControllerNode::WholeBodyControllerNode (ros::Rate &loop_rate)
     : private_nh("~"),
       loop_rate_(loop_rate),
       wholeBodyController_(loop_rate.expectedCycleTime().toSec()),
@@ -71,19 +11,17 @@ WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate &loop_rate)
       motion_objective_server_(private_nh, "/add_motion_objective", false),
       ca_param(loadCollisionAvoidanceParameters()),
       collision_avoidance(ca_param, loop_rate.expectedCycleTime().toSec()),
+      world_(0),
       omit_admittance(false)
 {
     motion_objective_server_.registerGoalCallback(
-        boost::bind(&WholeBodyControllerEdNode::goalCB, this, _1)
+        boost::bind(&WholeBodyControllerNode::goalCB, this, _1)
     );
     motion_objective_server_.registerCancelCallback(
-        boost::bind(&WholeBodyControllerEdNode::cancelCB, this, _1)
+        boost::bind(&WholeBodyControllerNode::cancelCB, this, _1)
     );
 
     motion_objective_server_.start();
-
-    world_.initialize();
-    world_.start();
 
     if (!wholeBodyController_.addMotionObjective(&collision_avoidance)) {
         ROS_ERROR("Could not initialize collision avoidance");
@@ -107,7 +45,14 @@ WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate &loop_rate)
     }
 }
 
-wbc::CollisionAvoidance::collisionAvoidanceParameters WholeBodyControllerEdNode::loadCollisionAvoidanceParameters() const {
+void WholeBodyControllerNode::setCollisionWorld(World *world)
+{
+    world_ = world;
+    world_->initialize();
+    world_->start();
+}
+
+wbc::CollisionAvoidance::collisionAvoidanceParameters WholeBodyControllerNode::loadCollisionAvoidanceParameters() const {
     wbc::CollisionAvoidance::collisionAvoidanceParameters ca_param;
     ros::NodeHandle n("~");
     std::string ns = ros::this_node::getName();
@@ -123,7 +68,7 @@ wbc::CollisionAvoidance::collisionAvoidanceParameters WholeBodyControllerEdNode:
     return ca_param;
 }
 
-void WholeBodyControllerEdNode::goalCB(MotionObjectiveServer::GoalHandle handle) {
+void WholeBodyControllerNode::goalCB(MotionObjectiveServer::GoalHandle handle) {
     std::string id = handle.getGoalID().id;
     ROS_INFO("GoalCB: %s", id.c_str());
 
@@ -151,7 +96,7 @@ void WholeBodyControllerEdNode::goalCB(MotionObjectiveServer::GoalHandle handle)
     handle.setAccepted();
 }
 
-void WholeBodyControllerEdNode::cancelCB(MotionObjectiveServer::GoalHandle handle) {
+void WholeBodyControllerNode::cancelCB(MotionObjectiveServer::GoalHandle handle) {
     std::string id = handle.getGoalID().id;
     ROS_INFO("cancelCB: %s", id.c_str());
 
@@ -165,7 +110,7 @@ void WholeBodyControllerEdNode::cancelCB(MotionObjectiveServer::GoalHandle handl
     }
 }
 
-void WholeBodyControllerEdNode::update() {
+void WholeBodyControllerNode::update() {
 
     // check for succeeded motion objectives
     // using a variation of Mark Ransom algorithm (http://stackoverflow.com/a/180772)
@@ -215,28 +160,3 @@ void WholeBodyControllerEdNode::update() {
 }
 
 } // namespace
-
-int main(int argc, char **argv) {
-
-    ros::init(argc, argv, "whole_body_controller");
-    ros::NodeHandle nh;
-
-    ros::Rate loop_rate(50);
-    wbc::WholeBodyControllerEdNode wbcEdNode(loop_rate);
-
-    StatsPublisher sp;
-    sp.initialize();
-
-    while (ros::ok()) {
-        ros::spinOnce();
-
-        sp.startTimer("main");
-        wbcEdNode.update();
-        sp.stopTimer("main");
-        sp.publish();
-
-        loop_rate.sleep();
-    }
-
-    return 0;
-}

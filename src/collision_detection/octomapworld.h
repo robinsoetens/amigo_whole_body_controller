@@ -1,7 +1,7 @@
 #ifndef OCTOMAPWORLD_H
 #define OCTOMAPWORLD_H
 
-#include "world.h"
+#include "amigo_whole_body_controller/world.h"
 
 namespace wbc {
 

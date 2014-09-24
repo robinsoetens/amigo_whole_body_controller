@@ -22,7 +22,6 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   visualization_msgs
   fcl
-  ed_wbc
 )
 
 ## System dependencies are found with CMake's conventions
@@ -58,7 +57,7 @@ generate_messages(
 ## catkin specific configuration ##
 ###################################
 catkin_package(
- INCLUDE_DIRS include
+ INCLUDE_DIRS include #${BULLET_INCLUDE_DIRS}
  LIBRARIES amigo_whole_body_controller
   CATKIN_DEPENDS
     # TODO, other deps
@@ -67,7 +66,7 @@ catkin_package(
     arm_navigation_msgs
     geometry_msgs
     message_runtime
-#  DEPENDS system_lib
+  DEPENDS BULLET
 )
 
 ###########
@@ -110,8 +109,8 @@ add_library(amigo_whole_body_controller
   src/Tracing.cpp
 
   src/collision_detection/world.cpp
-  src/collision_detection/edworld.cpp
-  src/collision_detection/octomapworld.cpp
+#  src/collision_detection/edworld.cpp
+#  src/collision_detection/octomapworld.cpp
 
   src/motionobjectives/MotionObjective.cpp
   src/motionobjectives/CartesianImpedance.cpp
@@ -121,6 +120,8 @@ add_library(amigo_whole_body_controller
 
   src/interfaces/JointTrajectoryAction.cpp
   src/interfaces/RobotInterface.cpp
+  src/wbc_node.cpp
+
 
 
 # src/vwm/vwmclient.cpp
@@ -140,7 +141,7 @@ add_executable(whole_body_controller
 target_link_libraries(whole_body_controller amigo_whole_body_controller)
 
 add_executable(wbc
-  src/wbc_node.cpp
+    src/main.cpp
 )
 target_link_libraries(wbc amigo_whole_body_controller)
 
