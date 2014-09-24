@@ -82,6 +82,9 @@ WholeBodyControllerEdNode::WholeBodyControllerEdNode (ros::Rate &loop_rate)
 
     motion_objective_server_.start();
 
+    world_.initialize();
+    world_.start();
+
     if (!wholeBodyController_.addMotionObjective(&collision_avoidance)) {
         ROS_ERROR("Could not initialize collision avoidance");
         exit(-1);

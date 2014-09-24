@@ -22,7 +22,6 @@ void EdWorld::loop()
 {
     while (ros::ok())
     {
-        ROS_INFO("ed update");
         update();
         rate_.sleep();
     }
@@ -42,8 +41,11 @@ boost::shared_ptr<fcl::BroadPhaseCollisionManager> EdWorld::getCollisionManager(
 void EdWorld::update()
 {
     fcl::BroadPhaseCollisionManager *world = client_.getWorld();
+    ROS_INFO("ed world update: %lu entities", world->size());
+    boost::shared_ptr<fcl::BroadPhaseCollisionManager> world_ptr(world);
+
     boost::lock_guard<boost::mutex> lock(mutex_);
-    world_ = boost::shared_ptr<fcl::BroadPhaseCollisionManager>(world);
+    world_ = world_ptr;
 }
 
 } // namespace
