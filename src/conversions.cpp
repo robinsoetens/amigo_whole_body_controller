@@ -97,6 +97,7 @@ void objectFCLtoMarker(const fcl::CollisionObject &obj, visualization_msgs::Mark
     std::vector<fcl::Triangle> triangles;
     getFclShape(obj.getCollisionGeometry(), vertices, triangles);
 
+    triangle_list.points.reserve(3*triangles.size());
     std::vector<fcl::Triangle>::iterator it;
     for (it = triangles.begin(); it < triangles.end(); it++)
     {
