@@ -1156,19 +1156,21 @@ void CollisionAvoidance::visualizeCollisionModel(RobotState::CollisionBody colli
 #ifdef USE_FCL
 void CollisionAvoidance::visualizeCollisionModelFCL(RobotState::CollisionBody collisionBody,int id) const
 {
-    const fcl::CollisionObject &obj = *collisionBody.fcl_object.get();
+    if (pub_model_marker_fcl_.getNumSubscribers() != 0) {
+        const fcl::CollisionObject &obj = *collisionBody.fcl_object.get();
 
-    visualization_msgs::Marker m;
-    objectFCLtoMarker(obj, m);
-    m.id = id;
-    m.header.frame_id = "/map";
+        visualization_msgs::Marker m;
+        objectFCLtoMarker(obj, m);
+        m.id = id;
+        m.header.frame_id = "/map";
 
-    m.color.a = 0.5;
-    m.color.r = 0;
-    m.color.g = 0;
-    m.color.b = 1;
+        m.color.a = 0.5;
+        m.color.r = 0;
+        m.color.g = 0;
+        m.color.b = 1;
 
-    pub_model_marker_fcl_.publish(m);
+        pub_model_marker_fcl_.publish(m);
+    }
 }
 #endif
 
