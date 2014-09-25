@@ -57,8 +57,10 @@ void getFclShape(const fcl::CollisionGeometry *cg, std::vector<fcl::Vec3f> &vert
         {
         case fcl::BV_OBBRSS: {
             const fcl::BVHModel<fcl::OBBRSS>* model = dynamic_cast<const fcl::BVHModel<fcl::OBBRSS>*>(cg);
-            //fcl::Vec3f* temp = new fcl::Vec3f[model->num_vertices];
-            //memcpy(temp, model->vertices, sizeof(fcl::Vec3f) * model->num_vertices);
+            // This is how fcl internally creates Vec3f arrays:
+            //
+            // fcl::Vec3f* temp = new fcl::Vec3f[model->num_vertices];
+            // memcpy(temp, model->vertices, sizeof(fcl::Vec3f) * model->num_vertices);
 
             vertices  = std::vector<fcl::Vec3f>(   model->vertices,    model->vertices    + model->num_vertices);
             triangles = std::vector<fcl::Triangle>(model->tri_indices, model->tri_indices + model->num_tris);
