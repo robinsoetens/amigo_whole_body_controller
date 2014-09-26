@@ -121,10 +121,8 @@ add_library(amigo_whole_body_controller
   src/interfaces/RobotInterface.cpp
   src/wbc_node.cpp
 
-
-
-# src/vwm/vwmclient.cpp
-# src/vwm/vwmobject.cpp
+  # src/vwm/vwmclient.cpp
+  # src/vwm/vwmobject.cpp
 )
 target_link_libraries(amigo_whole_body_controller
   ${catkin_LIBRARIES}
@@ -140,7 +138,7 @@ add_executable(whole_body_controller
 target_link_libraries(whole_body_controller amigo_whole_body_controller)
 
 add_executable(wbc
-    src/main.cpp
+  src/main.cpp
 )
 target_link_libraries(wbc amigo_whole_body_controller)
 
