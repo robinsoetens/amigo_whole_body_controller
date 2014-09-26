@@ -12,7 +12,7 @@ public:
 
     virtual void initialize() {}
 
-    virtual World* getWorld() = 0;
+    virtual boost::shared_ptr<World> getWorld() = 0;
 
     virtual void start() = 0;
 };
