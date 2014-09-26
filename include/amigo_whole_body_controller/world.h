@@ -11,11 +11,8 @@ class World
 public:
     World();
 
-    virtual void initialize() {}
-
     virtual boost::shared_ptr<fcl::BroadPhaseCollisionManager> getCollisionManager() = 0;
 
-    virtual void start() = 0;
 };
 
 } // namespace

@@ -7,7 +7,7 @@
 #include "amigo_whole_body_controller/motionobjectives/CartesianImpedance.h"
 
 #include "WholeBodyController.h"
-#include "amigo_whole_body_controller/world.h"
+#include "amigo_whole_body_controller/worldclient.h"
 
 #include <boost/shared_ptr.hpp>
 
@@ -43,7 +43,7 @@ class WholeBodyControllerNode {
     CollisionAvoidance collision_avoidance;
 
     /// Connection to ED (the world model)
-    World *world_;
+    WorldClient *world_client_;
 
     /// Determine whether to publish torques or position references */
     bool omit_admittance;
@@ -51,7 +51,7 @@ class WholeBodyControllerNode {
     /// main loop
     void update();
 
-    void setCollisionWorld(World *world);
+    void setCollisionWorld(WorldClient *world_client);
 
   protected:
     wbc::CollisionAvoidance::collisionAvoidanceParameters loadCollisionAvoidanceParameters() const;

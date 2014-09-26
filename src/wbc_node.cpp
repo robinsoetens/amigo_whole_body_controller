@@ -11,7 +11,7 @@ WholeBodyControllerNode::WholeBodyControllerNode (ros::Rate &loop_rate)
       motion_objective_server_(private_nh, "/add_motion_objective", false),
       ca_param(loadCollisionAvoidanceParameters()),
       collision_avoidance(ca_param, loop_rate.expectedCycleTime().toSec()),
-      world_(0),
+      world_client_(0),
       omit_admittance(false)
 {
     motion_objective_server_.registerGoalCallback(
@@ -45,11 +45,11 @@ WholeBodyControllerNode::WholeBodyControllerNode (ros::Rate &loop_rate)
     }
 }
 
-void WholeBodyControllerNode::setCollisionWorld(World *world)
+void WholeBodyControllerNode::setCollisionWorld(WorldClient *world_client)
 {
-    world_ = world;
-    world_->initialize();
-    world_->start();
+    world_client_ = world_client;
+    world_client_->initialize();
+    world_client_->start();
 }
 
 wbc::CollisionAvoidance::collisionAvoidanceParameters WholeBodyControllerNode::loadCollisionAvoidanceParameters() const {
