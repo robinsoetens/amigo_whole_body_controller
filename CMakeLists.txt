@@ -108,7 +108,7 @@ add_library(amigo_whole_body_controller
   src/Tree.cpp
   src/Tracing.cpp
 
-  src/collision_detection/world.cpp
+  src/world.cpp
 #  src/collision_detection/edworld.cpp
 #  src/collision_detection/octomapworld.cpp
 
