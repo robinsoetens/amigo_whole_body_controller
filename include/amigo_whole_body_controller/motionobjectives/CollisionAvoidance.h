@@ -107,17 +107,6 @@ struct CollisionGeometryData
 
 class CollisionAvoidance : public MotionObjective
 {
-
-    struct Box
-    {
-        Box(const Eigen::Vector3d& min, const Eigen::Vector3d& max)
-            : min_(min), max_(max)
-        {
-        }
-        Eigen::Vector3d min_;
-        Eigen::Vector3d max_;
-    };
-
 public:
 
     /// Define the type of OctoMap as timestamped
@@ -146,7 +135,7 @@ public:
     /**
      * Deconstructor
      */
-    virtual ~CollisionAvoidance();
+    ~CollisionAvoidance();
 
     /**
      * Initialize function
@@ -214,11 +203,6 @@ protected:
         o << r.amplitude;
         return o;
     }
-
-    struct Wrench {
-        std::string frame_id;
-        Eigen::VectorXd wrench;
-    } ;
 
     /** Matrix containing the combined Jacobian matrix of this objective */
     Eigen::MatrixXd jacobian_pre_alloc_;
@@ -318,12 +302,6 @@ protected:
      * @param Input: Vector with the repulsive forces, Output: Vector with the wrenches
      */
     void calculateWrenches(const std::vector<RepulsiveForce> &repulsive_forces);
-
-    /**
-     * @brief Output the wrench to the KDL tree
-     * @param Vector with wrenches
-     */
-    void outputWrenches(std::vector<Wrench> &wrenches);
 
     /**
      * @brief Visualize the collision avoidance in RVIZ
