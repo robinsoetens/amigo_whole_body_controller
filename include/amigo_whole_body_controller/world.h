@@ -15,6 +15,9 @@ public:
 
 };
 
+typedef boost::shared_ptr<World> WorldPtr;
+typedef boost::shared_ptr<const World> WorldConstPtr;
+
 } // namespace
 
 #endif // WORLD_H

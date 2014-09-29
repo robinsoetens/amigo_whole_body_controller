@@ -7,17 +7,15 @@
 #ifndef WBC_OBSTACLEAVOIDANCE_H_
 #define WBC_OBSTACLEAVOIDANCE_H_
 
-// Eigen
 #include <Eigen/Core>
+#include <octomap/OcTreeStamped.h>
 
-// Plugins
 #include "MotionObjective.h"
 #include "ChainParser.h"
 #include "Chain.h"
 #include "Tree.h"
+#include "amigo_whole_body_controller/worldclient.h"
 
-// Map
-#include <octomap/OcTreeStamped.h>
 
 #ifdef USE_BULLET
 // Bullet GJK Closest Point calculation
@@ -33,14 +31,11 @@
 #endif
 
 #ifdef USE_FCL
-
 // FCL closest point
 #include <fcl/distance.h>
 #include <fcl/shape/geometric_shapes.h>
 #include <fcl/shape/geometric_shape_to_BVH_model.h>
-
 #include <fcl/broadphase/broadphase_dynamic_AABB_tree.h>
-
 #endif
 
 #include <profiling/StatsPublisher.h>
@@ -150,6 +145,8 @@ public:
 
     void apply(RobotState& robotstate);
 
+    void setCollisionWorld(WorldClient *world_client);
+
     void setOctoMap(octomap::OcTreeStamped* octree);
 
     void removeOctomapBBX(const geometry_msgs::Point& goal, const std::string& root);
@@ -216,6 +213,14 @@ protected:
     Eigen::VectorXd wrenches_pre_alloc_;
 
     KDL::Frame no_fix_;
+
+    /**
+     * @brief The current WorldClient that is in use
+     *
+     * This can be various implementations that inherit from WorldClient,
+     * for example an OctomapWorld or an EdWorld
+     */
+    WorldClient *world_client_;
 
     octomap::OcTreeStamped* octomap_;
 

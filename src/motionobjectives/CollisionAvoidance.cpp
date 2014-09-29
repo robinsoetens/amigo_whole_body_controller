@@ -57,7 +57,7 @@ struct DistanceData
 };
 
 CollisionAvoidance::CollisionAvoidance(collisionAvoidanceParameters &parameters, const double Ts)
-    : ca_param_(parameters), Ts_ (Ts), octomap_(NULL)
+    : ca_param_(parameters), Ts_ (Ts), world_client_(NULL), octomap_(NULL)
 {
     /// Status is always 2 (always active)
     type_     = "CollisionAvoidance";
@@ -208,6 +208,11 @@ void CollisionAvoidance::apply(RobotState &robotstate)
 
     statsPublisher_.stopTimer("CollisionAvoidance::apply");
     statsPublisher_.publish();
+}
+
+void CollisionAvoidance::setCollisionWorld(WorldClient *world_client)
+{
+    world_client_ = world_client;
 }
 
 void CollisionAvoidance::addObjectCollisionModel(const std::string& frame_id) {
@@ -572,20 +577,16 @@ bool environmentCollisionDistanceFunction(fcl::CollisionObject* o1, fcl::Collisi
 
 void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_distances) {
 
-    std::vector< boost::shared_ptr<fcl::CollisionObject> > objects; // TODO: add vwm objects
-    if (!objects.size()) {
+    if (!world_client_) {
+        ROS_WARN_ONCE("no specific world client set, environment collisions will be turned off");
         return;
     }
 
-    fcl::DynamicAABBTreeCollisionManager manager;
-    std::vector< boost::shared_ptr<fcl::CollisionObject> >::iterator it;
-    for (it = objects.begin(); it < objects.end(); ++it) {
-        boost::shared_ptr<fcl::CollisionObject> obj = *it;
-        manager.registerObject(obj.get());
-    }
-    manager.setup();
+    WorldPtr world = world_client_->getWorld();
 
-    // Calculate closest distances using Bullet
+    fcl::BroadPhaseCollisionManager *manager = world->getCollisionManager();
+
+    /// for each RobotState::CollisionBody, get a minimum distance to the world
     for (std::vector< std::vector<RobotState::CollisionBody> >::iterator itrGroups = robot_state_->robot_.groups.begin(); itrGroups != robot_state_->robot_.groups.end(); ++itrGroups)
     {
         std::vector<RobotState::CollisionBody> &group = *itrGroups;
@@ -595,7 +596,7 @@ void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_dis
 
             DistanceData cdata;
             cdata.request.enable_nearest_points = true;
-            manager.distance(collisionBody.fcl_object.get(), &cdata, environmentCollisionDistanceFunction);
+            manager->distance(collisionBody.fcl_object.get(), &cdata, environmentCollisionDistanceFunction);
 
             Distance2 distance;
             distance.frame_id = collisionBody.frame_id;
@@ -603,7 +604,6 @@ void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_dis
             min_distances.push_back(distance);
         }
     }
-    manager.clear();
 }
 #endif
 

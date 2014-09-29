@@ -48,6 +48,8 @@ WholeBodyControllerNode::WholeBodyControllerNode (ros::Rate &loop_rate)
 void WholeBodyControllerNode::setCollisionWorld(WorldClient *world_client)
 {
     world_client_ = world_client;
+    collision_avoidance.setCollisionWorld(world_client);
+
     world_client_->initialize();
     world_client_->start();
 }
