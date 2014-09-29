@@ -43,14 +43,20 @@
 
 #endif
 
-// Timer
 #include <profiling/StatsPublisher.h>
 
 // ToDo: why not make total wrenches and total distances member variables? Now they're passed on from function to function
 
-// TODO: put everything into a namespace
 namespace wbc {
 
+/**
+ * @brief Data structure to wrap around RobotState::CollisionBody's for use in FCL
+ *
+ * The userData member of FCL Object's contains a void*. In this project
+ * the userData is always a CollisionGeometryData* which can point back to it's RobotState::CollisionBody.
+ *
+ * A union is used (following the moveit convention) to provide easy future extension with for example a WorldObject::Body.
+ */
 struct CollisionGeometryData
 {
   CollisionGeometryData(RobotState::CollisionBody *link)
@@ -96,7 +102,7 @@ struct CollisionGeometryData
 
   union
   {
-/*      const robot_model::LinkModel    *link;
+/*  const robot_model::LinkModel    *link;
     const robot_state::AttachedBody *ab;
     const World::Object             *obj; */
     const RobotState::CollisionBody *link;
