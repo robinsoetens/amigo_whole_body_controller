@@ -4,6 +4,7 @@ Tree::Tree() {
 }
 
 Tree::~Tree() {
+    delete jac_solver_;
 }
 
 void Tree::calcPartialJacobian(const std::string& link_name,
