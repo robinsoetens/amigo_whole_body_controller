@@ -1,6 +1,6 @@
 #include "Tree.h"
 
-Tree::Tree() {
+Tree::Tree() : jac_solver_(0) {
 }
 
 Tree::~Tree() {
