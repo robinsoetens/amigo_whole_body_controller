@@ -5,7 +5,7 @@ RobotState::RobotState() {
 }
 
 RobotState::~RobotState() {
-
+    delete fk_solver_;
 }
 
 void RobotState::collectFKSolutions()
