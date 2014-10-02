@@ -85,7 +85,7 @@ void AdmittanceController::update(const Eigen::VectorXd& tau, Eigen::VectorXd& q
 /// Check input values (and create segfault to debug)
         if (!(fabs(tau(i)) < 10000.0 && fabs(qdot_reference_previous_(i)) < 10000.0) ) {
             std::cout << "tauin: " << tau(i) << ", qdot: " << qdot_reference_previous_(i) << std::endl;
-            std::vector<int> crashvec; crashvec[1] =2;
+            assert(false);
         } else {
         qdot_reference(i)  = b_(0,i) * tau(i);
         qdot_reference(i) += b_(1,i) * tau_previous_(i);
