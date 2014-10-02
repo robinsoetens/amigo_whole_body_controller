@@ -424,8 +424,12 @@ void CollisionAvoidance::selfCollisionFast(std::vector<Distance2> &min_distances
             cdata.robotState = robot_state_;
             cdata.verbose = true;
             cdata.request.enable_nearest_points = true;
+            cdata.result.min_distance = ca_param_.self_collision.d_threshold;
 
             selfCollisionManager.distance(currentBody.fcl_object.get(), &cdata, selfCollisionDistanceFunction);
+
+            if (!cdata.result.o1 || cdata.result.o2)
+                continue; // no object found within self_collision.d_threshold
 
             Distance2 distance2;
             distance2.result = cdata.result;
@@ -596,7 +600,12 @@ void CollisionAvoidance::environmentCollisionVWM(std::vector<Distance2> &min_dis
 
             DistanceData cdata;
             cdata.request.enable_nearest_points = true;
+            cdata.result.min_distance = ca_param_.environment_collision.d_threshold;
+
             manager->distance(collisionBody.fcl_object.get(), &cdata, environmentCollisionDistanceFunction);
+
+            if (!cdata.result.o1 || !cdata.result.o2)
+                continue; // no object found within environment_collision.d_threshold;
 
             Distance2 distance;
             distance.frame_id = collisionBody.frame_id;
